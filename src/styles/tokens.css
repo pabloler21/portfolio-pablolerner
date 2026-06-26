@@ -1,0 +1,22 @@
+/* IRON DUST — design tokens */
+:root {
+  /* Color */
+  --bg-void:    #1b1e1a;
+  --bg-panel:   #252820;
+  --sand:       #c4c0a8;
+  --sand-dim:   #626858;
+  --ink:        #363b30;
+  --accent:     #8fa882;
+
+  /* Typography */
+  --font-display: 'IM Fell English', Georgia, serif;
+  --font-mono:    'Share Tech Mono', 'Courier New', monospace;
+
+  /* Layout */
+  --radius:     0px;
+  --border:     1px solid var(--ink);
+
+  /* Effects */
+  --scanline-opacity: 0.04;
+  --grain-opacity:    0.045;
+}

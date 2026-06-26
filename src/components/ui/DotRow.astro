@@ -1,0 +1,34 @@
+---
+const COUNT = 40;
+const litIndexes = new Set([0, 1, 9, 17, 25, 33, 39]);
+---
+
+<div class="dot-row" aria-hidden="true">
+  {Array.from({ length: COUNT }, (_, i) => (
+    <span class:list={['dot', { lit: litIndexes.has(i) }]} />
+  ))}
+</div>
+
+<style>
+  .dot-row {
+    display: flex;
+    gap: 0.38rem;
+    padding: 0.4rem 1rem;
+    border-bottom: var(--border);
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--ink);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .dot.lit {
+    background: var(--accent);
+  }
+</style>

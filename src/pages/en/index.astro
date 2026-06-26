@@ -1,0 +1,337 @@
+---
+import Base from '../../layouts/Base.astro';
+import BootScreen from '../../components/ui/BootScreen.astro';
+
+const lang = 'en';
+---
+
+<Base title="Access Terminal" lang={lang} activeTab="projects">
+  <BootScreen />
+
+  <div class="home-grid">
+    <!-- Left panel: role selector -->
+    <section class="panel-left" aria-label="Unit selection">
+      <p class="panel-title sys-text">ACCESS UNIT SELECTION</p>
+
+      <nav class="role-menu" id="role-menu">
+        <button class="role-item selected" data-role="ai" aria-pressed="true">
+          <span class="cursor">◆</span>
+          <span>AI ENGINEER</span>
+        </button>
+        <button class="role-item" data-role="risk" aria-pressed="false">
+          <span class="cursor"></span>
+          <span>RISK ANALYST</span>
+        </button>
+        <button class="role-item" data-role="ds" aria-pressed="false">
+          <span class="cursor"></span>
+          <span>DATA SCIENTIST</span>
+        </button>
+      </nav>
+
+      <div class="meta-block sys-text">
+        <p>UNIT ID: PL-7729</p>
+        <p>LAT: -34.6037</p>
+        <p>LON: -58.3816</p>
+        <p>STATUS: ACTIVE</p>
+        <p>OPEN TO WORK</p>
+      </div>
+    </section>
+
+    <!-- Right panel: unit detail (changes with selection) -->
+    <section class="panel-right" aria-label="Unit profile" aria-live="polite">
+
+      <!-- AI Engineer detail -->
+      <div class="unit-detail" id="detail-ai">
+        <h2 class="unit-title">AI ENGINEER</h2>
+        <p class="unit-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 4</p>
+
+        <div class="stats">
+          <div class="stat-row">
+            <span class="stat-label">SPECIALIZATION</span>
+            <span>LLM · Multi-agent · FastAPI</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">FLAGSHIP</span>
+            <span class="accent">GENERATIVE NARRATIVE GAME</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">TOOLS</span>
+            <span>LangChain · Claude API · Python</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">STATUS</span>
+            <span class="accent">ACTIVE · OPEN TO WORK</span>
+          </div>
+        </div>
+
+        <ul class="project-list">
+          <li class="project-item featured">
+            <span>Generative Narrative Game</span>
+            <span class="badge">FLAGSHIP</span>
+          </li>
+          <li class="project-item">
+            <span>Multi-agent LangChain Pipeline</span>
+            <span class="badge">DEPLOYED</span>
+          </li>
+          <li class="project-item">
+            <span>Claude Code Tooling / MCP</span>
+            <span class="badge">ACTIVE</span>
+          </li>
+          <li class="project-item">
+            <span>FastAPI AI Service</span>
+            <span class="badge">DEPLOYED</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Risk Analyst detail -->
+      <div class="unit-detail hidden" id="detail-risk">
+        <h2 class="unit-title">RISK ANALYST</h2>
+        <p class="unit-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 4</p>
+
+        <div class="stats">
+          <div class="stat-row">
+            <span class="stat-label">SPECIALIZATION</span>
+            <span>Statistical modeling · SQL · Dashboards</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">TOOLS</span>
+            <span>Python · SQL · Power BI · R</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">STATUS</span>
+            <span class="accent">ACTIVE · OPEN TO WORK</span>
+          </div>
+        </div>
+
+        <ul class="project-list">
+          <li class="project-item">[PLACEHOLDER — projects coming soon]</li>
+        </ul>
+      </div>
+
+      <!-- Data Scientist detail -->
+      <div class="unit-detail hidden" id="detail-ds">
+        <h2 class="unit-title">DATA SCIENTIST</h2>
+        <p class="unit-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 4</p>
+
+        <div class="stats">
+          <div class="stat-row">
+            <span class="stat-label">SPECIALIZATION</span>
+            <span>ML pipelines · NLP · Classification</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">TOOLS</span>
+            <span>scikit-learn · HuggingFace · PyTorch</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">STATUS</span>
+            <span class="accent">ACTIVE · OPEN TO WORK</span>
+          </div>
+        </div>
+
+        <ul class="project-list">
+          <li class="project-item">[PLACEHOLDER — projects coming soon]</li>
+        </ul>
+      </div>
+
+    </section>
+  </div>
+</Base>
+
+<script>
+  const items = document.querySelectorAll<HTMLButtonElement>('.role-item');
+  const details = document.querySelectorAll<HTMLElement>('.unit-detail');
+
+  items.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const role = btn.dataset.role!;
+
+      // Update menu selection
+      items.forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+        b.querySelector<HTMLElement>('.cursor')!.textContent = '';
+      });
+      btn.classList.add('selected');
+      btn.setAttribute('aria-pressed', 'true');
+      btn.querySelector<HTMLElement>('.cursor')!.textContent = '◆';
+
+      // Show matching detail panel
+      details.forEach(d => d.classList.add('hidden'));
+      document.getElementById(`detail-${role}`)?.classList.remove('hidden');
+    });
+  });
+
+  // Keyboard: arrow keys to navigate roles
+  const menu = document.getElementById('role-menu')!;
+  menu.addEventListener('keydown', e => {
+    const btns = [...items];
+    const cur = btns.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'ArrowDown' && cur < btns.length - 1) btns[cur + 1].focus();
+    if (e.key === 'ArrowUp'   && cur > 0)               btns[cur - 1].focus();
+    if (e.key === 'Enter' || e.key === ' ') (document.activeElement as HTMLButtonElement)?.click();
+  });
+</script>
+
+<style>
+  .home-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Left panel ── */
+  .panel-left {
+    border-right: var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-title {
+    padding: 0.6rem 1rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+  }
+
+  .role-menu {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+  }
+
+  .role-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    background: none;
+    border: none;
+    color: var(--sand-dim);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: color 0.12s, background 0.12s;
+  }
+
+  .role-item:hover { color: var(--sand); }
+
+  .role-item.selected {
+    background: var(--bg-panel);
+    color: var(--sand);
+  }
+
+  .role-item:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  .cursor {
+    font-size: 0.68rem;
+    color: var(--accent);
+    width: 1rem;
+    flex-shrink: 0;
+  }
+
+  .meta-block {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: var(--border);
+    line-height: 2;
+    font-size: 0.63rem;
+  }
+
+  /* ── Right panel ── */
+  .panel-right {
+    padding: 1.2rem;
+  }
+
+  .unit-detail.hidden { display: none; }
+
+  .unit-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sand);
+    margin-bottom: 0.2rem;
+  }
+
+  .unit-sub {
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+  }
+
+  .stats { margin-bottom: 1.2rem; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-label {
+    color: var(--sand-dim);
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+
+  .accent { color: var(--accent); }
+
+  .project-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0.7rem;
+    border: var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    color: var(--sand);
+    transition: background 0.12s;
+    cursor: default;
+  }
+
+  .project-item:hover { background: var(--bg-panel); }
+
+  .project-item.featured {
+    border-left: 3px solid var(--accent);
+  }
+
+  .badge {
+    font-size: 0.57rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .home-grid {
+      grid-template-columns: 1fr;
+    }
+    .panel-left { border-right: none; border-bottom: var(--border); }
+    .meta-block { display: none; }
+  }
+</style>

@@ -1,0 +1,132 @@
+---
+import TabBar from '../components/ui/TabBar.astro';
+import DotRow from '../components/ui/DotRow.astro';
+import StatusBar from '../components/ui/StatusBar.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  lang?: 'en' | 'es';
+  activeTab?: string;
+}
+
+const {
+  title,
+  description = 'Pablo Lerner — AI Engineer · Data Scientist · Risk Analyst',
+  lang = 'en',
+  activeTab = 'projects',
+} = Astro.props;
+
+const altLang = lang === 'en' ? 'es' : 'en';
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pablolerner.dev');
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+
+    <title>{title} · Pablo Lerner</title>
+
+    <!-- SEO bilingual -->
+    <link rel="canonical" href={canonicalURL} />
+    <link rel="alternate" hreflang={lang} href={canonicalURL} />
+    <link rel="alternate" hreflang={altLang} href={new URL(Astro.url.pathname.replace(`/${lang}/`, `/${altLang}/`), canonicalURL.origin)} />
+    <link rel="alternate" hreflang="x-default" href={new URL('/en/', canonicalURL.origin)} />
+
+    <!-- Favicon placeholder -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Google Fonts preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+
+  <body>
+    <!-- YoRHa OS chrome -->
+    <div class="os-shell">
+      <!-- Header -->
+      <header class="os-header">
+        <div class="os-title-row">
+          <span class="os-unit-id sys-text">UNIT::PL-7729</span>
+          <h1 class="os-heading">{title}</h1>
+          <span class="os-status sys-text">SYS:OK · LANG:{lang.toUpperCase()}</span>
+        </div>
+        <TabBar active={activeTab} lang={lang} />
+        <DotRow />
+      </header>
+
+      <!-- Main content -->
+      <main class="os-main">
+        <slot />
+      </main>
+
+      <!-- Footer -->
+      <StatusBar lang={lang} />
+    </div>
+  </body>
+</html>
+
+<style>
+  .os-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    border: var(--border);
+    margin: 0 auto;
+    max-width: 1200px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Diagonal corner cuts top-right and bottom-left */
+  .os-shell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 18px 18px 0;
+    border-color: transparent var(--bg-void) transparent transparent;
+    z-index: 2;
+  }
+
+  .os-header {
+    border-bottom: var(--border);
+    flex-shrink: 0;
+  }
+
+  .os-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: var(--border);
+    background: color-mix(in srgb, var(--bg-void) 85%, black);
+  }
+
+  .os-heading {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--sand);
+  }
+
+  .os-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (max-width: 600px) {
+    .os-unit-id,
+    .os-status { display: none; }
+  }
+</style>

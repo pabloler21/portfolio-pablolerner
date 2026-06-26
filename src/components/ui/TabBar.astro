@@ -1,0 +1,74 @@
+---
+interface Props {
+  active?: string;
+  lang?: 'en' | 'es';
+}
+
+const { active = 'projects', lang = 'en' } = Astro.props;
+
+const tabs = [
+  { id: 'profile',  label: 'PROFILE',  href: `/${lang}/about` },
+  { id: 'projects', label: 'PROJECTS', href: `/${lang}/` },
+  { id: 'skills',   label: 'SKILLS',   href: `/${lang}/skills` },
+  { id: 'about',    label: 'ABOUT',    href: `/${lang}/about` },
+  { id: 'contact',  label: 'CONTACT',  href: `/${lang}/contact` },
+];
+---
+
+<nav class="tab-bar" aria-label="Main navigation">
+  {tabs.map(tab => (
+    <a
+      href={tab.href}
+      class:list={['tab', { active: tab.id === active }]}
+      aria-current={tab.id === active ? 'page' : undefined}
+    >
+      <span class="tab-icon">⬡</span>
+      <span>{tab.label}</span>
+    </a>
+  ))}
+</nav>
+
+<style>
+  .tab-bar {
+    display: flex;
+    background: var(--bg-void);
+    border-bottom: var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tab-bar::-webkit-scrollbar { display: none; }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    color: var(--sand-dim);
+    border-right: var(--border);
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+
+  .tab:last-child { border-right: none; }
+
+  .tab:hover { color: var(--sand); }
+
+  .tab.active {
+    background: var(--bg-panel);
+    color: var(--sand);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .tab-icon {
+    font-size: 0.75rem;
+    color: var(--sand-dim);
+  }
+
+  .tab.active .tab-icon {
+    color: var(--accent);
+  }
+</style>

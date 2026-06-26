@@ -1,0 +1,145 @@
+---
+// Shown once per session via sessionStorage flag
+---
+
+<div id="boot-screen" aria-hidden="true" role="presentation">
+  <div class="boot-content">
+    <div class="boot-logo">◆</div>
+    <div class="boot-lines">
+      <p class="line l1">YORHA OS — UNIT PL-7729</p>
+      <p class="line l2">PORTFOLIO ACCESS TERMINAL v1.0</p>
+      <p class="line l3">──────────────────────────────────</p>
+      <p class="line l4">LOADING MEMORY ARCHIVES<span class="blink">_</span></p>
+      <p class="line l5">UNIT PROFILES: <span class="accent">3</span> FOUND</p>
+      <p class="line l6">DATA INTEGRITY: <span class="accent">OK</span></p>
+      <p class="line l7">──────────────────────────────────</p>
+      <p class="line l8">ACCESS GRANTED. INITIALIZING UI<span class="blink">_</span></p>
+    </div>
+    <div class="boot-bar-wrap">
+      <div class="boot-bar"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen = document.getElementById('boot-screen');
+  if (!screen) throw new Error();
+
+  const seen = sessionStorage.getItem('boot-seen');
+
+  if (seen) {
+    screen.style.display = 'none';
+  } else {
+    // Total boot animation: ~2.6s then fade out
+    setTimeout(() => {
+      screen.classList.add('fade-out');
+      screen.addEventListener('transitionend', () => {
+        screen.style.display = 'none';
+        sessionStorage.setItem('boot-seen', '1');
+      }, { once: true });
+    }, 2800);
+  }
+</script>
+
+<style>
+  #boot-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-void);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+  }
+
+  #boot-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .boot-content {
+    width: min(480px, 90vw);
+  }
+
+  .boot-logo {
+    font-size: 2.5rem;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    animation: pulse 1s ease-in-out infinite alternate;
+  }
+
+  .boot-lines {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    line-height: 1.8;
+    border: var(--border);
+    padding: 1.2rem 1.4rem;
+    background: var(--bg-panel);
+  }
+
+  .line {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  /* Staggered reveal */
+  .l1 { animation: reveal 0.2s ease forwards 0.1s; }
+  .l2 { animation: reveal 0.2s ease forwards 0.3s; }
+  .l3 { animation: reveal 0.2s ease forwards 0.5s; color: var(--ink); }
+  .l4 { animation: reveal 0.2s ease forwards 0.7s; }
+  .l5 { animation: reveal 0.2s ease forwards 1.0s; }
+  .l6 { animation: reveal 0.2s ease forwards 1.2s; }
+  .l7 { animation: reveal 0.2s ease forwards 1.4s; color: var(--ink); }
+  .l8 { animation: reveal 0.2s ease forwards 1.6s; }
+
+  .accent { color: var(--accent); }
+
+  .blink {
+    animation: blink 0.7s step-end infinite;
+    color: var(--accent);
+  }
+
+  .boot-bar-wrap {
+    margin-top: 1rem;
+    border: var(--border);
+    height: 4px;
+    background: var(--bg-panel);
+    overflow: hidden;
+  }
+
+  .boot-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    animation: fill-bar 2.2s ease forwards 0.4s;
+  }
+
+  @keyframes reveal {
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  @keyframes fill-bar {
+    0%   { width: 0%; }
+    40%  { width: 35%; }
+    70%  { width: 72%; }
+    90%  { width: 90%; }
+    100% { width: 100%; }
+  }
+
+  @keyframes pulse {
+    from { opacity: 0.6; }
+    to   { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #boot-screen { display: none !important; }
+  }
+</style>
