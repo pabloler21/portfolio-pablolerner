@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 1 Preview — Role Page Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void:    #1b1e1a;
+    --bg-panel:   #252820;
+    --sand:       #c4c0a8;
+    --sand-dim:   #626858;
+    --ink:        #363b30;
+    --accent:     #8fa882;
+    --font-display: 'IM Fell English', Georgia, serif;
+    --font-mono:    'Share Tech Mono', 'Courier New', monospace;
+    --border:     1px solid #363b30;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--sand);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  /* ── Label ── */
+  .section-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+    border-bottom: var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+  }
+  .section-label span { color: var(--accent); }
+
+  /* ── Preview wrapper ── */
+  .previews {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+
+  /* ── OS Frame ── */
+  .os-frame {
+    border: var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 600px;
+    position: relative;
+  }
+
+  .os-frame::before {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, transparent 50%, var(--ink) 50%);
+  }
+
+  .title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 1rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--sand-dim);
+    background: var(--bg-panel);
+  }
+  .title-row .page-title { color: var(--sand); }
+  .title-row .ok { color: var(--accent); }
+
+  .tab-bar {
+    display: flex;
+    border-bottom: var(--border);
+    background: var(--bg-void);
+  }
+  .tab {
+    padding: 0.4rem 1rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--sand-dim);
+    border-right: var(--border);
+  }
+  .tab.active {
+    background: var(--bg-panel);
+    color: var(--sand);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .dot-row {
+    display: flex;
+    gap: 4px;
+    padding: 0.35rem 1rem;
+    border-bottom: var(--border);
+  }
+  .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .dot.lit { background: var(--accent); }
+
+  .content-area {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── LEFT PANEL ── */
+  .panel-left {
+    border-right: var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-label {
+    padding: 0.5rem 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+  }
+
+  /* Back link — OPTION A */
+  .back-link-a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+  }
+  .back-link-a:hover { color: var(--sand); background: var(--bg-panel); }
+  .back-link-a .arr { color: var(--accent); }
+
+  /* Back link — OPTION B: integrated in status bar only */
+
+  .role-menu { display: flex; flex-direction: column; }
+
+  .role-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+  }
+  .role-item:hover { color: var(--sand); background: var(--bg-panel); }
+  .role-item.active {
+    background: var(--bg-panel);
+    color: var(--sand);
+  }
+  .role-item .cur { color: var(--accent); font-size: 0.6rem; width: 0.9rem; }
+
+  .meta-block {
+    margin-top: auto;
+    padding: 0.8rem;
+    border-top: var(--border);
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    line-height: 1.9;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .panel-right {
+    padding: 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .role-header {
+    border-bottom: var(--border);
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
+  .role-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+    color: var(--sand);
+    margin-bottom: 0.15rem;
+  }
+  .role-sub { font-size: 0.55rem; color: var(--sand-dim); letter-spacing: 0.1em; }
+
+  .records-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    margin-bottom: 0.3rem;
+  }
+  .records-label span { color: var(--accent); }
+
+  .project-card {
+    border: var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--sand);
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+  .project-card:hover { background: var(--bg-panel); }
+  .project-card.featured { border-left: 3px solid var(--accent); }
+  .project-card.locked { color: var(--sand-dim); cursor: default; }
+
+  .card-right { display: flex; align-items: center; gap: 0.5rem; }
+
+  .badge {
+    font-size: 0.52rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.35rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .badge.dim { border-color: var(--sand-dim); color: var(--sand-dim); }
+
+  .arrow { color: var(--sand-dim); font-size: 0.65rem; }
+  .project-card:hover .arrow { color: var(--accent); }
+  .project-card.locked .arrow { display: none; }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 1rem;
+    border-top: var(--border);
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    background: var(--bg-panel);
+  }
+
+  /* ── Labels below frames ── */
+  .frame-label {
+    text-align: center;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--sand-dim);
+    margin-top: 0.6rem;
+  }
+  .frame-label strong { color: var(--accent); }
+
+  /* ── Annotation callouts ── */
+  .callout {
+    background: var(--bg-panel);
+    border: var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.6rem 0.9rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    color: var(--sand-dim);
+    margin-top: 0.5rem;
+    line-height: 1.7;
+  }
+  .callout strong { color: var(--sand); }
+
+  /* ── Home CTA preview ── */
+  .home-section { margin-top: 2.5rem; }
+
+  .cta-demo {
+    max-width: 600px;
+    margin: 1rem auto 0;
+    border: var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .cta-panel-label {
+    padding: 0.4rem 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.55rem;
+    color: var(--sand-dim);
+    letter-spacing: 0.12em;
+  }
+
+  .cta-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 0.8rem;
+  }
+
+  .cta-info { font-size: 0.65rem; letter-spacing: 0.06em; color: var(--sand-dim); }
+  .cta-info span { color: var(--sand); }
+
+  .cta-btn {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.35rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    background: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  .cta-btn:hover { background: var(--accent); color: var(--bg-void); }
+
+  /* ── Main page label ── */
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+    color: var(--sand);
+    margin-bottom: 0.25rem;
+  }
+  .page-header {
+    max-width: 1300px;
+    margin: 0 auto 1.5rem;
+    border-bottom: var(--border);
+    padding-bottom: 1rem;
+  }
+  .sub { font-size: 0.6rem; color: var(--sand-dim); letter-spacing: 0.12em; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>PHASE 1 — VISUAL PREVIEW</h1>
+  <p class="sub">ROLE PAGE DESIGN · BACK NAVIGATION OPTIONS · 2 VARIANTS SHOWN</p>
+</div>
+
+<!-- ROLE PAGE VARIANTS -->
+<p class="section-label" style="max-width:1300px;margin:0 auto 1.5rem">ROLE PAGE LAYOUT <span>· OPTION A vs OPTION B</span> — back navigation</p>
+
+<div class="previews">
+
+  <!-- OPTION A: Dedicated back link above role menu -->
+  <div>
+    <div class="os-frame">
+      <div class="title-row">
+        <span>UNIT::PL-7729</span>
+        <span class="page-title">AI ENGINEER — RECORDS</span>
+        <span class="ok">SYS:OK</span>
+      </div>
+      <div class="tab-bar">
+        <div class="tab">PROFILE</div>
+        <div class="tab active">PROJECTS</div>
+        <div class="tab">SKILLS</div>
+        <div class="tab">ABOUT</div>
+        <div class="tab">CONTACT</div>
+      </div>
+      <div class="dot-row">
+        <div class="dot lit"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot lit"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+      </div>
+
+      <div class="content-area" style="flex:1">
+        <div class="panel-left">
+          <div class="panel-label">UNIT SELECTION</div>
+
+          <!-- ← BACK LINK lives here, above the role list -->
+          <div class="back-link-a">
+            <span class="arr">◀</span>
+            <span>TERMINAL</span>
+          </div>
+
+          <div class="role-menu">
+            <div class="role-item active">
+              <span class="cur">◆</span><span>AI ENGINEER</span>
+            </div>
+            <div class="role-item">
+              <span class="cur"></span><span>RISK ANALYST</span>
+            </div>
+            <div class="role-item">
+              <span class="cur"></span><span>DATA SCIENTIST</span>
+            </div>
+          </div>
+
+          <div class="meta-block">
+            <div>UNIT ID: PL-7729</div>
+            <div>RECORDS: 4</div>
+            <div>STATUS: ACTIVE</div>
+          </div>
+        </div>
+
+        <div class="panel-right">
+          <div class="role-header">
+            <div class="role-title">AI ENGINEER</div>
+            <div class="role-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · 4 RECORDS FOUND</div>
+          </div>
+
+          <div class="records-label">MEMORY ARCHIVE · <span>4 FILES</span></div>
+
+          <div class="project-card featured">
+            <span>Generative Narrative Game</span>
+            <div class="card-right">
+              <span class="badge">FLAGSHIP</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <span>Multi-agent LangChain Pipeline</span>
+            <div class="card-right">
+              <span class="badge">DEPLOYED</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <span>Claude Code Tooling / MCP</span>
+            <div class="card-right">
+              <span class="badge">ACTIVE</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card locked">
+            <span>FastAPI AI Service</span>
+            <div class="card-right">
+              <span class="badge dim">PENDING</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span>◆ SELECT  ↵ OPEN  ESC BACK</span>
+        <span>EN | ES · CV ↓</span>
+        <span>LAT:-34.6037 LON:-58.3816</span>
+      </div>
+    </div>
+
+    <div class="frame-label"><strong>OPTION A</strong> — Back link as first item in left panel, above role list</div>
+    <div class="callout">
+      <strong>Behavior:</strong> The left panel always shows role context. Clicking a different role navigates to that role page. <strong>◀ TERMINAL</strong> goes back to home. Roles are also clickable from here — no dead ends.
+    </div>
+  </div>
+
+  <!-- OPTION B: No explicit back link — tab bar + role list as nav -->
+  <div>
+    <div class="os-frame">
+      <div class="title-row">
+        <span>UNIT::PL-7729</span>
+        <span class="page-title">AI ENGINEER — RECORDS</span>
+        <span class="ok">SYS:OK</span>
+      </div>
+      <div class="tab-bar">
+        <div class="tab">PROFILE</div>
+        <div class="tab active">PROJECTS</div>
+        <div class="tab">SKILLS</div>
+        <div class="tab">ABOUT</div>
+        <div class="tab">CONTACT</div>
+      </div>
+      <div class="dot-row">
+        <div class="dot lit"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot lit"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+      </div>
+
+      <div class="content-area" style="flex:1">
+        <div class="panel-left">
+          <div class="panel-label">UNIT SELECTION</div>
+
+          <!-- No back link — just roles -->
+          <div class="role-menu">
+            <div class="role-item active">
+              <span class="cur">◆</span><span>AI ENGINEER</span>
+            </div>
+            <div class="role-item">
+              <span class="cur"></span><span>RISK ANALYST</span>
+            </div>
+            <div class="role-item">
+              <span class="cur"></span><span>DATA SCIENTIST</span>
+            </div>
+          </div>
+
+          <div class="meta-block">
+            <div>UNIT ID: PL-7729</div>
+            <div>RECORDS: 4</div>
+            <div>STATUS: ACTIVE</div>
+          </div>
+        </div>
+
+        <div class="panel-right">
+          <div class="role-header">
+            <div class="role-title">AI ENGINEER</div>
+            <div class="role-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · 4 RECORDS FOUND</div>
+          </div>
+
+          <div class="records-label">MEMORY ARCHIVE · <span>4 FILES</span></div>
+
+          <div class="project-card featured">
+            <span>Generative Narrative Game</span>
+            <div class="card-right">
+              <span class="badge">FLAGSHIP</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <span>Multi-agent LangChain Pipeline</span>
+            <div class="card-right">
+              <span class="badge">DEPLOYED</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card">
+            <span>Claude Code Tooling / MCP</span>
+            <div class="card-right">
+              <span class="badge">ACTIVE</span>
+              <span class="arrow">→</span>
+            </div>
+          </div>
+          <div class="project-card locked">
+            <span>FastAPI AI Service</span>
+            <div class="card-right">
+              <span class="badge dim">PENDING</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <span>◆ SELECT  ↵ OPEN  ESC BACK</span>
+        <span>EN | ES · CV ↓</span>
+        <span>LAT:-34.6037 LON:-58.3816</span>
+      </div>
+    </div>
+
+    <div class="frame-label"><strong>OPTION B</strong> — No explicit back link. Home is "PROFILE" tab or browser back.</div>
+    <div class="callout">
+      <strong>Behavior:</strong> Cleaner left panel. You switch roles by clicking them in the list — navigates to that role page. To return home you use the PROFILE tab or browser back. Less explicit but less cluttered.
+    </div>
+  </div>
+
+</div>
+
+<!-- HOME PAGE CTA PREVIEW -->
+<div class="home-section" style="max-width:1300px;margin:2.5rem auto 0">
+  <p class="section-label">HOME PAGE CHANGE <span>· "ACCESS RECORDS" CTA BUTTON</span> — how role click + navigate works</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+
+    <div>
+      <div class="cta-demo">
+        <div class="cta-panel-label">STEP 1 — click role to select &amp; preview</div>
+        <div class="cta-content">
+          <div>
+            <div class="role-item active" style="padding:0;margin-bottom:0.3rem">
+              <span class="cur">◆</span><span style="font-size:0.72rem;letter-spacing:0.1em">AI ENGINEER</span>
+            </div>
+            <div class="role-item" style="padding:0;margin-bottom:0.3rem">
+              <span class="cur"></span><span style="font-size:0.72rem;letter-spacing:0.1em;color:var(--sand-dim)">RISK ANALYST</span>
+            </div>
+            <div class="role-item" style="padding:0">
+              <span class="cur"></span><span style="font-size:0.72rem;letter-spacing:0.1em;color:var(--sand-dim)">DATA SCIENTIST</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="cta-info" style="margin-bottom:0.5rem">SELECTED: <span>AI ENGINEER</span></div>
+            <button class="cta-btn">ACCESS RECORDS →</button>
+          </div>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:0.5rem">
+        <strong>Click role</strong> → preview updates (current behavior) + CTA button appears for that role.<br>
+        <strong>Click CTA</strong> → navigates to <code>/en/ai/</code>
+      </div>
+    </div>
+
+    <div>
+      <div style="border:var(--border);padding:1rem;font-size:0.65rem;letter-spacing:0.08em;color:var(--sand-dim);line-height:2">
+        <div style="color:var(--sand);margin-bottom:0.5rem;letter-spacing:0.15em;font-size:0.6rem">ROUTE MAP</div>
+        <div>/ → /en/ <span style="color:var(--accent)">(redirect)</span></div>
+        <div>/en/ → home terminal <span style="color:var(--accent)">(role selector)</span></div>
+        <div>/en/ai/ → AI Engineer records</div>
+        <div>/en/risk/ → Risk Analyst records</div>
+        <div>/en/ds/ → Data Scientist records</div>
+        <div style="color:var(--ink)">────────────────</div>
+        <div>/es/ → terminal en español</div>
+        <div>/es/ai/ → registros AI Engineer</div>
+        <div>/es/risk/ → registros Risk Analyst</div>
+        <div>/es/ds/ → registros Data Scientist</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

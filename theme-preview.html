@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio Theme Variants — Pablo Lerner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111;
+    font-family: 'Courier New', monospace;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  h1 {
+    color: #666;
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .sublabel {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
+  }
+
+  .shell {
+    width: 820px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid;
+  }
+
+  .shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.15) 3px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid;
+    border-color: inherit;
+  }
+
+  .tab {
+    padding: 0.5rem 1.1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border-right: 1px solid;
+    border-color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+  }
+
+  .dot-row {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid;
+    border-color: inherit;
+    flex-wrap: wrap;
+  }
+
+  .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+
+  .main-area {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+  }
+
+  .left-panel {
+    border-right: 1px solid;
+    border-color: inherit;
+    padding: 1rem 0;
+  }
+
+  .panel-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 0 1rem 0.5rem;
+    border-bottom: 1px solid;
+    border-color: inherit;
+    margin-bottom: 0.5rem;
+    opacity: 0.55;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+
+  .cursor-arrow { font-size: 0.7rem; width: 1rem; }
+
+  .meta-block {
+    padding: 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    line-height: 1.9;
+    border-top: 1px solid;
+    border-color: inherit;
+    margin-top: 0.5rem;
+    opacity: 0.45;
+  }
+
+  .right-panel { padding: 1rem 1.2rem; }
+
+  .detail-title {
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .detail-sub {
+    font-size: 0.63rem;
+    letter-spacing: 0.16em;
+    opacity: 0.5;
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid;
+    border-color: inherit;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted;
+    border-color: inherit;
+    opacity: 0.8;
+  }
+
+  .stat-label { opacity: 0.6; }
+
+  .project-list { margin-top: 1rem; }
+
+  .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    border: 1px solid;
+    border-color: inherit;
+    margin-bottom: 0.3rem;
+    cursor: pointer;
+  }
+
+  .project-item.featured { border-left-width: 3px; }
+
+  .badge {
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.45rem 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    border-top: 1px solid;
+    border-color: inherit;
+  }
+
+  .status-controls { display: flex; gap: 1.5rem; }
+  .control { display: flex; align-items: center; gap: 0.3rem; }
+  .control-key {
+    border: 1px solid;
+    border-color: inherit;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.6rem;
+  }
+  .lang-toggle { display: flex; gap: 0.5rem; opacity: 0.7; }
+  .coord { font-size: 0.58rem; opacity: 0.3; letter-spacing: 0.12em; }
+
+  /* ══════════════════════════════════════
+     VARIANT A — "PALE INK"
+     Same charcoal base, accent shifts from
+     red → muted sage green. Feels like a
+     field manual or classified dossier.
+     Diff: accent #6b8f71 (sage) vs original red
+  ══════════════════════════════════════ */
+  .v-a {
+    background: #1f1d1a;
+    border-color: #3d3a33;
+    color: #cabf9f;
+  }
+  .v-a .tab-bar { background: #191714; border-color: #3d3a33; }
+  .v-a .tab { border-color: #3d3a33; color: #6b6354; }
+  .v-a .tab.active { background: #2a2723; color: #cabf9f; border-bottom: 2px solid #cabf9f; }
+  .v-a .dot { background: #3a3730; }
+  .v-a .dot.lit { background: #6b8f71; }
+  .v-a .menu-item.selected { background: #2a2723; color: #cabf9f; }
+  .v-a .cursor-arrow.on { color: #6b8f71; }
+  .v-a .project-item.featured { border-left-color: #6b8f71; }
+  .v-a .badge { color: #6b8f71; border-color: #6b8f71; }
+  .v-a .detail-title { color: #cabf9f; }
+  .v-a .status-bar { background: #161512; }
+  .v-a .control-key { border-color: #6b6354; color: #6b6354; }
+
+  /* ══════════════════════════════════════
+     VARIANT B — "IRON DUST"
+     Background shifts slightly cooler/greener
+     (dark olive-grey), sand stays warm but the
+     whole palette breathes differently.
+     Diff: bg #1b1e1a (green-tinted) + accent #8fa882 (pale olive)
+  ══════════════════════════════════════ */
+  .v-b {
+    background: #1b1e1a;
+    border-color: #363b30;
+    color: #c4c0a8;
+  }
+  .v-b .tab-bar { background: #161814; border-color: #363b30; }
+  .v-b .tab { border-color: #363b30; color: #626858; }
+  .v-b .tab.active { background: #252820; color: #c4c0a8; border-bottom: 2px solid #c4c0a8; }
+  .v-b .dot { background: #363b30; }
+  .v-b .dot.lit { background: #8fa882; }
+  .v-b .menu-item.selected { background: #252820; color: #c4c0a8; }
+  .v-b .cursor-arrow.on { color: #8fa882; }
+  .v-b .project-item.featured { border-left-color: #8fa882; }
+  .v-b .badge { color: #8fa882; border-color: #8fa882; }
+  .v-b .detail-title { color: #c4c0a8; }
+  .v-b .status-bar { background: #131511; }
+  .v-b .control-key { border-color: #626858; color: #626858; }
+
+  /* ══════════════════════════════════════
+     VARIANT C — "AMBER RELIC"
+     Same dark charcoal but accent shifts to
+     a muted amber-gold. Warmest of the three.
+     Feels like old brass hardware or a
+     preserved machine.
+     Diff: accent #b8860b (dark goldenrod, muted)
+  ══════════════════════════════════════ */
+  .v-c {
+    background: #1f1d1a;
+    border-color: #3d3a33;
+    color: #cabf9f;
+  }
+  .v-c .tab-bar { background: #191714; border-color: #3d3a33; }
+  .v-c .tab { border-color: #3d3a33; color: #6b6354; }
+  .v-c .tab.active { background: #2a2723; color: #cabf9f; border-bottom: 2px solid #cabf9f; }
+  .v-c .dot { background: #3a3730; }
+  .v-c .dot.lit { background: #a07830; }
+  .v-c .menu-item.selected { background: #2a2723; color: #cabf9f; }
+  .v-c .cursor-arrow.on { color: #a07830; }
+  .v-c .project-item.featured { border-left-color: #a07830; }
+  .v-c .badge { color: #a07830; border-color: #a07830; }
+  .v-c .detail-title { color: #cabf9f; }
+  .v-c .status-bar { background: #161512; }
+  .v-c .control-key { border-color: #6b6354; color: #6b6354; }
+
+  /* ══════════════════════════════════════
+     ORIGINAL (reference)
+  ══════════════════════════════════════ */
+  .v-orig {
+    background: #1f1d1a;
+    border-color: #454138;
+    color: #cabf9f;
+    opacity: 0.55;
+    filter: grayscale(0.1);
+  }
+  .v-orig .tab-bar { background: #191714; border-color: #454138; }
+  .v-orig .tab { border-color: #454138; color: #6b6354; }
+  .v-orig .tab.active { background: #2a2723; color: #cabf9f; border-bottom: 2px solid #cabf9f; }
+  .v-orig .dot { background: #3a3730; }
+  .v-orig .dot.lit { background: #c0392b; }
+  .v-orig .menu-item.selected { background: #2a2723; }
+  .v-orig .cursor-arrow.on { color: #c0392b; }
+  .v-orig .project-item.featured { border-left-color: #c0392b; }
+  .v-orig .badge { color: #c0392b; border-color: #c0392b; }
+  .v-orig .detail-title { color: #cabf9f; }
+  .v-orig .status-bar { background: #161512; }
+</style>
+</head>
+<body>
+
+<h1>◆ NieR Variants — small color shifts · pick your accent ◆</h1>
+
+<!-- ════════ REFERENCE (dimmed) ════════ -->
+<div>
+  <div class="label" style="color:#555;">ORIGINAL NieR (reference — accent: red #c0392b)</div>
+  <div class="shell v-orig">
+    <div class="tab-bar">
+      <div class="tab">⬡ PROFILE</div>
+      <div class="tab active">⬡ PROJECTS</div>
+      <div class="tab">⬡ SKILLS</div>
+      <div class="tab">⬡ ABOUT</div>
+      <div class="tab">⬡ CONTACT</div>
+    </div>
+    <div class="dot-row">
+      <div class="dot lit"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+    </div>
+    <div class="main-area">
+      <div class="left-panel">
+        <div class="panel-title">ACCESS UNIT SELECTION</div>
+        <div class="menu-item selected"><span class="cursor-arrow on">◆</span>AI ENGINEER</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>RISK ANALYST</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>DATA SCIENTIST</div>
+        <div class="meta-block">UNIT ID: PL-7729<br>LAT: -34.6037<br>LON: -58.3816<br>SYS: 2026.06.26</div>
+      </div>
+      <div class="right-panel">
+        <div class="detail-title">AI ENGINEER</div>
+        <div class="detail-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 6</div>
+        <div class="stat-row"><span class="stat-label">SPECIALIZATION</span><span>LLM · Multi-agent · FastAPI</span></div>
+        <div class="stat-row"><span class="stat-label">FLAGSHIP</span><span>GENERATIVE GAME [◆ FEATURED]</span></div>
+        <div class="stat-row"><span class="stat-label">STATUS</span><span>ACTIVE · OPEN TO WORK</span></div>
+        <div class="project-list">
+          <div class="project-item featured"><span>Generative Narrative Game</span><span class="badge">FLAGSHIP</span></div>
+          <div class="project-item"><span>Multi-agent LangChain Pipeline</span><span class="badge">DEPLOYED</span></div>
+          <div class="project-item"><span>FastAPI AI Service</span><span class="badge">DEPLOYED</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-controls">
+        <div class="control"><span class="control-key">◆</span>SELECT</div>
+        <div class="control"><span class="control-key">A</span>CONFIRM</div>
+        <div class="control"><span class="control-key">B</span>BACK</div>
+      </div>
+      <div class="lang-toggle"><span>[EN]</span><span>[ES]</span><span>[CV ↓]</span></div>
+      <div class="coord">X:0441 Y:0127 · NODE:ACTIVE</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ VARIANT A ════════ -->
+<div>
+  <div class="label" style="color:#6b8f71;">① PALE INK — accent: sage green #6b8f71</div>
+  <div class="sublabel" style="color:#555;">bg unchanged · same sand · only the accent shifts → reads like a field manual / classified dossier</div>
+  <div class="shell v-a">
+    <div class="tab-bar">
+      <div class="tab">⬡ PROFILE</div>
+      <div class="tab active">⬡ PROJECTS</div>
+      <div class="tab">⬡ SKILLS</div>
+      <div class="tab">⬡ ABOUT</div>
+      <div class="tab">⬡ CONTACT</div>
+    </div>
+    <div class="dot-row">
+      <div class="dot lit"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+    </div>
+    <div class="main-area">
+      <div class="left-panel">
+        <div class="panel-title">ACCESS UNIT SELECTION</div>
+        <div class="menu-item selected"><span class="cursor-arrow on">◆</span>AI ENGINEER</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>RISK ANALYST</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>DATA SCIENTIST</div>
+        <div class="meta-block">UNIT ID: PL-7729<br>LAT: -34.6037<br>LON: -58.3816<br>SYS: 2026.06.26</div>
+      </div>
+      <div class="right-panel">
+        <div class="detail-title">AI ENGINEER</div>
+        <div class="detail-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 6</div>
+        <div class="stat-row"><span class="stat-label">SPECIALIZATION</span><span>LLM · Multi-agent · FastAPI</span></div>
+        <div class="stat-row"><span class="stat-label">FLAGSHIP</span><span>GENERATIVE GAME [◆ FEATURED]</span></div>
+        <div class="stat-row"><span class="stat-label">STATUS</span><span>ACTIVE · OPEN TO WORK</span></div>
+        <div class="project-list">
+          <div class="project-item featured"><span>Generative Narrative Game</span><span class="badge">FLAGSHIP</span></div>
+          <div class="project-item"><span>Multi-agent LangChain Pipeline</span><span class="badge">DEPLOYED</span></div>
+          <div class="project-item"><span>FastAPI AI Service</span><span class="badge">DEPLOYED</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-controls">
+        <div class="control"><span class="control-key">◆</span>SELECT</div>
+        <div class="control"><span class="control-key">A</span>CONFIRM</div>
+        <div class="control"><span class="control-key">B</span>BACK</div>
+      </div>
+      <div class="lang-toggle"><span>[EN]</span><span>[ES]</span><span>[CV ↓]</span></div>
+      <div class="coord">X:0441 Y:0127 · NODE:ACTIVE</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ VARIANT B ════════ -->
+<div>
+  <div class="label" style="color:#8fa882;">② IRON DUST — bg shifts to dark olive-grey · accent: pale olive #8fa882</div>
+  <div class="sublabel" style="color:#555;">bg #1b1e1a (green-tinted charcoal) · sand cools slightly · the whole palette breathes differently from NieR</div>
+  <div class="shell v-b">
+    <div class="tab-bar">
+      <div class="tab">⬡ PROFILE</div>
+      <div class="tab active">⬡ PROJECTS</div>
+      <div class="tab">⬡ SKILLS</div>
+      <div class="tab">⬡ ABOUT</div>
+      <div class="tab">⬡ CONTACT</div>
+    </div>
+    <div class="dot-row">
+      <div class="dot lit"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+    </div>
+    <div class="main-area">
+      <div class="left-panel">
+        <div class="panel-title">ACCESS UNIT SELECTION</div>
+        <div class="menu-item selected"><span class="cursor-arrow on">◆</span>AI ENGINEER</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>RISK ANALYST</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>DATA SCIENTIST</div>
+        <div class="meta-block">UNIT ID: PL-7729<br>LAT: -34.6037<br>LON: -58.3816<br>SYS: 2026.06.26</div>
+      </div>
+      <div class="right-panel">
+        <div class="detail-title">AI ENGINEER</div>
+        <div class="detail-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 6</div>
+        <div class="stat-row"><span class="stat-label">SPECIALIZATION</span><span>LLM · Multi-agent · FastAPI</span></div>
+        <div class="stat-row"><span class="stat-label">FLAGSHIP</span><span>GENERATIVE GAME [◆ FEATURED]</span></div>
+        <div class="stat-row"><span class="stat-label">STATUS</span><span>ACTIVE · OPEN TO WORK</span></div>
+        <div class="project-list">
+          <div class="project-item featured"><span>Generative Narrative Game</span><span class="badge">FLAGSHIP</span></div>
+          <div class="project-item"><span>Multi-agent LangChain Pipeline</span><span class="badge">DEPLOYED</span></div>
+          <div class="project-item"><span>FastAPI AI Service</span><span class="badge">DEPLOYED</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-controls">
+        <div class="control"><span class="control-key">◆</span>SELECT</div>
+        <div class="control"><span class="control-key">A</span>CONFIRM</div>
+        <div class="control"><span class="control-key">B</span>BACK</div>
+      </div>
+      <div class="lang-toggle"><span>[EN]</span><span>[ES]</span><span>[CV ↓]</span></div>
+      <div class="coord">X:0441 Y:0127 · NODE:ACTIVE</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ VARIANT C ════════ -->
+<div>
+  <div class="label" style="color:#a07830;">③ AMBER RELIC — accent: muted amber-gold #a07830</div>
+  <div class="sublabel" style="color:#555;">same dark charcoal · same sand · accent shifts to old brass · warmest, feels like preserved machinery</div>
+  <div class="shell v-c">
+    <div class="tab-bar">
+      <div class="tab">⬡ PROFILE</div>
+      <div class="tab active">⬡ PROJECTS</div>
+      <div class="tab">⬡ SKILLS</div>
+      <div class="tab">⬡ ABOUT</div>
+      <div class="tab">⬡ CONTACT</div>
+    </div>
+    <div class="dot-row">
+      <div class="dot lit"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot lit"></div>
+    </div>
+    <div class="main-area">
+      <div class="left-panel">
+        <div class="panel-title">ACCESS UNIT SELECTION</div>
+        <div class="menu-item selected"><span class="cursor-arrow on">◆</span>AI ENGINEER</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>RISK ANALYST</div>
+        <div class="menu-item"><span class="cursor-arrow"></span>DATA SCIENTIST</div>
+        <div class="meta-block">UNIT ID: PL-7729<br>LAT: -34.6037<br>LON: -58.3816<br>SYS: 2026.06.26</div>
+      </div>
+      <div class="right-panel">
+        <div class="detail-title">AI ENGINEER</div>
+        <div class="detail-sub">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 6</div>
+        <div class="stat-row"><span class="stat-label">SPECIALIZATION</span><span>LLM · Multi-agent · FastAPI</span></div>
+        <div class="stat-row"><span class="stat-label">FLAGSHIP</span><span>GENERATIVE GAME [◆ FEATURED]</span></div>
+        <div class="stat-row"><span class="stat-label">STATUS</span><span>ACTIVE · OPEN TO WORK</span></div>
+        <div class="project-list">
+          <div class="project-item featured"><span>Generative Narrative Game</span><span class="badge">FLAGSHIP</span></div>
+          <div class="project-item"><span>Multi-agent LangChain Pipeline</span><span class="badge">DEPLOYED</span></div>
+          <div class="project-item"><span>FastAPI AI Service</span><span class="badge">DEPLOYED</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-controls">
+        <div class="control"><span class="control-key">◆</span>SELECT</div>
+        <div class="control"><span class="control-key">A</span>CONFIRM</div>
+        <div class="control"><span class="control-key">B</span>BACK</div>
+      </div>
+      <div class="lang-toggle"><span>[EN]</span><span>[ES]</span><span>[CV ↓]</span></div>
+      <div class="coord">X:0441 Y:0127 · NODE:ACTIVE</div>
+    </div>
+  </div>
+</div>
+
+<div style="color:#333; font-size:0.65rem; letter-spacing:0.15em; text-align:center; padding-bottom:2rem;">
+  ◆ http://localhost:3333/theme-preview.html ◆
+</div>
+
+</body>
+</html>
