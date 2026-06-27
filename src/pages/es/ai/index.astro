@@ -1,25 +1,73 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
+import ProjectCard from '../../../components/ui/ProjectCard.astro';
+
+const projects = [
+  {
+    name: 'Iris — Asistente de IA Personal',
+    desc: 'Asistente disponible 24/7 en homelab Linux — interfaz por Discord, RAG sobre documentos personales (Qdrant), digest semanal automatizado de noticias de IA',
+    stack: ['Python', 'Qdrant', 'OpenAI', 'Discord', 'systemd'],
+    status: 'ACTIVO',
+    featured: true,
+    github: 'https://github.com/pabloler21/Iris',
+  },
+  {
+    name: 'CV Evaluator + Tablero de Empleos',
+    desc: 'Analizador de CVs tipo ATS y tablero de empleos remotos — backend con FastAPI, orquestación con LangChain, scoring con Claude Haiku. Desplegado en Render con demo en vivo.',
+    stack: ['FastAPI', 'LangChain', 'Claude API', 'Python'],
+    status: 'DEPLOYED',
+    github: 'https://github.com/pabloler21/bot_curriculum',
+    demo: 'https://bot-curriculum-1.onrender.com',
+  },
+  {
+    name: 'Team Agent Ops — Hermes',
+    desc: 'Bot multi-agente de equipo: Hermes LLM + cola durable BullMQ/Redis + interfaz Discord + integración GitHub via MCP — reemplazando workflows de n8n',
+    stack: ['Python', 'Hermes Agent', 'BullMQ', 'Redis', 'Discord', 'MCP'],
+    status: 'DEPLOYED',
+    github: 'https://github.com/pabloler21/prbot-hermes',
+  },
+  {
+    name: 'Python TutorBot',
+    desc: 'Tutor agéntico con LangChain y tool-calling: búsqueda en Stack Overflow bajo demanda, memoria conversacional, interfaz de chat en Gradio',
+    stack: ['Python', 'LangChain', 'Gradio'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/TutorBot',
+  },
+  {
+    name: 'Obsidian Job Tracker',
+    desc: 'Slash commands de Claude Code para rastrear búsqueda laboral de forma estructurada dentro de Obsidian — tooling personalizado con IA',
+    stack: ['Claude Code', 'Markdown', 'Obsidian'],
+    status: 'HERRAMIENTA',
+    github: 'https://github.com/pabloler21/obsidian-job-tracker',
+  },
+  {
+    name: 'Second Brain Challenge',
+    desc: 'Agente que procesa imágenes de comprobantes de transferencia por WhatsApp — solución para el workshop de Second Brain de Galo, pipeline agéntico de análisis documental',
+    stack: ['Python', 'AI Agents'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/workshop-challenge',
+  },
+] as const;
 ---
 
 <RoleLayout title="AI Engineer — Registros" lang="es" role="ai"
-  description="Pablo Lerner — Perfil AI Engineer: sistemas LLM, pipelines multi-agente, servicios FastAPI.">
+  description="Pablo Lerner — AI Engineer: sistemas LLM, pipelines multi-agente, RAG, servicios FastAPI.">
 
   <h2 class="role-title">AI ENGINEER</h2>
-  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: 4</p>
+  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: 6</p>
 
   <div class="stats">
     <div class="stat-row">
       <span class="stat-label">ESPECIALIZACIÓN</span>
-      <span>LLM · Multi-agente · FastAPI</span>
+      <span>LLM · Multi-agente · RAG · Tool-calling</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">PROYECTO ESTRELLA</span>
-      <span class="accent">VIDEOJUEGO CON IA GENERATIVA</span>
+      <span class="accent">IRIS — ASISTENTE DE IA PERSONAL</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">HERRAMIENTAS</span>
-      <span>LangChain · Claude API · Python</span>
+      <span>Python · LangChain · FastAPI · Claude API · Qdrant</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">ESTADO</span>
@@ -27,37 +75,10 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     </div>
   </div>
 
-  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent">4 ARCHIVOS ENCONTRADOS</span></p>
+  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent">6 ARCHIVOS ENCONTRADOS</span></p>
 
   <ul class="project-list">
-    <li class="project-item featured">
-      <span>Videojuego con IA Generativa</span>
-      <div class="card-right">
-        <span class="badge">DESTACADO</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>Pipeline Multi-agente LangChain</span>
-      <div class="card-right">
-        <span class="badge">DEPLOYED</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>Tooling Claude Code / MCP</span>
-      <div class="card-right">
-        <span class="badge">ACTIVO</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>Servicio IA con FastAPI</span>
-      <div class="card-right">
-        <span class="badge">DEPLOYED</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
+    {projects.map(p => <ProjectCard {...p} />)}
   </ul>
 </RoleLayout>
 
@@ -101,37 +122,10 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
 
   .accent { color: var(--accent); }
 
-  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
+  .archive-label {
+    font-size: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
 
   .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
-
-  .project-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.7rem;
-    border: var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.07em;
-    color: var(--sand);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .project-item:hover { background: var(--bg-panel); }
-  .project-item:hover .arr { color: var(--accent); }
-  .project-item.featured { border-left: 3px solid var(--accent); }
-
-  .card-right { display: flex; align-items: center; gap: 0.5rem; }
-
-  .badge {
-    font-size: 0.57rem;
-    letter-spacing: 0.15em;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
-  .arr { color: var(--sand-dim); font-size: 0.7rem; transition: color 0.12s; }
 </style>

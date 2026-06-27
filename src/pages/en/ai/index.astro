@@ -1,25 +1,73 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
+import ProjectCard from '../../../components/ui/ProjectCard.astro';
+
+const projects = [
+  {
+    name: 'Iris — Personal AI Assistant',
+    desc: '24/7 assistant on homelab Linux — Discord interface, RAG over personal docs (Qdrant), automated weekly AI digest curated from 8+ RSS feeds',
+    stack: ['Python', 'Qdrant', 'OpenAI', 'Discord', 'systemd'],
+    status: 'ACTIVE',
+    featured: true,
+    github: 'https://github.com/pabloler21/Iris',
+  },
+  {
+    name: 'CV Evaluator + Job Board',
+    desc: 'ATS resume analyzer and remote job board — FastAPI backend, LangChain orchestration, Claude Haiku for scoring. Deployed on Render with live demo.',
+    stack: ['FastAPI', 'LangChain', 'Claude API', 'Python'],
+    status: 'DEPLOYED',
+    github: 'https://github.com/pabloler21/bot_curriculum',
+    demo: 'https://bot-curriculum-1.onrender.com',
+  },
+  {
+    name: 'Team Agent Ops — Hermes',
+    desc: 'Multi-agent team bot: Hermes LLM + BullMQ/Redis durable task queue + Discord interface + GitHub MCP integration, replacing fragile n8n workflows',
+    stack: ['Python', 'Hermes Agent', 'BullMQ', 'Redis', 'Discord', 'MCP'],
+    status: 'DEPLOYED',
+    github: 'https://github.com/pabloler21/prbot-hermes',
+  },
+  {
+    name: 'Python TutorBot',
+    desc: 'LangChain agentic tutor with tool-calling: on-demand Stack Overflow search, conversational memory, Gradio chat interface',
+    stack: ['Python', 'LangChain', 'Gradio'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/TutorBot',
+  },
+  {
+    name: 'Obsidian Job Tracker',
+    desc: 'Claude Code slash commands for structured job-search tracking inside Obsidian vaults — custom AI-powered workflow tooling',
+    stack: ['Claude Code', 'Markdown', 'Obsidian'],
+    status: 'TOOLING',
+    github: 'https://github.com/pabloler21/obsidian-job-tracker',
+  },
+  {
+    name: 'Second Brain Challenge',
+    desc: 'AI agent that processes WhatsApp bank transfer receipt images — built for Galo\'s Second Brain workshop, agentic document parsing pipeline',
+    stack: ['Python', 'AI Agents'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/workshop-challenge',
+  },
+] as const;
 ---
 
 <RoleLayout title="AI Engineer — Records" lang="en" role="ai"
-  description="Pablo Lerner — AI Engineer profile: LLM systems, multi-agent pipelines, FastAPI services.">
+  description="Pablo Lerner — AI Engineer: LLM systems, multi-agent pipelines, RAG, FastAPI services.">
 
   <h2 class="role-title">AI ENGINEER</h2>
-  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 4</p>
+  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 6</p>
 
   <div class="stats">
     <div class="stat-row">
       <span class="stat-label">SPECIALIZATION</span>
-      <span>LLM · Multi-agent · FastAPI</span>
+      <span>LLM · Multi-agent · RAG · Tool-calling</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">FLAGSHIP</span>
-      <span class="accent">GENERATIVE NARRATIVE GAME</span>
+      <span class="accent">IRIS — PERSONAL AI ASSISTANT</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">TOOLS</span>
-      <span>LangChain · Claude API · Python</span>
+      <span>Python · LangChain · FastAPI · Claude API · Qdrant</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">STATUS</span>
@@ -27,37 +75,10 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     </div>
   </div>
 
-  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent">4 FILES FOUND</span></p>
+  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent">6 FILES FOUND</span></p>
 
   <ul class="project-list">
-    <li class="project-item featured">
-      <span>Generative Narrative Game</span>
-      <div class="card-right">
-        <span class="badge">FLAGSHIP</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>Multi-agent LangChain Pipeline</span>
-      <div class="card-right">
-        <span class="badge">DEPLOYED</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>Claude Code Tooling / MCP</span>
-      <div class="card-right">
-        <span class="badge">ACTIVE</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
-    <li class="project-item">
-      <span>FastAPI AI Service</span>
-      <div class="card-right">
-        <span class="badge">DEPLOYED</span>
-        <span class="arr">→</span>
-      </div>
-    </li>
+    {projects.map(p => <ProjectCard {...p} />)}
   </ul>
 </RoleLayout>
 
@@ -107,34 +128,4 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
   }
 
   .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
-
-  .project-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.7rem;
-    border: var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.07em;
-    color: var(--sand);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .project-item:hover { background: var(--bg-panel); }
-  .project-item:hover .arr { color: var(--accent); }
-  .project-item.featured { border-left: 3px solid var(--accent); }
-
-  .card-right { display: flex; align-items: center; gap: 0.5rem; }
-
-  .badge {
-    font-size: 0.57rem;
-    letter-spacing: 0.15em;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
-  .arr { color: var(--sand-dim); font-size: 0.7rem; transition: color 0.12s; }
 </style>

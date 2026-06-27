@@ -1,0 +1,122 @@
+---
+interface Props {
+  name: string;
+  desc: string;
+  stack: readonly string[];
+  status: string;
+  featured?: boolean;
+  github: string;
+  demo?: string;
+}
+const { name, desc, stack, status, featured = false, github, demo } = Astro.props;
+---
+
+<li class:list={['project-item', featured && 'featured']}>
+  <div class="card-top">
+    <span class="card-name">{name}</span>
+    <div class="card-right">
+      <span class="badge">{status}</span>
+      <a href={github} class="arr" target="_blank" rel="noopener noreferrer" aria-label={`View ${name} on GitHub`}>GH →</a>
+    </div>
+  </div>
+  <p class="card-desc">{desc}</p>
+  <div class="card-meta">
+    <div class="card-tags">
+      {stack.map(t => <span class="tag">{t}</span>)}
+    </div>
+    {demo && <a href={demo} class="demo-link" target="_blank" rel="noopener noreferrer">LIVE DEMO →</a>}
+  </div>
+</li>
+
+<style>
+  .project-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.6rem 0.7rem;
+    border: var(--border);
+    font-family: var(--font-mono);
+    color: var(--sand);
+    transition: background 0.12s;
+  }
+  .project-item:hover { background: var(--bg-panel); }
+  .project-item.featured { border-left: 3px solid var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card-name {
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+  }
+
+  .card-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    font-size: 0.57rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .arr {
+    color: var(--sand-dim);
+    font-size: 0.7rem;
+    text-decoration: none;
+    transition: color 0.12s;
+  }
+  .project-item:hover .arr { color: var(--accent); }
+
+  .card-desc {
+    font-size: 0.65rem;
+    color: var(--sand-dim);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.1rem;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .tag {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    padding: 0.05rem 0.35rem;
+    border: 1px solid var(--ink);
+    color: var(--sand-dim);
+  }
+
+  .demo-link {
+    font-size: 0.57rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-decoration: none;
+    border: 1px solid var(--accent);
+    padding: 0.05rem 0.4rem;
+    flex-shrink: 0;
+    transition: background 0.12s, color 0.12s;
+  }
+  .demo-link:hover { background: var(--accent); color: var(--bg-void); }
+</style>

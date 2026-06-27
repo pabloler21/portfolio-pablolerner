@@ -1,21 +1,79 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
+import ProjectCard from '../../../components/ui/ProjectCard.astro';
+
+const projects = [
+  {
+    name: 'FraudSense AI — Fraud Risk Analytics',
+    desc: 'End-to-end fraud detection: SQL pattern analysis on 1.85M transactions → EDA → ML baseline → Power BI dashboard → AI explanation API (FastAPI + Claude Haiku)',
+    stack: ['Python', 'PostgreSQL', 'scikit-learn', 'Power BI', 'FastAPI', 'Claude API'],
+    status: 'FLAGSHIP',
+    featured: true,
+    github: 'https://github.com/pabloler21/fraud-risk-analytics',
+  },
+  {
+    name: 'Credit Scoring — Give Me Some Credit',
+    desc: 'Complete credit scoring pipeline: EDA, ETL, feature selection, multiple ML models, and a Streamlit app — Kaggle competition dataset',
+    stack: ['Python', 'scikit-learn', 'Streamlit', 'Pandas', 'XGBoost'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/credit-scoring-give-me-some-credit',
+  },
+  {
+    name: 'Adventure Works Financial Dashboard',
+    desc: 'Financial analysis and interactive Power BI dashboard on Adventure Works: revenue, costs, margins, and commercial performance across product lines',
+    stack: ['Power BI', 'DAX', 'Data Modeling'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/adventure-works-financial-dashboard',
+  },
+  {
+    name: 'SQL Fast Food Data Analysis',
+    desc: 'Relational database design and analytical queries for a fast food ordering system — data modeling, multi-table JOINs, aggregation functions',
+    stack: ['SQL', 'T-SQL', 'Data Modeling'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/sql-fast-food-data-analysis',
+  },
+  {
+    name: 'Google Sheets Sales Analysis',
+    desc: 'Financial analysis and dashboards built in Google Sheets: sales performance, cost tracking, and profit margin visualization',
+    stack: ['Google Sheets', 'Data Viz'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/google-sheets-sales-analysis',
+  },
+  {
+    name: 'Smart Inventory — Group Project',
+    desc: 'Predictive analytics for inventory management — group project (6 members); Pablo\'s role: Predictive Analyst',
+    stack: ['Python', 'Pandas', 'Data Analytics'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/Proyecto_Final_Grupo_2',
+  },
+  {
+    name: 'Byogenesis Lab Location Analysis',
+    desc: 'Python/Pandas analysis to determine optimal countries for lab expansion using 2021 COVID-19 case data and vaccination correlation modeling',
+    stack: ['Python', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn'],
+    status: 'BUILT',
+    github: 'https://github.com/pabloler21/proyecto_integrador_m4_python',
+  },
+] as const;
 ---
 
-<RoleLayout title="Risk Analyst — Records" lang="en" role="risk"
-  description="Pablo Lerner — Risk Analyst profile: statistical modeling, SQL, dashboards.">
+<RoleLayout title="Data Analyst — Records" lang="en" role="risk"
+  description="Pablo Lerner — Data Analyst: fraud detection, credit scoring, SQL, Power BI dashboards.">
 
-  <h2 class="role-title">RISK ANALYST</h2>
-  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: LOADING</p>
+  <h2 class="role-title">DATA ANALYST</h2>
+  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 7</p>
 
   <div class="stats">
     <div class="stat-row">
       <span class="stat-label">SPECIALIZATION</span>
-      <span>Statistical modeling · SQL · Dashboards</span>
+      <span>Credit Risk · Fraud Detection · BI Dashboards · SQL</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">FLAGSHIP</span>
+      <span class="accent">FRAUDSENSE AI — FRAUD RISK ANALYTICS</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">TOOLS</span>
-      <span>Python · SQL · Power BI · R</span>
+      <span>Python · SQL · Power BI · scikit-learn · FastAPI</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">STATUS</span>
@@ -23,24 +81,11 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     </div>
   </div>
 
-  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="pending">ARCHIVE PENDING</span></p>
+  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent">7 FILES FOUND</span></p>
 
   <ul class="project-list">
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDING</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDING</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDING</span></div>
-    </li>
+    {projects.map(p => <ProjectCard {...p} />)}
   </ul>
-
-  <p class="sys-text note">// RECORDS LOADING — ARCHIVE SYNC IN PROGRESS</p>
 </RoleLayout>
 
 <style>
@@ -81,37 +126,12 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     letter-spacing: 0.1em;
   }
 
-  .accent  { color: var(--accent); }
-  .pending { color: var(--sand-dim); }
+  .accent { color: var(--accent); }
 
-  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
+  .archive-label {
+    font-size: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
 
   .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
-
-  .project-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.7rem;
-    border: var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.07em;
-    color: var(--sand);
-  }
-
-  .project-item.locked { color: var(--sand-dim); opacity: 0.5; cursor: default; }
-
-  .card-right { display: flex; align-items: center; gap: 0.5rem; }
-
-  .badge.dim {
-    font-size: 0.57rem;
-    letter-spacing: 0.15em;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--sand-dim);
-    color: var(--sand-dim);
-    flex-shrink: 0;
-  }
-
-  .note { font-size: 0.58rem; margin-top: 0.5rem; color: var(--sand-dim); }
 </style>

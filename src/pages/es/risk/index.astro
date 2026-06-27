@@ -1,21 +1,79 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
+import ProjectCard from '../../../components/ui/ProjectCard.astro';
+
+const projects = [
+  {
+    name: 'FraudSense AI — Análisis de Riesgo de Fraude',
+    desc: 'Detección de fraude end-to-end: análisis SQL sobre 1,85M transacciones → EDA → baseline de ML → dashboard Power BI → API de explicaciones con FastAPI y Claude Haiku',
+    stack: ['Python', 'PostgreSQL', 'scikit-learn', 'Power BI', 'FastAPI', 'Claude API'],
+    status: 'DESTACADO',
+    featured: true,
+    github: 'https://github.com/pabloler21/fraud-risk-analytics',
+  },
+  {
+    name: 'Credit Scoring — Give Me Some Credit',
+    desc: 'Pipeline completo de credit scoring: EDA, ETL, selección de variables, múltiples modelos de ML y app en Streamlit — dataset de competencia Kaggle',
+    stack: ['Python', 'scikit-learn', 'Streamlit', 'Pandas', 'XGBoost'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/credit-scoring-give-me-some-credit',
+  },
+  {
+    name: 'Adventure Works — Dashboard Financiero',
+    desc: 'Análisis financiero e dashboard interactivo en Power BI sobre Adventure Works: ingresos, costos, márgenes y performance comercial por línea de producto',
+    stack: ['Power BI', 'DAX', 'Modelado de Datos'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/adventure-works-financial-dashboard',
+  },
+  {
+    name: 'Análisis SQL — Fast Food',
+    desc: 'Diseño de base de datos relacional y consultas analíticas para un sistema de pedidos de fast food — modelado de datos, JOINs multi-tabla, funciones de agregación',
+    stack: ['SQL', 'T-SQL', 'Modelado de Datos'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/sql-fast-food-data-analysis',
+  },
+  {
+    name: 'Análisis de Ventas en Google Sheets',
+    desc: 'Análisis financiero y dashboards construidos en Google Sheets: seguimiento de ventas, costos y visualización de márgenes de ganancia',
+    stack: ['Google Sheets', 'Visualización de Datos'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/google-sheets-sales-analysis',
+  },
+  {
+    name: 'Inventario Inteligente — Proyecto Grupal',
+    desc: 'Analítica predictiva para gestión de inventario — proyecto grupal (6 integrantes); rol de Pablo: Analista Predictivo',
+    stack: ['Python', 'Pandas', 'Data Analytics'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/Proyecto_Final_Grupo_2',
+  },
+  {
+    name: 'Análisis de Localización — Byogenesis',
+    desc: 'Análisis Python/Pandas para determinar los mejores países para apertura de laboratorios usando datos de COVID-19 2021 y correlación con vacunación',
+    stack: ['Python', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn'],
+    status: 'COMPLETADO',
+    github: 'https://github.com/pabloler21/proyecto_integrador_m4_python',
+  },
+] as const;
 ---
 
-<RoleLayout title="Risk Analyst — Registros" lang="es" role="risk"
-  description="Pablo Lerner — Perfil Risk Analyst: modelado estadístico, SQL, dashboards.">
+<RoleLayout title="Data Analyst — Registros" lang="es" role="risk"
+  description="Pablo Lerner — Data Analyst: detección de fraude, credit scoring, SQL, dashboards Power BI.">
 
-  <h2 class="role-title">RISK ANALYST</h2>
-  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: CARGANDO</p>
+  <h2 class="role-title">DATA ANALYST</h2>
+  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: 7</p>
 
   <div class="stats">
     <div class="stat-row">
       <span class="stat-label">ESPECIALIZACIÓN</span>
-      <span>Modelado estadístico · SQL · Dashboards</span>
+      <span>Riesgo Crediticio · Detección de Fraude · BI Dashboards · SQL</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">PROYECTO ESTRELLA</span>
+      <span class="accent">FRAUDSENSE AI — ANÁLISIS DE RIESGO DE FRAUDE</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">HERRAMIENTAS</span>
-      <span>Python · SQL · Power BI · R</span>
+      <span>Python · SQL · Power BI · scikit-learn · FastAPI</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">ESTADO</span>
@@ -23,24 +81,11 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     </div>
   </div>
 
-  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="pending">SINCRONIZACIÓN PENDIENTE</span></p>
+  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent">7 ARCHIVOS ENCONTRADOS</span></p>
 
   <ul class="project-list">
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
+    {projects.map(p => <ProjectCard {...p} />)}
   </ul>
-
-  <p class="sys-text note">// REGISTROS CARGANDO — SINCRONIZACIÓN EN PROGRESO</p>
 </RoleLayout>
 
 <style>
@@ -81,37 +126,12 @@ import RoleLayout from '../../../layouts/RoleLayout.astro';
     letter-spacing: 0.1em;
   }
 
-  .accent  { color: var(--accent); }
-  .pending { color: var(--sand-dim); }
+  .accent { color: var(--accent); }
 
-  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
+  .archive-label {
+    font-size: 0.6rem;
+    margin-bottom: 0.4rem;
+  }
 
   .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
-
-  .project-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.7rem;
-    border: var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.07em;
-    color: var(--sand);
-  }
-
-  .project-item.locked { color: var(--sand-dim); opacity: 0.5; cursor: default; }
-
-  .card-right { display: flex; align-items: center; gap: 0.5rem; }
-
-  .badge.dim {
-    font-size: 0.57rem;
-    letter-spacing: 0.15em;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--sand-dim);
-    color: var(--sand-dim);
-    flex-shrink: 0;
-  }
-
-  .note { font-size: 0.58rem; margin-top: 0.5rem; color: var(--sand-dim); }
 </style>
