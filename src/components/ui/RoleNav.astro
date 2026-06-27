@@ -1,0 +1,112 @@
+---
+interface Props {
+  current: 'ai' | 'risk' | 'ds';
+  lang: 'en' | 'es';
+}
+
+const { current, lang } = Astro.props;
+const base = `/${lang}`;
+
+const roles = [
+  { id: 'ai',   label: 'AI ENGINEER' },
+  { id: 'risk', label: 'RISK ANALYST' },
+  { id: 'ds',   label: 'DATA SCIENTIST' },
+] as const;
+
+const t = {
+  panelLabel: lang === 'en' ? 'UNIT SELECTION'         : 'SELECCIÓN DE PERFIL',
+  back:       lang === 'en' ? 'TERMINAL'               : 'TERMINAL',
+  unitId:     lang === 'en' ? 'UNIT ID: PL-7729'       : 'UNIDAD: PL-7729',
+  status:     lang === 'en' ? 'STATUS: ACTIVE'         : 'ESTADO: ACTIVO',
+  available:  lang === 'en' ? 'OPEN TO WORK'           : 'DISPONIBLE',
+};
+---
+
+<div class="role-nav">
+  <p class="panel-label sys-text">{t.panelLabel}</p>
+
+  <a href={`${base}/`} class="back-link">
+    <span class="arr">◀</span>
+    <span>{t.back}</span>
+  </a>
+
+  <nav class="role-menu">
+    {roles.map(r => (
+      <a
+        href={`${base}/${r.id}/`}
+        class:list={['role-item', { active: r.id === current }]}
+        aria-current={r.id === current ? 'page' : undefined}
+      >
+        <span class="cursor">{r.id === current ? '◆' : ''}</span>
+        <span>{r.label}</span>
+      </a>
+    ))}
+  </nav>
+
+  <div class="meta-block sys-text">
+    <p>{t.unitId}</p>
+    <p>LAT: -34.6037</p>
+    <p>LON: -58.3816</p>
+    <p>{t.status}</p>
+    <p>{t.available}</p>
+  </div>
+</div>
+
+<style>
+  .role-nav {
+    border-right: var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .panel-label {
+    padding: 0.6rem 1rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+  }
+
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border-bottom: var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    text-decoration: none;
+    transition: color 0.12s, background 0.12s;
+  }
+  .back-link:hover { color: var(--sand); background: var(--bg-panel); }
+  .back-link .arr  { color: var(--accent); }
+
+  .role-menu { display: flex; flex-direction: column; }
+
+  .role-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    text-decoration: none;
+    transition: color 0.12s, background 0.12s;
+  }
+  .role-item:hover         { color: var(--sand); background: var(--bg-panel); }
+  .role-item.active        { background: var(--bg-panel); color: var(--sand); }
+  .role-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+  .cursor { font-size: 0.68rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
+
+  .meta-block {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: var(--border);
+    line-height: 2;
+    font-size: 0.63rem;
+  }
+</style>

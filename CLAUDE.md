@@ -45,11 +45,11 @@ Inspired by NieR: Automata's YoRHa OS UI. Differentiated by olive-grey backgroun
 **Hard constraints:**
 - Zero `border-radius` anywhere — ever
 - Scanlines + animated grain are CSS-only overlays on `body::before` / `body::after`
-- `prefers-reduced-motion`: removes both overlays and skips the boot animation
+- `prefers-reduced-motion`: boot screen → `display: none`; stagger reveal → `animation-duration: 0.01s` (instant, not removed — `animation: none` kills `fill-mode` and makes elements immediately visible)
 - Accent (`#8fa882`) only on: `◆` cursor, active badge/border, active tab underline, lit dots in DotRow
 - No pure black (#000); no pure white (#fff)
 
-## Actual file structure (Phase 0 complete)
+## Actual file structure (Phase 1 complete)
 
 ```
 src/
@@ -62,17 +62,28 @@ src/
                         #   → TabBar + DotRow (header)
                         #   → <slot /> (main content)
                         #   → StatusBar (footer)
+    RoleLayout.astro    # 280px/1fr grid: RoleNav left + <slot /> right; used by all role pages
   components/
     ui/
       BootScreen.astro  # one-time OS-boot overlay (sessionStorage flag)
-                        #   skipped automatically on prefers-reduced-motion
+                        #   <script is:inline> sets html.first-boot before body elements parse
+                        #   → triggers 3.2–3.72 s animation delays on first visit
       TabBar.astro      # top nav tabs; props: active (tab id), lang
-      DotRow.astro      # 40-dot decorative row; lit dots use --accent
+      DotRow.astro      # 40-dot row; dots animate left-to-right (28 ms stagger, CSS-only)
       StatusBar.astro   # bottom bar: keyboard hints · lang toggle (EN/ES) · CV link · coords
+      RoleNav.astro     # left-panel nav for role pages: ◀ TERMINAL back link + 3 role links
   pages/
     index.astro         # root → redirects to /en/
-    en/index.astro      # home EN: two-panel role selector
-    es/index.astro      # home ES: same in Rioplatense Spanish
+    en/
+      index.astro       # home EN: two-panel role selector + CSS stagger reveal
+      ai/index.astro    # AI Engineer filtered view (4 project cards, placeholder)
+      risk/index.astro  # Risk Analyst filtered view (placeholder)
+      ds/index.astro    # Data Scientist filtered view (placeholder)
+    es/
+      index.astro       # home ES: Rioplatense, same structure
+      ai/index.astro    # ES mirrors
+      risk/index.astro
+      ds/index.astro
   content/
     projects/           # (empty — Phase 2) JSON/MD per project, bilingual, role-tagged
 public/
@@ -81,6 +92,14 @@ public/
 theme-preview.html      # static preview of all theme variants (keep for reference)
 PLAN_PORTFOLIO_NIER.md  # full project plan, phases, and pending items from Pablo
 ```
+
+## Stagger reveal animation (home pages)
+
+Pure CSS, no JS event needed. Elements have `animation: fade-in-up 0.28s ease both` with staggered delays. `animation-fill-mode: both` keeps elements at `opacity: 0` during the delay period.
+
+- **Return visit** (boot-seen in sessionStorage): delays 50 ms → 540 ms
+- **First visit**: `html.first-boot` class set by `<script is:inline>` in BootScreen (runs in `<head>`, before body elements are parsed) → delays 3.2 s → 3.72 s, synchronized with boot screen fade-out
+- `@media (prefers-reduced-motion: reduce)`: use `animation-duration: 0.01s !important` — **never** `animation: none` (that resets `fill-mode` and makes elements immediately visible)
 
 ## How Base.astro works
 
@@ -108,7 +127,7 @@ Two-panel layout: left panel = list of 3 role buttons, right panel = detail for 
 | Phase | Status | Deliverable |
 |---|---|---|
 | 0 — Foundation | **DONE** (commit `9cb5c9b`) | Astro scaffold, IRON DUST theme, YoRHa chrome, boot screen, role selector stub |
-| 1 — Navigation | pending | Role click navigates to `/en/{role}/` filtered view |
+| 1 — Navigation + Animation | **DONE** | Role pages (`/en/{role}/`), RoleNav, RoleLayout, boot-screen stagger reveal, DotRow charge |
 | 2 — Project cards | pending | Real repos as "memory file" cards (needs Pablo's repo list) |
 | 3 — Game case study | pending | Dedicated page with architecture diagram + gameplay video |
 | 4 — About / Contact | pending | Career narrative (EN + ES), LinkedIn/GitHub/email |

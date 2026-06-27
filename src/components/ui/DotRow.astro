@@ -5,7 +5,10 @@ const litIndexes = new Set([0, 1, 9, 17, 25, 33, 39]);
 
 <div class="dot-row" aria-hidden="true">
   {Array.from({ length: COUNT }, (_, i) => (
-    <span class:list={['dot', { lit: litIndexes.has(i) }]} />
+    <span
+      class:list={['dot', { lit: litIndexes.has(i) }]}
+      style={`animation-delay: ${i * 28}ms`}
+    />
   ))}
 </div>
 
@@ -25,10 +28,17 @@ const litIndexes = new Set([0, 1, 9, 17, 25, 33, 39]);
     border-radius: 50%;
     background: var(--ink);
     flex-shrink: 0;
-    transition: background 0.2s;
+    opacity: 0;
+    animation: dot-appear 0.12s ease forwards;
   }
 
-  .dot.lit {
-    background: var(--accent);
+  .dot.lit { background: var(--accent); }
+
+  @keyframes dot-appear {
+    to { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dot { opacity: 1; animation: none; }
   }
 </style>

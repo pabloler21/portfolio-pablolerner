@@ -82,6 +82,7 @@ const lang = 'en';
             <span class="badge">DEPLOYED</span>
           </li>
         </ul>
+        <a href="/en/ai/" class="access-btn">ACCESS RECORDS →</a>
       </div>
 
       <!-- Risk Analyst detail -->
@@ -107,6 +108,7 @@ const lang = 'en';
         <ul class="project-list">
           <li class="project-item">[PLACEHOLDER — projects coming soon]</li>
         </ul>
+        <a href="/en/risk/" class="access-btn">ACCESS RECORDS →</a>
       </div>
 
       <!-- Data Scientist detail -->
@@ -132,6 +134,7 @@ const lang = 'en';
         <ul class="project-list">
           <li class="project-item">[PLACEHOLDER — projects coming soon]</li>
         </ul>
+        <a href="/en/ds/" class="access-btn">ACCESS RECORDS →</a>
       </div>
 
     </section>
@@ -326,6 +329,50 @@ const lang = 'en';
     flex-shrink: 0;
   }
 
+  .access-btn {
+    display: inline-block;
+    margin-top: 0.8rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.4rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  .access-btn:hover { background: var(--accent); color: var(--bg-void); }
+
+  /* ── Stagger reveal — pure CSS animations, no JS event needed ── */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* animation-fill-mode: both → invisible during delay, stays visible after */
+  .panel-title,
+  .role-item,
+  .meta-block,
+  .panel-right {
+    animation: fade-in-up 0.28s ease both;
+  }
+
+  /* Return visit: short staggered delays */
+  .panel-title            { animation-delay: 0.05s; }
+  .role-item:nth-child(1) { animation-delay: 0.12s; }
+  .role-item:nth-child(2) { animation-delay: 0.22s; }
+  .role-item:nth-child(3) { animation-delay: 0.32s; }
+  .meta-block             { animation-delay: 0.44s; }
+  .panel-right            { animation-delay: 0.54s; }
+
+  /* First visit: delays match boot screen duration (~3.3 s) */
+  html.first-boot .panel-title            { animation-delay: 3.2s; }
+  html.first-boot .role-item:nth-child(1) { animation-delay: 3.3s; }
+  html.first-boot .role-item:nth-child(2) { animation-delay: 3.4s; }
+  html.first-boot .role-item:nth-child(3) { animation-delay: 3.5s; }
+  html.first-boot .meta-block             { animation-delay: 3.62s; }
+  html.first-boot .panel-right            { animation-delay: 3.72s; }
+
   /* ── Mobile ── */
   @media (max-width: 640px) {
     .home-grid {
@@ -333,5 +380,11 @@ const lang = 'en';
     }
     .panel-left { border-right: none; border-bottom: var(--border); }
     .meta-block { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-title, .role-item, .meta-block, .panel-right {
+      animation-duration: 0.01s !important;
+    }
   }
 </style>

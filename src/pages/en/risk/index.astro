@@ -1,0 +1,117 @@
+---
+import RoleLayout from '../../../layouts/RoleLayout.astro';
+---
+
+<RoleLayout title="Risk Analyst — Records" lang="en" role="risk"
+  description="Pablo Lerner — Risk Analyst profile: statistical modeling, SQL, dashboards.">
+
+  <h2 class="role-title">RISK ANALYST</h2>
+  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: LOADING</p>
+
+  <div class="stats">
+    <div class="stat-row">
+      <span class="stat-label">SPECIALIZATION</span>
+      <span>Statistical modeling · SQL · Dashboards</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">TOOLS</span>
+      <span>Python · SQL · Power BI · R</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">STATUS</span>
+      <span class="accent">ACTIVE · OPEN TO WORK</span>
+    </div>
+  </div>
+
+  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="pending">ARCHIVE PENDING</span></p>
+
+  <ul class="project-list">
+    <li class="project-item locked">
+      <span>████████████████████████</span>
+      <div class="card-right"><span class="badge dim">PENDING</span></div>
+    </li>
+    <li class="project-item locked">
+      <span>████████████████████████</span>
+      <div class="card-right"><span class="badge dim">PENDING</span></div>
+    </li>
+    <li class="project-item locked">
+      <span>████████████████████████</span>
+      <div class="card-right"><span class="badge dim">PENDING</span></div>
+    </li>
+  </ul>
+
+  <p class="sys-text note">// RECORDS LOADING — ARCHIVE SYNC IN PROGRESS</p>
+</RoleLayout>
+
+<style>
+  .role-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sand);
+    margin-bottom: 0.2rem;
+  }
+
+  .role-sub {
+    padding-bottom: 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats { margin-bottom: 1.2rem; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-label {
+    color: var(--sand-dim);
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+
+  .accent  { color: var(--accent); }
+  .pending { color: var(--sand-dim); }
+
+  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
+
+  .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+
+  .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.7rem;
+    border: var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    color: var(--sand);
+  }
+
+  .project-item.locked { color: var(--sand-dim); opacity: 0.5; cursor: default; }
+
+  .card-right { display: flex; align-items: center; gap: 0.5rem; }
+
+  .badge.dim {
+    font-size: 0.57rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--sand-dim);
+    color: var(--sand-dim);
+    flex-shrink: 0;
+  }
+
+  .note { font-size: 0.58rem; margin-top: 0.5rem; color: var(--sand-dim); }
+</style>

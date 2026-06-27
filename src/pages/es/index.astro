@@ -81,6 +81,7 @@ const lang = 'es';
             <span class="badge">DEPLOYED</span>
           </li>
         </ul>
+        <a href="/es/ai/" class="access-btn">ACCEDER A REGISTROS →</a>
       </div>
 
       <div class="unit-detail hidden" id="detail-risk">
@@ -99,6 +100,7 @@ const lang = 'es';
         <ul class="project-list">
           <li class="project-item">[PLACEHOLDER — proyectos próximamente]</li>
         </ul>
+        <a href="/es/risk/" class="access-btn">ACCEDER A REGISTROS →</a>
       </div>
 
       <div class="unit-detail hidden" id="detail-ds">
@@ -117,6 +119,7 @@ const lang = 'es';
         <ul class="project-list">
           <li class="project-item">[PLACEHOLDER — proyectos próximamente]</li>
         </ul>
+        <a href="/es/ds/" class="access-btn">ACCEDER A REGISTROS →</a>
       </div>
 
     </section>
@@ -209,9 +212,56 @@ const lang = 'es';
   .project-item:hover { background: var(--bg-panel); }
   .project-item.featured { border-left: 3px solid var(--accent); }
   .badge { font-size: 0.57rem; letter-spacing: 0.15em; padding: 0.1rem 0.4rem; border: 1px solid var(--accent); color: var(--accent); flex-shrink: 0; }
+  .access-btn {
+    display: inline-block;
+    margin-top: 0.8rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0.4rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  .access-btn:hover { background: var(--accent); color: var(--bg-void); }
+
+  /* ── Stagger reveal — pure CSS animations, no JS event needed ── */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .panel-title,
+  .role-item,
+  .meta-block,
+  .panel-right {
+    animation: fade-in-up 0.28s ease both;
+  }
+
+  .panel-title            { animation-delay: 0.05s; }
+  .role-item:nth-child(1) { animation-delay: 0.12s; }
+  .role-item:nth-child(2) { animation-delay: 0.22s; }
+  .role-item:nth-child(3) { animation-delay: 0.32s; }
+  .meta-block             { animation-delay: 0.44s; }
+  .panel-right            { animation-delay: 0.54s; }
+
+  html.first-boot .panel-title            { animation-delay: 3.2s; }
+  html.first-boot .role-item:nth-child(1) { animation-delay: 3.3s; }
+  html.first-boot .role-item:nth-child(2) { animation-delay: 3.4s; }
+  html.first-boot .role-item:nth-child(3) { animation-delay: 3.5s; }
+  html.first-boot .meta-block             { animation-delay: 3.62s; }
+  html.first-boot .panel-right            { animation-delay: 3.72s; }
+
   @media (max-width: 640px) {
     .home-grid { grid-template-columns: 1fr; }
     .panel-left { border-right: none; border-bottom: var(--border); }
     .meta-block { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-title, .role-item, .meta-block, .panel-right {
+      animation-duration: 0.01s !important;
+    }
   }
 </style>

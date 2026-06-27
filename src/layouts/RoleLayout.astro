@@ -1,0 +1,45 @@
+---
+import Base from './Base.astro';
+import RoleNav from '../components/ui/RoleNav.astro';
+
+interface Props {
+  title: string;
+  lang: 'en' | 'es';
+  role: 'ai' | 'risk' | 'ds';
+  description?: string;
+}
+
+const { title, lang, role, description } = Astro.props;
+---
+
+<Base title={title} lang={lang} activeTab="projects" description={description}>
+  <div class="role-grid">
+    <RoleNav current={role} lang={lang} />
+    <section class="panel-right">
+      <slot />
+    </section>
+  </div>
+</Base>
+
+<style>
+  .role-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .panel-right {
+    padding: 1.2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .role-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

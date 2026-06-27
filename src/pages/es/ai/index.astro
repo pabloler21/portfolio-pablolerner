@@ -1,0 +1,137 @@
+---
+import RoleLayout from '../../../layouts/RoleLayout.astro';
+---
+
+<RoleLayout title="AI Engineer — Registros" lang="es" role="ai"
+  description="Pablo Lerner — Perfil AI Engineer: sistemas LLM, pipelines multi-agente, servicios FastAPI.">
+
+  <h2 class="role-title">AI ENGINEER</h2>
+  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: 4</p>
+
+  <div class="stats">
+    <div class="stat-row">
+      <span class="stat-label">ESPECIALIZACIÓN</span>
+      <span>LLM · Multi-agente · FastAPI</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">PROYECTO ESTRELLA</span>
+      <span class="accent">VIDEOJUEGO CON IA GENERATIVA</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">HERRAMIENTAS</span>
+      <span>LangChain · Claude API · Python</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">ESTADO</span>
+      <span class="accent">ACTIVO · DISPONIBLE</span>
+    </div>
+  </div>
+
+  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent">4 ARCHIVOS ENCONTRADOS</span></p>
+
+  <ul class="project-list">
+    <li class="project-item featured">
+      <span>Videojuego con IA Generativa</span>
+      <div class="card-right">
+        <span class="badge">DESTACADO</span>
+        <span class="arr">→</span>
+      </div>
+    </li>
+    <li class="project-item">
+      <span>Pipeline Multi-agente LangChain</span>
+      <div class="card-right">
+        <span class="badge">DEPLOYED</span>
+        <span class="arr">→</span>
+      </div>
+    </li>
+    <li class="project-item">
+      <span>Tooling Claude Code / MCP</span>
+      <div class="card-right">
+        <span class="badge">ACTIVO</span>
+        <span class="arr">→</span>
+      </div>
+    </li>
+    <li class="project-item">
+      <span>Servicio IA con FastAPI</span>
+      <div class="card-right">
+        <span class="badge">DEPLOYED</span>
+        <span class="arr">→</span>
+      </div>
+    </li>
+  </ul>
+</RoleLayout>
+
+<style>
+  .role-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sand);
+    margin-bottom: 0.2rem;
+  }
+
+  .role-sub {
+    padding-bottom: 0.8rem;
+    border-bottom: var(--border);
+    font-size: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .stats { margin-bottom: 1.2rem; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+
+  .stat-label {
+    color: var(--sand-dim);
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+
+  .accent { color: var(--accent); }
+
+  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
+
+  .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+
+  .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.7rem;
+    border: var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    color: var(--sand);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .project-item:hover { background: var(--bg-panel); }
+  .project-item:hover .arr { color: var(--accent); }
+  .project-item.featured { border-left: 3px solid var(--accent); }
+
+  .card-right { display: flex; align-items: center; gap: 0.5rem; }
+
+  .badge {
+    font-size: 0.57rem;
+    letter-spacing: 0.15em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .arr { color: var(--sand-dim); font-size: 0.7rem; transition: color 0.12s; }
+</style>

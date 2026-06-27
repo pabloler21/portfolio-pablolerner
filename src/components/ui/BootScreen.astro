@@ -2,6 +2,14 @@
 // Shown once per session via sessionStorage flag
 ---
 
+<script is:inline>
+  // Runs synchronously during HTML parse — before .home-grid elements exist in the DOM.
+  // Sets html.first-boot so CSS animation-delay picks the right timing from the start.
+  if (!sessionStorage.getItem('boot-seen')) {
+    document.documentElement.classList.add('first-boot');
+  }
+</script>
+
 <div id="boot-screen" aria-hidden="true" role="presentation">
   <div class="boot-content">
     <div class="boot-logo">◆</div>
@@ -25,17 +33,21 @@
   const screen = document.getElementById('boot-screen');
   if (!screen) throw new Error();
 
-  const seen = sessionStorage.getItem('boot-seen');
+  const seen    = sessionStorage.getItem('boot-seen');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  if (seen) {
+  if (seen || reduced) {
     screen.style.display = 'none';
+    if (!seen) sessionStorage.setItem('boot-seen', '1');
+    // Defer so all page scripts register their listeners before the event fires
+    setTimeout(() => window.dispatchEvent(new CustomEvent('boot-done')), 50);
   } else {
-    // Total boot animation: ~2.6s then fade out
     setTimeout(() => {
       screen.classList.add('fade-out');
       screen.addEventListener('transitionend', () => {
         screen.style.display = 'none';
         sessionStorage.setItem('boot-seen', '1');
+        window.dispatchEvent(new CustomEvent('boot-done'));
       }, { once: true });
     }, 2800);
   }
