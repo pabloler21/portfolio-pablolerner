@@ -1,8 +1,37 @@
 ---
 import Base from '../../layouts/Base.astro';
 import BootScreen from '../../components/ui/BootScreen.astro';
+import TerminalWindow from '../../components/ui/TerminalWindow.astro';
 
 const lang = 'en';
+
+const sysLines = [
+  '$ git clone github.com/pabloler21/Iris',
+  'Cloning into Iris...',
+  '$ cd Iris && pip install -r requirements.txt',
+  '  langchain-anthropic    ✓',
+  '  qdrant-client          ✓',
+  '  discord.py             ✓',
+  '  fastapi                ✓',
+  '$ python iris.py',
+  'loading vector store... 1.2M vectors',
+  'discord gateway connected',
+  'Iris v2.1 online — awaiting input_',
+] as const;
+
+const metricsLines = [
+  '$ python run_pipeline.py',
+  'loading fraud_dataset.csv...',
+  '  rows: 1,849,007  cols: 23',
+  'engineering features...',
+  '  47 vars built  nulls: 0.2% imputed',
+  'training RandomForestClassifier...',
+  '  [██████████] 100%  842ms',
+  'precision : 0.943',
+  'recall    : 0.871',
+  'AUC-ROC   : 0.971',
+  'report saved → fraud_report.pdf_',
+] as const;
 ---
 
 <Base title="Access Terminal" lang={lang} activeTab="projects">
@@ -37,8 +66,9 @@ const lang = 'en';
       </div>
     </section>
 
-    <!-- Right panel: unit detail (changes with selection) -->
-    <section class="panel-right" aria-label="Unit profile" aria-live="polite">
+    <!-- Right panel: unit detail + ambient terminal -->
+    <section class="panel-right" aria-label="Unit profile">
+      <div class="detail-area" aria-live="polite">
 
       <!-- AI Engineer detail -->
       <div class="unit-detail" id="detail-ai">
@@ -156,6 +186,11 @@ const lang = 'en';
         <a href="/en/ds/" class="access-btn">ACCESS RECORDS →</a>
       </div>
 
+      </div><!-- /detail-area -->
+      <div class="terminal-area" aria-hidden="true">
+        <TerminalWindow title="PROC::SYSTEM_INIT" lines={sysLines} />
+        <TerminalWindow title="LOG::UNIT_PL-7729" lines={metricsLines} />
+      </div>
     </section>
   </div>
 </Base>
@@ -268,7 +303,21 @@ const lang = 'en';
 
   /* ── Right panel ── */
   .panel-right {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    overflow: hidden;
+  }
+
+  .detail-area {
     padding: 1.2rem;
+    overflow-y: auto;
+  }
+
+  .terminal-area {
+    border-left: var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .unit-detail.hidden { display: none; }
@@ -391,6 +440,11 @@ const lang = 'en';
   html.first-boot .role-item:nth-child(3) { animation-delay: 3.5s; }
   html.first-boot .meta-block             { animation-delay: 3.62s; }
   html.first-boot .panel-right            { animation-delay: 3.72s; }
+
+  @media (max-width: 900px) {
+    .panel-right { grid-template-columns: 1fr; }
+    .terminal-area { display: none; }
+  }
 
   /* ── Mobile ── */
   @media (max-width: 640px) {

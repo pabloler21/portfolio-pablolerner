@@ -1,0 +1,141 @@
+---
+interface Props {
+  title: string;
+  lines: readonly string[];
+}
+const { title, lines } = Astro.props;
+---
+
+<div class="term-win" data-lines={JSON.stringify(lines)}>
+  <div class="term-titlebar">
+    <span class="term-pip"></span>
+    <span class="term-label">{title}</span>
+  </div>
+  <div class="term-body">
+    <pre class="term-output" aria-live="off"></pre>
+    <span class="term-cursor" aria-hidden="true">█</span>
+  </div>
+</div>
+
+<script>
+  function initTerminal(el: HTMLElement) {
+    const lines: string[] = JSON.parse(el.dataset.lines ?? '[]');
+    if (!lines.length) return;
+
+    const output = el.querySelector<HTMLElement>('.term-output')!;
+    const MAX_LINES = 9;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced) {
+      output.textContent = lines.slice(-MAX_LINES).join('\n');
+      return;
+    }
+
+    let lineIdx = 0;
+    let charIdx = 0;
+    const visible: string[] = [];
+
+    function tick() {
+      const line = lines[lineIdx];
+      if (charIdx === 0) visible.push('');
+      visible[visible.length - 1] = line.slice(0, charIdx + 1);
+      if (visible.length > MAX_LINES) visible.shift();
+      output.textContent = visible.join('\n');
+
+      charIdx++;
+      if (charIdx >= line.length) {
+        charIdx = 0;
+        lineIdx = (lineIdx + 1) % lines.length;
+        // Longer pause after $ commands (like pressing Enter), short pause after output
+        const isCommand = line.startsWith('$') || line.endsWith('_');
+        const pause = lineIdx === 0 ? 2200 : isCommand ? 520 : 80;
+        setTimeout(tick, pause);
+        return;
+      }
+      // Commands type at human speed; output lines print fast
+      const isOutputLine = !lines[lineIdx].startsWith('$') && !lines[lineIdx].startsWith('>>>');
+      const charDelay = isOutputLine ? 8 + Math.random() * 10 : 45 + Math.random() * 35;
+      setTimeout(tick, charDelay);
+    }
+
+    // Stagger start so multiple windows don't type in lockstep
+    setTimeout(tick, Math.random() * 1800 + 500);
+  }
+
+  document.querySelectorAll<HTMLElement>('.term-win').forEach(initTerminal);
+</script>
+
+<style>
+  .term-win {
+    border: var(--border);
+    background: color-mix(in srgb, var(--bg-void) 80%, black);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 180px;
+  }
+
+  .term-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.28rem 0.6rem;
+    border-bottom: var(--border);
+    background: var(--bg-panel);
+    flex-shrink: 0;
+  }
+
+  .term-pip {
+    width: 5px;
+    height: 5px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .term-label {
+    font-family: var(--font-mono);
+    font-size: 0.57rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    text-transform: uppercase;
+  }
+
+  .term-body {
+    padding: 0.5rem 0.6rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .term-output {
+    font-family: var(--font-mono);
+    font-size: 0.59rem;
+    line-height: 1.65;
+    color: var(--sand-dim);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .term-cursor {
+    font-family: var(--font-mono);
+    font-size: 0.59rem;
+    color: var(--accent);
+    animation: term-blink 1s step-end infinite;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  @keyframes term-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .term-cursor { animation-duration: 0.01s !important; }
+  }
+</style>

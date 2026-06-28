@@ -11,7 +11,13 @@ npm run preview       # serve production build locally
 npm run astro check   # TypeScript / Astro type-checking
 ```
 
-**WSL2 networking:** `npm run dev` (no `--host` flag) is required for WSL2 localhost forwarding to work from the Windows browser. Running with `--host 0.0.0.0` breaks localhost access. curl inside WSL2 won't reach localhost — use `http://192.168.1.33:4321/` for smoke-tests from the terminal.
+**WSL2 networking — read carefully, mistakes have been made here:**
+
+- **Always use `npm run dev` with zero extra flags.** This binds to `127.0.0.1` only and goes through WSL2's built-in localhost forwarding → Windows browser reaches it at `http://localhost:4321/`.
+- **Never run `npx astro dev --host 0.0.0.0` or `npx astro dev --host <ip>`.** Binding to `0.0.0.0` tells Windows Firewall the process is listening for external connections. Firewall may silently block it, causing `ERR_CONNECTION_REFUSED` on both `localhost:4321` and `192.168.1.33:4321` from the Windows browser. This happened in session and broke the dev server for the rest of the session.
+- **Never use `npx astro dev` directly** (with or without flags) — only `npm run dev`. The skill runner has started the server with `--json` and `--host` flags in the past; those modes cause networking issues.
+- **If localhost stops working** after a bad server restart: kill the broken process (`pkill -f "astro dev"`), then start fresh with `npm run dev`. If still blocked, check Windows Defender Firewall → "Allow an app through firewall" → Node.js must be checked for both Private and Public.
+- **For curl smoke-tests from inside WSL2** (not from Windows browser): use `http://192.168.1.33:4321/` — localhost inside WSL2 does not reach the Windows-forwarded port.
 
 ## Project overview
 
@@ -21,7 +27,7 @@ Personal portfolio for **Pablo** — Data Analyst → AI Engineer / Data Scienti
 
 - **Astro 7** (static output, TypeScript strict)
 - **CSS custom properties** for all theming — no UI library
-- **Vanilla JS** for role selector and keyboard navigation (no React yet — add only when truly needed)
+- **Vanilla JS** for role selector, keyboard navigation, and terminal animation (no React yet — add only when truly needed)
 - **i18n:** Astro native i18n, locales `en` (default) and `es`, both prefixed (`/en/…`, `/es/…`)
 - **Hosting:** Cloudflare Pages (target)
 
@@ -48,10 +54,10 @@ Inspired by NieR: Automata's YoRHa OS UI. Differentiated by olive-grey backgroun
 - Zero `border-radius` anywhere — ever
 - Scanlines + animated grain are CSS-only overlays on `body::before` / `body::after`
 - `prefers-reduced-motion`: boot screen → `display: none`; stagger reveal → `animation-duration: 0.01s` (instant, not removed — `animation: none` kills `fill-mode` and makes elements immediately visible)
-- Accent (`#8fa882`) only on: `◆` cursor, active badge/border, active tab underline, lit dots in DotRow
+- Accent (`#8fa882`) only on: `◆` cursor, active badge/border, active tab underline, lit dots in DotRow, terminal pip
 - No pure black (#000); no pure white (#fff)
 
-## Actual file structure (Phase 2 complete)
+## Actual file structure (Phase 2 complete + terminal windows)
 
 ```
 src/
@@ -64,21 +70,26 @@ src/
                         #   → TabBar + DotRow (header)
                         #   → <slot /> (main content)
                         #   → StatusBar (footer)
-    RoleLayout.astro    # 280px/1fr grid: RoleNav left + <slot /> right; used by all role pages
+    RoleLayout.astro    # 3-column grid: RoleNav (280px) + <slot /> (1fr) + TerminalWindow (260px)
+                        #   terminal content is role-specific (ai/risk/ds), defined inside layout
+                        #   terminal column hidden at < 1024px
   components/
     ui/
       BootScreen.astro  # one-time OS-boot overlay (sessionStorage flag)
-                        #   <script is:inline> sets html.first-boot before body elements parse
-                        #   → triggers 3.2–3.72 s animation delays on first visit
       TabBar.astro      # top nav tabs; props: active (tab id), lang
       DotRow.astro      # 40-dot row; dots animate left-to-right (28 ms stagger, CSS-only)
       StatusBar.astro   # bottom bar: keyboard hints · lang toggle (EN/ES) · CV link · coords
       RoleNav.astro     # left-panel nav for role pages: ◀ TERMINAL back link + 3 role links
       ProjectCard.astro # project card component: name, desc, stack tags, badge, GH link, demo link
+      TerminalWindow.astro  # animated live-coding terminal panel
+                            #   props: title (string), lines (readonly string[])
+                            #   JS: typewriter effect — commands type at human speed (~80ms/char),
+                            #       output lines print fast (~15ms/char), loops forever
+                            #   prefers-reduced-motion: shows final state instantly, no animation
   pages/
     index.astro         # root → redirects to /en/
     en/
-      index.astro       # home EN: two-panel role selector + CSS stagger reveal
+      index.astro       # home EN: role selector left + detail+terminal right (1fr 260px sub-grid)
       ai/index.astro    # AI Engineer — 6 real projects (Iris flagship)
       risk/index.astro  # Data Analyst — 7 real projects (FraudSense AI flagship)
       ds/index.astro    # Data Scientist — placeholder (coming soon)
@@ -95,6 +106,42 @@ public/
 theme-preview.html      # static preview of all theme variants (keep for reference)
 PLAN_PORTFOLIO_NIER.md  # full project plan, phases, and pending items from Pablo
 ```
+
+## TerminalWindow component
+
+`src/components/ui/TerminalWindow.astro` — animated live-coding terminal panel.
+
+Props:
+```ts
+{
+  title: string;          // window title bar label (e.g. 'PROC::AGENT_RUNTIME')
+  lines: readonly string[]; // lines to type out, loops forever
+}
+```
+
+Animation behavior:
+- Lines starting with `$` or `>>>` = command lines → typed at ~80ms/char (human pace) with a ~520ms pause after (simulates pressing Enter)
+- All other lines = output lines → printed at ~15ms/char (machine pace) with an 80ms pause after
+- After the full sequence, 2.2s pause then restarts from the top
+- Multiple instances stagger their start time (random 500–2300ms) so they never sync
+- `prefers-reduced-motion`: shows the last MAX_LINES instantly, cursor blink disabled
+
+Terminal content per role (defined in `RoleLayout.astro`):
+- `ai` → `PROC::AGENT_RUNTIME`: LangChain agent code + tool reasoning output
+- `risk` → `PROC::DATA_PIPELINE`: psql session with SELECT query + fraud result rows
+- `ds` → `PROC::ML_PIPELINE`: sklearn Pipeline build + GradientBoosting training epochs
+
+Home page terminals (defined in `en/index.astro` + `es/index.astro`):
+- `PROC::DEV_ENV`: git clone → pip install → `python iris.py` boot sequence
+- `PROC::ANALYTICS`: fraud pipeline run with progress bar + precision/recall output
+
+## Home page terminal layout
+
+The home page `panel-right` is an internal sub-grid (`1fr 260px`):
+- `.detail-area` — existing role detail content (aria-live="polite")
+- `.terminal-area` — two stacked `TerminalWindow` components (aria-hidden="true")
+
+Terminal area hides at `@media (max-width: 900px)`.
 
 ## ProjectCard component
 
@@ -163,11 +210,11 @@ Props: `title` (string), `lang` ('en' | 'es'), `activeTab` (tab id string), `des
 
 ## Role selector pattern (en/index.astro, es/index.astro)
 
-Two-panel layout: left panel = list of 3 role buttons, right panel = detail for selected role.
+Two-panel layout: left panel = list of 3 role buttons, right panel = detail + terminal sub-grid.
 
 - Buttons have `data-role="ai|risk|ds"` and toggle `.selected` class + `◆` cursor on click
 - Arrow up/down keyboard navigation is wired on `#role-menu`
-- Detail panels use `.hidden` class to show/hide; `aria-live="polite"` on container
+- Detail panels use `.hidden` class to show/hide; `aria-live="polite"` on `.detail-area`
 - Each role has a `#detail-{role}` div
 
 ## Three roles (content buckets)
@@ -187,6 +234,7 @@ Note: the URL slug is `/risk/` for Data Analyst (kept for routing stability — 
 | 0 — Foundation | **DONE** (commit `9cb5c9b`) | Astro scaffold, IRON DUST theme, YoRHa chrome, boot screen, role selector stub |
 | 1 — Navigation + Animation | **DONE** | Role pages (`/en/{role}/`), RoleNav, RoleLayout, boot-screen stagger reveal, DotRow charge |
 | 2 — Project cards | **DONE** | Real GitHub repos as project cards (ProjectCard component, 13 projects across AI + Data Analyst) |
+| 2.5 — Terminal windows | **DONE** | TerminalWindow component, live-coding ambient panels on home + role pages |
 | 3 — Game case study | pending | Dedicated page with architecture diagram + gameplay video |
 | 4 — About / Contact | pending | Career narrative (EN + ES), LinkedIn/GitHub/email |
 | 5 — Polish | pending | Lighthouse, a11y audit, mobile, SEO |

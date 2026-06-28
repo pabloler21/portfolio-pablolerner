@@ -1,8 +1,37 @@
 ---
 import Base from '../../layouts/Base.astro';
 import BootScreen from '../../components/ui/BootScreen.astro';
+import TerminalWindow from '../../components/ui/TerminalWindow.astro';
 
 const lang = 'es';
+
+const sysLines = [
+  '$ git clone github.com/pabloler21/Iris',
+  'Cloning into Iris...',
+  '$ cd Iris && pip install -r requirements.txt',
+  '  langchain-anthropic    ✓',
+  '  qdrant-client          ✓',
+  '  discord.py             ✓',
+  '  fastapi                ✓',
+  '$ python iris.py',
+  'loading vector store... 1.2M vectors',
+  'discord gateway connected',
+  'Iris v2.1 online — awaiting input_',
+] as const;
+
+const metricsLines = [
+  '$ python run_pipeline.py',
+  'loading fraud_dataset.csv...',
+  '  rows: 1,849,007  cols: 23',
+  'engineering features...',
+  '  47 vars built  nulls: 0.2% imputed',
+  'training RandomForestClassifier...',
+  '  [██████████] 100%  842ms',
+  'precision : 0.943',
+  'recall    : 0.871',
+  'AUC-ROC   : 0.971',
+  'report saved → fraud_report.pdf_',
+] as const;
 ---
 
 <Base title="Terminal de Acceso" lang={lang} activeTab="projects">
@@ -37,8 +66,9 @@ const lang = 'es';
       </div>
     </section>
 
-    <!-- Right panel -->
-    <section class="panel-right" aria-label="Perfil de unidad" aria-live="polite">
+    <!-- Right panel: detalle de unidad + terminal ambiental -->
+    <section class="panel-right" aria-label="Perfil de unidad">
+      <div class="detail-area" aria-live="polite">
 
       <div class="unit-detail" id="detail-ai">
         <h2 class="unit-title">AI ENGINEER</h2>
@@ -145,6 +175,11 @@ const lang = 'es';
         <a href="/es/ds/" class="access-btn">ACCEDER A REGISTROS →</a>
       </div>
 
+      </div><!-- /detail-area -->
+      <div class="terminal-area" aria-hidden="true">
+        <TerminalWindow title="PROC::SYSTEM_INIT" lines={sysLines} />
+        <TerminalWindow title="LOG::UNIT_PL-7729" lines={metricsLines} />
+      </div>
     </section>
   </div>
 </Base>
@@ -222,7 +257,9 @@ const lang = 'es';
   .role-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
   .cursor { font-size: 0.68rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
   .meta-block { margin-top: auto; padding: 1rem; border-top: var(--border); line-height: 2; font-size: 0.63rem; }
-  .panel-right { padding: 1.2rem; }
+  .panel-right { display: grid; grid-template-columns: 1fr 260px; overflow: hidden; }
+  .detail-area { padding: 1.2rem; overflow-y: auto; }
+  .terminal-area { border-left: var(--border); display: flex; flex-direction: column; overflow: hidden; }
   .unit-detail.hidden { display: none; }
   .unit-title { font-family: var(--font-display); font-size: 1.3rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sand); margin-bottom: 0.2rem; }
   .unit-sub { margin-bottom: 1.2rem; padding-bottom: 0.8rem; border-bottom: var(--border); font-size: 0.6rem; }
@@ -275,6 +312,11 @@ const lang = 'es';
   html.first-boot .role-item:nth-child(3) { animation-delay: 3.5s; }
   html.first-boot .meta-block             { animation-delay: 3.62s; }
   html.first-boot .panel-right            { animation-delay: 3.72s; }
+
+  @media (max-width: 900px) {
+    .panel-right { grid-template-columns: 1fr; }
+    .terminal-area { display: none; }
+  }
 
   @media (max-width: 640px) {
     .home-grid { grid-template-columns: 1fr; }

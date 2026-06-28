@@ -1,6 +1,7 @@
 ---
 import Base from './Base.astro';
 import RoleNav from '../components/ui/RoleNav.astro';
+import TerminalWindow from '../components/ui/TerminalWindow.astro';
 
 interface Props {
   title: string;
@@ -10,6 +11,66 @@ interface Props {
 }
 
 const { title, lang, role, description } = Astro.props;
+
+const termContent = {
+  ai: {
+    title: 'PROC::AGENT_RUNTIME',
+    lines: [
+      '$ python agent.py',
+      'from langchain_anthropic import ChatAnthropic',
+      'llm = ChatAnthropic(model="claude-haiku-4-5")',
+      'tools = [search_memory, call_api, web_fetch]',
+      'agent = create_react_agent(llm, tools)',
+      'result = agent.invoke({',
+      '  "input": "summarize recent docs"',
+      '})',
+      '[think] querying vector store...',
+      '[tool]  memory_search → 8 chunks found',
+      '[think] synthesizing response...',
+      '[done]  347 tokens · latency: 1.84s',
+      '$ _',
+    ],
+  },
+  risk: {
+    title: 'PROC::DATA_PIPELINE',
+    lines: [
+      '$ psql -d fraud_analytics',
+      'psql (15.3) · connected',
+      'fraud_db=# SELECT',
+      '  fraud_type,',
+      '  COUNT(*) AS n,',
+      '  ROUND(AVG(amount),2) AS avg_amt',
+      'FROM transactions',
+      'WHERE risk_score > 0.85',
+      'GROUP BY fraud_type;',
+      ' card_cloned   | 8441 | 1247.33',
+      ' acct_takeover | 2891 |  834.12',
+      ' synthetic_id  | 1109 | 2341.88',
+      'Query OK · 12441 rows · 0.847s',
+      'fraud_db=# _',
+    ],
+  },
+  ds: {
+    title: 'PROC::ML_PIPELINE',
+    lines: [
+      '$ python train.py --model gbm',
+      'from sklearn.pipeline import Pipeline',
+      'from sklearn.ensemble import GradientBoostingClassifier',
+      'pipe = Pipeline([',
+      '  ("scaler", StandardScaler()),',
+      '  ("clf", GradientBoostingClassifier())',
+      '])',
+      'pipe.fit(X_train, y_train)',
+      'Epoch  3/10  loss=0.0412  ▓▓▓░░░░░░░',
+      'Epoch  6/10  loss=0.0231  ▓▓▓▓▓▓░░░░',
+      'Epoch 10/10  loss=0.0091  ▓▓▓▓▓▓▓▓▓▓',
+      'accuracy: 0.942  auc: 0.961',
+      '$ _',
+    ],
+  },
+} as const;
+
+const term = termContent[role];
 ---
 
 <Base title={title} lang={lang} activeTab="projects" description={description}>
@@ -18,13 +79,16 @@ const { title, lang, role, description } = Astro.props;
     <section class="panel-right">
       <slot />
     </section>
+    <aside class="panel-terminal" aria-hidden="true">
+      <TerminalWindow title={term.title} lines={term.lines} />
+    </aside>
   </div>
 </Base>
 
 <style>
   .role-grid {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 280px 1fr 260px;
     flex: 1;
     min-height: 0;
   }
@@ -35,11 +99,22 @@ const { title, lang, role, description } = Astro.props;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    border-left: var(--border);
+  }
+
+  .panel-terminal {
+    border-left: var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  @media (max-width: 1024px) {
+    .role-grid { grid-template-columns: 280px 1fr; }
+    .panel-terminal { display: none; }
   }
 
   @media (max-width: 640px) {
-    .role-grid {
-      grid-template-columns: 1fr;
-    }
+    .role-grid { grid-template-columns: 1fr; }
   }
 </style>
