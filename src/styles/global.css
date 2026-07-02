@@ -1,7 +1,7 @@
 @import './tokens.css';
 
 /* ── Fonts ─────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Share+Tech+Mono&family=Inter:wght@400;500&display=swap');
 
 /* ── Reset ──────────────────────────────────────────── */
 *, *::before, *::after {
@@ -19,6 +19,7 @@ body {
   background-color: var(--bg-void);
   color: var(--sand);
   font-family: var(--font-mono);
+  line-height: 1.5;
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -76,8 +77,65 @@ a {
 }
 
 a:focus-visible {
-  outline: 1px solid var(--accent);
+  outline: 1px solid var(--accent-bright);
   outline-offset: 2px;
+}
+
+/* ── Utility: prose text (humanist sans, readable) ──── */
+.prose {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--sand-muted);
+}
+
+/* ── Utility: system micro-text ─────────────────────── */
+.sys-text {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--sand-dim);
+  text-transform: uppercase;
+  opacity: 0.6;
+  user-select: none;
+}
+
+/* ── Utility: bright CTA button ─────────────────────── */
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+  border: 1px solid var(--ink-mid);
+  color: var(--sand-dim);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.cta-btn:hover {
+  color: var(--sand);
+  border-color: var(--accent);
+}
+
+.cta-btn.cta-primary {
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
+}
+
+.cta-btn.cta-primary:hover {
+  background: var(--accent-bright);
+  color: var(--bg-void);
+}
+
+/* ── Utility: 1px separator ─────────────────────────── */
+.sep {
+  border: none;
+  border-top: var(--border);
+  width: 100%;
 }
 
 /* ── Reduced motion ─────────────────────────────────── */
@@ -90,22 +148,4 @@ a:focus-visible {
   @keyframes grain {
     from, to { transform: none; }
   }
-}
-
-/* ── Utility: system micro-text ─────────────────────── */
-.sys-text {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  color: var(--sand-dim);
-  text-transform: uppercase;
-  opacity: 0.45;
-  user-select: none;
-}
-
-/* ── Utility: 1px separator ─────────────────────────── */
-.sep {
-  border: none;
-  border-top: var(--border);
-  width: 100%;
 }

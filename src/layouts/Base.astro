@@ -2,6 +2,7 @@
 import TabBar from '../components/ui/TabBar.astro';
 import DotRow from '../components/ui/DotRow.astro';
 import StatusBar from '../components/ui/StatusBar.astro';
+import AmbientCanvas from '../components/ui/AmbientCanvas.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 
 const {
   title,
-  description = 'Pablo Lerner — AI Engineer · Data Scientist · Data Analyst',
+  description = 'Pablo Lerner — Data Analyst · AI Engineer · Data Scientist',
   lang = 'en',
   activeTab = 'projects',
 } = Astro.props;
@@ -37,24 +38,51 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     <link rel="alternate" hreflang={altLang} href={new URL(Astro.url.pathname.replace(`/${lang}/`, `/${altLang}/`), canonicalURL.origin)} />
     <link rel="alternate" hreflang="x-default" href={new URL('/en/', canonicalURL.origin)} />
 
-    <!-- Favicon placeholder -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <!-- Google Fonts preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
 
   <body>
-    <!-- YoRHa OS chrome -->
+    <!-- Ambient 3D background — lazy-loaded, non-blocking, behind all content -->
+    <AmbientCanvas />
+
+    <!-- Margin chrome — visible in browser margins outside the 1200px container -->
+    <div class="margin-chrome margin-chrome-left" aria-hidden="true">PROC::ANALYSIS · SYS:OK · MEM:78% · UNIT::PL-7729 · IRON DUST v2 · PROC::ANALYSIS · SYS:OK · MEM:78% · PROC::ANALYSIS</div>
+    <div class="margin-chrome margin-chrome-right" aria-hidden="true">LAT:-34.0897 · LON:-58.3817 · UNIT::PL-7729 · SYS:OK · 2026.07.01 · LAT:-34.0897 · LON:-58.3817 · UNIT::PL-7729</div>
+
     <div class="os-shell">
-      <!-- Header -->
-      <header class="os-header">
-        <div class="os-title-row">
-          <span class="os-unit-id sys-text">UNIT::PL-7729</span>
-          <h1 class="os-heading">{title}</h1>
-          <span class="os-status sys-text">SYS:OK · LANG:{lang.toUpperCase()}</span>
+      <!-- OS chrome row -->
+      <div class="os-title-row">
+        <span class="os-unit-id sys-text">UNIT::PL-7729</span>
+        <span class="os-page sys-text">{title}</span>
+        <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
+      </div>
+
+      <!-- Identity strip — name, positioning, CTAs -->
+      <div class="os-identity">
+        <div class="identity-left">
+          <span class="id-name">Pablo Lerner</span>
+          <span class="id-sep sys-text"> · </span>
+          <span class="id-role">
+            {lang === 'en'
+              ? 'Data Analyst & AI Engineer — from raw data to production decisions'
+              : 'Data Analyst & AI Engineer — de datos crudos a decisiones de negocio'}
+          </span>
         </div>
+        <nav class="id-ctas" aria-label="Contact links">
+          <a href="https://github.com/pabloler21" class="cta-btn" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+          <a href="https://www.linkedin.com/in/pablo-lerner-591180336" class="cta-btn" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
+          <a href="mailto:lerner.pb@gmail.com" class="cta-btn">Email</a>
+          <a href="/pablo-lerner-cv.pdf" class="cta-btn cta-primary" download>
+            {lang === 'en' ? 'CV ↓' : 'CV ↓'}
+          </a>
+        </nav>
+      </div>
+
+      <!-- Navigation -->
+      <header class="os-header">
         <TabBar active={activeTab} lang={lang} />
         <DotRow />
       </header>
@@ -82,7 +110,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     z-index: 1;
   }
 
-  /* Diagonal corner cuts top-right and bottom-left */
+  /* diagonal corner cut top-right */
   .os-shell::before {
     content: '';
     position: absolute;
@@ -96,37 +124,151 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     z-index: 2;
   }
 
+  /* ── OS chrome row (micro-text flavor) ── */
+  .os-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 1rem;
+    border-bottom: var(--border);
+    background: color-mix(in srgb, var(--bg-void) 85%, black);
+  }
+
+  .os-page {
+    font-size: 0.55rem;
+    opacity: 0.4;
+  }
+
+  /* ── Identity strip ── */
+  .os-identity {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    border-bottom: var(--border);
+    background: var(--bg-panel);
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .identity-left {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .id-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    letter-spacing: 0.12em;
+    color: var(--sand);
+    white-space: nowrap;
+  }
+
+  .id-sep {
+    opacity: 0.3;
+  }
+
+  .id-role {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--sand-muted);
+  }
+
+  .id-ctas {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  /* ── Navigation header ── */
   .os-header {
     border-bottom: var(--border);
     flex-shrink: 0;
   }
 
-  .os-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-bottom: var(--border);
-    background: color-mix(in srgb, var(--bg-void) 85%, black);
-  }
-
-  .os-heading {
-    font-family: var(--font-display);
-    font-size: 0.85rem;
-    font-weight: 400;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--sand);
-  }
-
+  /* ── Main content ── */
   .os-main {
     flex: 1;
     display: flex;
     flex-direction: column;
   }
 
-  @media (max-width: 600px) {
-    .os-unit-id,
-    .os-status { display: none; }
+  @media (max-width: 640px) {
+    .os-title-row .os-unit-id,
+    .os-title-row .os-status { display: none; }
+
+    .os-identity {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    .id-ctas { gap: 0.3rem; }
+  }
+
+  /* ── Margin chrome — NieR chrome panels in browser margins beyond 1200px ── */
+  .margin-chrome {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: max(0px, calc((100vw - 1200px) / 2));
+    max-width: 160px;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    font-family: var(--font-mono);
+    font-size: 0.38rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+    white-space: nowrap;
+  }
+
+  .margin-chrome-left {
+    left: 0;
+    border-right: 1px solid var(--ink);
+  }
+
+  .margin-chrome-right {
+    right: 0;
+    border-left: 1px solid var(--ink);
+    writing-mode: vertical-lr;
+  }
+
+  .margin-chrome::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 25%;
+    background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: margin-scan 12s ease-in-out infinite;
+  }
+
+  .margin-chrome-left::after {
+    right: 0;
+    animation-delay: 0s;
+  }
+
+  .margin-chrome-right::after {
+    left: 0;
+    animation-delay: 6s;
+  }
+
+  @keyframes margin-scan {
+    0%        { top: -25%; opacity: 0; }
+    6%        { opacity: 0.55; }
+    88%       { top: 100%; opacity: 0.28; }
+    100%      { top: 100%; opacity: 0; }
   }
 </style>

@@ -1,0 +1,185 @@
+---
+interface Props { lang?: 'en' | 'es'; }
+const { lang = 'en' } = Astro.props;
+
+const labels = {
+  en: {
+    sys:   'UNIT::ACCESS — PROC::IDENTIFY',
+    title: 'Select access profile',
+    opts: [
+      { zone: 'risk', label: 'DATA ANALYST',    desc: 'primary role · risk & data pipelines' },
+      { zone: 'ai',   label: 'AI ENGINEER',      desc: 'LLMs · RAG · multi-agent systems' },
+      { zone: 'ds',   label: 'DATA SCIENTIST',   desc: '[ COMING SOON ]', dim: true },
+    ],
+  },
+  es: {
+    sys:   'UNIT::ACCESO — PROC::IDENTIFICAR',
+    title: 'Seleccionar perfil de acceso',
+    opts: [
+      { zone: 'risk', label: 'ANALISTA DE DATOS',   desc: 'rol primario · riesgo y pipelines' },
+      { zone: 'ai',   label: 'INGENIERO DE IA',      desc: 'LLMs · RAG · sistemas multi-agente' },
+      { zone: 'ds',   label: 'CIENTÍFICO DE DATOS',  desc: '[ PRÓXIMAMENTE ]', dim: true },
+    ],
+  },
+}[lang];
+---
+
+<div class="persona-overlay" id="persona-overlay" role="dialog" aria-modal="true" aria-label={labels.title}>
+  <div class="persona-box">
+    <div class="persona-header">
+      <span class="persona-sys">{labels.sys}</span>
+    </div>
+
+    <h2 class="persona-title">{labels.title}</h2>
+
+    <nav class="persona-options" role="menu">
+      {labels.opts.map(opt => (
+        <button class={'persona-opt' + (opt.dim ? ' opt-dim' : '')} data-zone={opt.zone} role="menuitem">
+          <span class="opt-label">{opt.label}</span>
+          <span class="opt-desc">{opt.desc}</span>
+        </button>
+      ))}
+    </nav>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const overlay = document.getElementById('persona-overlay');
+    if (!overlay) return;
+
+    /* If already chosen this session: skip overlay, re-dispatch zone event */
+    const stored = sessionStorage.getItem('nier-persona');
+    if (stored) {
+      overlay.style.display = 'none';
+      setTimeout(() => window.dispatchEvent(new CustomEvent('nier:zone', { detail: { zone: stored } })), 600);
+      return;
+    }
+
+    function choose(zone) {
+      sessionStorage.setItem('nier-persona', zone);
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
+      setTimeout(() => overlay.remove(), 400);
+      window.dispatchEvent(new CustomEvent('nier:zone', { detail: { zone } }));
+    }
+
+    overlay.querySelectorAll('.persona-opt').forEach(btn => {
+      btn.addEventListener('click', () => choose(btn.dataset.zone));
+    });
+
+    /* Keyboard nav within options */
+    const opts = [...overlay.querySelectorAll('.persona-opt')];
+    overlay.addEventListener('keydown', e => {
+      const cur = opts.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' && cur < opts.length - 1) { opts[cur + 1].focus(); e.preventDefault(); }
+      if (e.key === 'ArrowUp'   && cur > 0)               { opts[cur - 1].focus(); e.preventDefault(); }
+      if ((e.key === 'Enter' || e.key === ' ') && cur >= 0) { opts[cur].click(); e.preventDefault(); }
+    });
+
+    requestAnimationFrame(() => opts[0]?.focus());
+  })();
+</script>
+
+<style>
+  .persona-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(27, 30, 26, 0.95);
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+  }
+
+  .persona-box {
+    width: min(480px, 90vw);
+    border: 1px solid var(--ink-mid);
+    background: var(--bg-panel);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .persona-header {
+    padding: 0.7rem 1.2rem;
+    border-bottom: 1px solid var(--ink);
+    background: var(--bg-void);
+  }
+
+  .persona-sys {
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.22em;
+    color: var(--sand-dim);
+  }
+
+  .persona-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 0.12em;
+    color: var(--sand);
+    margin: 0;
+    padding: 1.2rem 1.2rem 0.8rem;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .persona-options {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .persona-opt {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.85rem 1.2rem;
+    background: none;
+    border: none;
+    border-left: 2px solid transparent;
+    border-bottom: 1px solid var(--ink);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: border-left-color 0.15s, background 0.15s;
+  }
+
+  .persona-opt:last-child { border-bottom: none; }
+
+  .persona-opt:hover {
+    border-left-color: var(--accent);
+    background: var(--bg-surface);
+  }
+
+  .persona-opt:focus-visible {
+    outline: none;
+    border-left-color: var(--accent-bright);
+    background: var(--bg-surface);
+  }
+
+  .persona-opt:focus-visible .opt-label {
+    color: var(--accent-bright);
+  }
+
+  .opt-label {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    color: var(--sand);
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+
+  .opt-desc {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+  }
+
+  .opt-dim .opt-label { color: var(--sand-dim); }
+  .opt-dim .opt-desc  { opacity: 0.7; }
+  .opt-dim:hover .opt-label { color: var(--sand-muted); }
+</style>

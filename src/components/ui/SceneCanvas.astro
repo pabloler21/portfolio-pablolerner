@@ -1,0 +1,186 @@
+---
+// SceneCanvas — 9S NieR:Automata character viewer
+// Loads android.glb (textured Sketchfab model, no animations)
+// Slow auto-rotation + pointer tracking
+---
+
+<div class="scene-wrap" id="scene-wrap" aria-hidden="true">
+  <canvas id="scene-canvas"></canvas>
+  <div class="scene-label sys-text">UNIT::PL-7729 · ANDROID MODEL</div>
+</div>
+
+<script>
+(function () {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const touch   = window.matchMedia('(hover: none)').matches;
+
+  const wrap   = document.getElementById('scene-wrap')!;
+  const canvas = document.getElementById('scene-canvas') as HTMLCanvasElement;
+
+  async function init() {
+    const THREE = await import('three');
+    const { GLTFLoader }  = await import('three/addons/loaders/GLTFLoader.js');
+    const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
+
+    // WebGL check — probe canvas, never the real one (see AmbientCanvas.astro)
+    const probe = document.createElement('canvas');
+    const testCtx = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!testCtx) return;
+
+    // Renderer
+    const W = wrap.clientWidth  || 260;
+    const H = wrap.clientHeight || 300;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.enabled = false;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    // Scene
+    const scene = new THREE.Scene();
+
+    // Camera — tight on upper body + face
+    const camera = new THREE.PerspectiveCamera(32, W / H, 0.01, 100);
+    camera.position.set(0.3, 1.10, 2.2);
+    camera.lookAt(0, 0.95, 0);
+
+    // Lighting — IRON DUST palette, preserve Sketchfab textures
+    const ambient = new THREE.AmbientLight(0xb0ac9c, 1.2);
+    scene.add(ambient);
+
+    const key = new THREE.DirectionalLight(0xe8e4d0, 1.6);
+    key.position.set(-1.2, 2.5, 2.0);
+    scene.add(key);
+
+    const rim = new THREE.DirectionalLight(0x5ee7aa, 0.8);
+    rim.position.set(1.8, 1.0, -1.5);
+    scene.add(rim);
+
+    const fill = new THREE.DirectionalLight(0xc0bfbc, 0.5);
+    fill.position.set(1.0, 0.5, 2.0);
+    scene.add(fill);
+
+    const loader = new GLTFLoader();
+    let model: any = null;
+
+    try {
+      const gltf = await new Promise<any>((resolve, reject) => {
+        loader.load('/models/android.glb', resolve, undefined, reject);
+      });
+
+      model = gltf.scene;
+      model.position.set(0, 0, 0);
+      scene.add(model);
+    } catch (e) {
+      console.warn('SceneCanvas: model load failed', e);
+      return;
+    }
+
+    // Slow auto-rotation + pointer override
+    let autoRotSpeed = reduced ? 0 : 0.003;
+    let targetRotY = 0;
+    let currentRotY = 0;
+    let pointerActive = false;
+
+    if (!touch && !reduced) {
+      wrap.addEventListener('pointermove', (e: PointerEvent) => {
+        const rect = wrap.getBoundingClientRect();
+        const nx = (e.clientX - rect.left) / rect.width - 0.5;
+        targetRotY = nx * 0.6;
+        pointerActive = true;
+      });
+      wrap.addEventListener('pointerleave', () => { pointerActive = false; });
+    }
+
+    // Plain mode: hide canvas when data-plain active
+    const observer = new MutationObserver(() => {
+      const plain = document.documentElement.hasAttribute('data-plain');
+      canvas.style.opacity = plain ? '0' : '1';
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
+
+    // Visibility
+    let visible = true;
+    document.addEventListener('visibilitychange', () => {
+      visible = !document.hidden;
+    });
+
+    const intersect = new IntersectionObserver(entries => {
+      visible = entries[0].isIntersecting;
+    }, { threshold: 0.1 });
+    intersect.observe(canvas);
+
+    // Clock + render loop
+    const clock = new THREE.Clock();
+    function tick() {
+      requestAnimationFrame(tick);
+      if (!visible) return;
+
+      const dt = clock.getDelta();
+
+      if (pointerActive) {
+        currentRotY += (targetRotY - currentRotY) * 0.06;
+      } else {
+        // Slow auto-rotation when not interacting
+        currentRotY += autoRotSpeed;
+      }
+      if (model) model.rotation.y = currentRotY;
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    // Resize
+    window.addEventListener('resize', () => {
+      const nw = wrap.clientWidth  || 260;
+      const nh = wrap.clientHeight || 300;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    });
+  }
+
+  if (reduced) {
+    // still load + render single frame to show the model
+    init();
+  } else {
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(init, { timeout: 2000 });
+    } else {
+      setTimeout(init, 500);
+    }
+  }
+})();
+</script>
+
+<style>
+  .scene-wrap {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    overflow: hidden;
+    border-bottom: var(--border);
+    background: var(--bg-void);
+    cursor: crosshair;
+  }
+
+  #scene-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.3s;
+  }
+
+  .scene-label {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 0.6rem;
+    font-size: 0.48rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    pointer-events: none;
+    user-select: none;
+  }
+</style>

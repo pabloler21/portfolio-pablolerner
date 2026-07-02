@@ -1,0 +1,203 @@
+---
+/**
+ * AmbientCanvas — Phase 1A: Three.js perspective-grid background
+ *
+ * Three.js is lazy-loaded via dynamic import (separate Vite chunk).
+ * Initialization is deferred to requestIdleCallback so content renders first.
+ *
+ * Guardrails handled:
+ *  - prefers-reduced-motion   → skip, canvas hidden
+ *  - touch / hover:none       → skip, canvas hidden
+ *  - viewport < 768px         → skip, canvas hidden
+ *  - WebGL unavailable        → silent return, canvas hidden
+ *  - Three.js load failure    → silent return, canvas hidden
+ *  - data-plain mode          → MutationObserver hides canvas in real-time
+ *  - tab hidden / offscreen   → visibilitychange + IntersectionObserver pause tick
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * PHASE 2 HERO — 3D object integration point
+ *
+ * When ready to add a hero 3D object (e.g. slow-rotating wireframe artifact):
+ *
+ *  1. Create: src/components/ui/Hero3D.astro
+ *     - Renders a <canvas id="hero-canvas"> into the identity strip
+ *     - Uses its own Three.js scene (separate renderer, same lazy-load pattern)
+ *     - Suggested object: WireframeGeometry over TorusKnotGeometry or
+ *       IcosahedronGeometry, material color = --accent (#8fa882), opacity 0.25
+ *     - Camera: OrthographicCamera or tight PerspectiveCamera
+ *     - Slow auto-rotation: ~0.003 rad/frame on X and Y axes
+ *
+ *  2. Import into Base.astro, place <Hero3D /> inside .os-identity
+ *     (right side, after .id-ctas — absolute-positioned within the strip)
+ *
+ *  3. Apply same guardrails: reduced-motion, touch, plain-mode observer,
+ *     IntersectionObserver pause, WebGL null check, dynamic import
+ *
+ *  4. Keep the object under 5KB geometry. No textures. Cap pixelRatio at 2.
+ *     Target: <30ms GPU budget (it's purely decorative).
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+---
+
+<canvas id="ambient-canvas" aria-hidden="true"></canvas>
+
+<script>
+  const html   = document.documentElement;
+  const canvas = document.getElementById('ambient-canvas') as HTMLCanvasElement | null;
+
+  const shouldSkip = (): boolean =>
+    html.hasAttribute('data-plain') ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+    window.matchMedia('(hover: none)').matches ||
+    window.innerWidth < 768;
+
+  if (!canvas || shouldSkip()) {
+    if (canvas) canvas.hidden = true;
+  } else {
+    const kick = () => init3D();
+    'requestIdleCallback' in window
+      ? (window as any).requestIdleCallback(kick, { timeout: 3000 })
+      : setTimeout(kick, 500);
+  }
+
+  async function init3D() {
+    if (!canvas || shouldSkip()) return;
+
+    // ── WebGL availability check ─────────────────────────────────────────────
+    // Use a throwaway probe canvas, never the real one: calling getContext()
+    // twice on the same canvas with different attributes returns null, which
+    // would make THREE.WebGLRenderer's own getContext() call fail right after.
+    let glOk = false;
+    try {
+      const probe = document.createElement('canvas');
+      glOk = !!(probe.getContext('webgl') ?? probe.getContext('experimental-webgl'));
+    } catch { /* silently skip */ }
+    if (!glOk) { canvas.hidden = true; return; }
+
+    // ── Lazy-load Three.js (Vite code-splits this into a separate chunk) ─────
+    let THREE: typeof import('three');
+    try {
+      THREE = await import('three');
+    } catch { canvas.hidden = true; return; }
+
+    // ── Renderer ─────────────────────────────────────────────────────────────
+    const W = () => window.innerWidth;
+    const H = () => window.innerHeight;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W(), H());
+    renderer.setClearColor(0x000000, 0); // transparent — CSS background shows through
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(58, W() / H(), 0.1, 100);
+    camera.position.set(0, 5.5, 7);
+    camera.lookAt(0, 0, 0);
+
+    // ── Grid geometry (two planes for layered depth) ──────────────────────────
+    // Colors from IRON DUST tokens — dim but legible against --bg-void #1b1e1a
+    const colCenter = new THREE.Color('#4a5044'); // --ink-mid
+    const colLines  = new THREE.Color('#363b30'); // --ink
+    const colFar    = new THREE.Color('#252820'); // --bg-panel (very dim far grid)
+    const colFarC   = new THREE.Color('#2e3229'); // --bg-surface
+
+    const grid  = new THREE.GridHelper(50, 35, colCenter, colLines);
+    grid.position.y = -1.5;
+    scene.add(grid);
+
+    const grid2 = new THREE.GridHelper(100, 20, colFarC, colFar);
+    grid2.position.y = -1.65;
+    scene.add(grid2);
+
+    // ── Mouse / pointer parallax ──────────────────────────────────────────────
+    let targetRotX = 0, targetRotY = 0;
+    let currentRotX = 0, currentRotY = 0;
+    const BASE_TILT = -0.5; // camera looking gently downward
+
+    const onPointerMove = (e: PointerEvent) => {
+      const nx = (e.clientX / W() - 0.5) * 2;  // −1..1
+      const ny = (e.clientY / H() - 0.5) * 2;  // −1..1
+      targetRotY =  nx * 0.05;  // ±0.05 rad (~2.9°)
+      targetRotX =  ny * 0.025; // ±0.025 rad (~1.4°)
+    };
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+
+    // ── Resize ────────────────────────────────────────────────────────────────
+    const onResize = () => {
+      camera.aspect = W() / H();
+      camera.updateProjectionMatrix();
+      renderer.setSize(W(), H());
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+
+    // ── Pause when offscreen or tab hidden ────────────────────────────────────
+    let isVisible = true;
+    const visObserver = new IntersectionObserver(
+      entries => { isVisible = entries[0].isIntersecting; },
+      { threshold: 0 }
+    );
+    visObserver.observe(canvas);
+    document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; });
+
+    // ── Plain-mode toggle (real-time) ─────────────────────────────────────────
+    let isPlain = html.hasAttribute('data-plain');
+    canvas.hidden = isPlain;
+
+    const plainObserver = new MutationObserver(() => {
+      isPlain = html.hasAttribute('data-plain');
+      canvas.hidden = isPlain;
+    });
+    plainObserver.observe(html, { attributes: true, attributeFilter: ['data-plain'] });
+
+    // ── Render loop ───────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+    let rafId = 0;
+
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      if (!isVisible || isPlain) return;
+
+      const t = clock.getElapsedTime();
+
+      // Very slow auto-rotation — one full revolution every ~7 min
+      grid.rotation.y  = t * 0.015;
+      grid2.rotation.y = t * 0.009;
+
+      // Smooth camera parallax (4% lerp per frame → silky slow response)
+      currentRotX += (targetRotX - currentRotX) * 0.04;
+      currentRotY += (targetRotY - currentRotY) * 0.04;
+      camera.rotation.order = 'YXZ';
+      camera.rotation.x = BASE_TILT + currentRotX;
+      camera.rotation.y = currentRotY;
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    // ── Cleanup (Astro view-transition compatibility) ─────────────────────────
+    document.addEventListener('astro:before-swap', () => {
+      cancelAnimationFrame(rafId);
+      visObserver.disconnect();
+      plainObserver.disconnect();
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('resize', onResize);
+      renderer.dispose();
+    }, { once: true });
+  }
+</script>
+
+<style>
+  #ambient-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;           /* behind .os-shell (z-index: 1) */
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  #ambient-canvas[hidden] {
+    display: none;
+  }
+</style>

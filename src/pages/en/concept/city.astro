@@ -1,0 +1,951 @@
+---
+// Standalone visual companion — no Base layout (avoids 3-WebGL-context conflict)
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VISUAL COMPANION — CITY DESIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+  <style is:global>
+    :root {
+      --bg-void: #1b1e1a;
+      --bg-panel: #252820;
+      --bg-surface: #2e3229;
+      --sand: #E8E4D0;
+      --sand-muted: #B0AC9C;
+      --sand-dim: #787668;
+      --ink: #363b30;
+      --ink-mid: #4a5044;
+      --accent: #8fa882;
+      --accent-bright: #5ee7aa;
+      --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+      --font-display: 'IM Fell English', Georgia, serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--sand);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      border-bottom: 1px solid var(--ink-mid);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .ph-back {
+      color: var(--sand-dim);
+      text-decoration: none;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+    }
+    .ph-back:hover { color: var(--accent-bright); }
+    .ph-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--sand-dim);
+      text-transform: uppercase;
+    }
+    .ph-main {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--sand);
+      margin-left: auto;
+    }
+    .ph-tag {
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      border: 1px solid var(--accent);
+      padding: 2px 8px;
+      margin-left: 8px;
+    }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow-section {
+      padding: 28px 32px 0;
+    }
+    .flow-label {
+      font-size: 0.65rem;
+      color: var(--sand-dim);
+      letter-spacing: 0.12em;
+      margin-bottom: 12px;
+    }
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+    .flow-step {
+      background: var(--bg-panel);
+      border: 1px solid var(--ink-mid);
+      padding: 6px 14px;
+      font-size: 0.7rem;
+      color: var(--sand-muted);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    .flow-step.new {
+      border-color: var(--accent-bright);
+      color: var(--accent-bright);
+    }
+    .flow-step.existing {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .flow-arrow {
+      color: var(--ink-mid);
+      padding: 0 8px;
+      font-size: 0.9rem;
+    }
+    .flow-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      font-size: 0.62rem;
+      color: var(--sand-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot { width: 8px; height: 8px; border: 1px solid; }
+    .legend-dot.new { border-color: var(--accent-bright); }
+    .legend-dot.existing { border-color: var(--accent); }
+    .legend-dot.unchanged { border-color: var(--ink-mid); }
+
+    /* ── OPTIONS GRID ── */
+    .options-section {
+      padding: 32px 32px 0;
+    }
+    .section-label {
+      font-size: 0.65rem;
+      color: var(--sand-dim);
+      letter-spacing: 0.12em;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 8px;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 960px) {
+      .options-grid { grid-template-columns: 1fr; }
+    }
+
+    .option-card {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-panel);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .option-card.recommended {
+      border-color: var(--accent-bright);
+    }
+    .option-card.muted {
+      opacity: 0.7;
+    }
+
+    .opt-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--ink-mid);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .opt-title {
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: var(--sand);
+    }
+    .opt-badge {
+      font-size: 0.6rem;
+      padding: 2px 7px;
+      letter-spacing: 0.08em;
+    }
+    .opt-badge.rec { border: 1px solid var(--accent-bright); color: var(--accent-bright); }
+    .opt-badge.blender { border: 1px solid var(--accent); color: var(--accent); }
+    .opt-badge.fast { border: 1px solid var(--sand-dim); color: var(--sand-dim); }
+
+    .concept-canvas {
+      width: 100%;
+      height: 240px;
+      display: block;
+      background: var(--bg-void);
+    }
+
+    .no-canvas {
+      height: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--bg-void);
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      color: var(--sand-dim);
+    }
+    .no-canvas-icon { font-size: 2rem; opacity: 0.3; }
+    .no-canvas-text { font-size: 0.65rem; letter-spacing: 0.08em; }
+    .no-canvas-sub { font-size: 0.6rem; color: var(--accent); }
+
+    .opt-stats {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--ink);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 16px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.62rem;
+    }
+    .stat-key { color: var(--sand-dim); }
+    .stat-val { color: var(--sand-muted); }
+    .stat-val.ok { color: var(--accent-bright); }
+    .stat-val.warn { color: var(--accent); }
+    .stat-val.bad { color: #e07070; }
+
+    .opt-desc {
+      padding: 12px 14px;
+      font-size: 0.7rem;
+      color: var(--sand-muted);
+      line-height: 1.7;
+      flex: 1;
+    }
+    .opt-pros {
+      padding: 0 14px 12px;
+    }
+    .pro-item, .con-item {
+      font-size: 0.65rem;
+      color: var(--sand-dim);
+      line-height: 1.6;
+    }
+    .pro-item::before { content: '+ '; color: var(--accent-bright); }
+    .con-item::before { content: '− '; color: #e07070; }
+
+    .choose-btn {
+      margin: 12px 14px 14px;
+      padding: 8px 14px;
+      background: transparent;
+      border: 1px solid var(--ink-mid);
+      color: var(--sand-dim);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .choose-btn:hover {
+      border-color: var(--accent-bright);
+      color: var(--accent-bright);
+    }
+    .option-card.recommended .choose-btn {
+      border-color: var(--accent-bright);
+      color: var(--accent-bright);
+    }
+
+    /* ── MOCKUP SECTIONS ── */
+    .mockup-section {
+      padding: 40px 32px 0;
+    }
+    .mockup-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 20px;
+    }
+    @media (max-width: 800px) {
+      .mockup-row { grid-template-columns: 1fr; }
+    }
+    .mockup-card {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-panel);
+    }
+    .mockup-header {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--ink);
+      font-size: 0.65rem;
+      color: var(--sand-dim);
+      letter-spacing: 0.1em;
+    }
+    .mockup-body {
+      padding: 20px;
+    }
+
+    /* Billboard mockup */
+    .billboard-mock {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-panel);
+      max-width: 420px;
+      position: relative;
+    }
+    .bb-accent-bar {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--accent-bright);
+    }
+    .bb-inner { padding: 16px 16px 16px 24px; }
+    .bb-sys { font-size: 0.6rem; color: var(--sand-dim); letter-spacing: 0.1em; margin-bottom: 8px; }
+    .bb-name { font-size: 0.9rem; color: var(--sand); letter-spacing: 0.06em; margin-bottom: 4px; }
+    .bb-divider { border: none; border-top: 1px solid var(--ink); margin: 8px 0; }
+    .bb-stack { font-size: 0.62rem; color: var(--sand-dim); margin-bottom: 8px; }
+    .bb-outcome { font-size: 0.72rem; color: var(--accent-bright); margin-bottom: 16px; }
+    .bb-divider2 { border: none; border-top: 1px solid var(--ink); margin: 8px 0 12px; }
+    .bb-cta {
+      display: inline-block;
+      border: 1px solid var(--accent-bright);
+      color: var(--accent-bright);
+      font-size: 0.65rem;
+      padding: 5px 12px;
+      letter-spacing: 0.08em;
+    }
+    .bb-caption {
+      font-size: 0.62rem;
+      color: var(--sand-dim);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+
+    /* Persona selector mockup */
+    .persona-shell {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-void);
+      padding: 24px;
+      max-width: 520px;
+    }
+    .ps-sys {
+      font-size: 0.62rem;
+      color: var(--sand-dim);
+      letter-spacing: 0.12em;
+      margin-bottom: 6px;
+    }
+    .ps-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--sand);
+      margin-bottom: 20px;
+    }
+    .ps-options { display: flex; flex-direction: column; gap: 8px; }
+    .ps-btn {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-panel);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .ps-btn:hover { border-color: var(--accent-bright); }
+    .ps-btn.active { border-color: var(--accent-bright); border-left-width: 3px; }
+    .ps-tag { font-size: 0.72rem; color: var(--sand); min-width: 120px; }
+    .ps-sub { font-size: 0.62rem; color: var(--sand-dim); }
+    .ps-dot { width: 6px; height: 6px; background: var(--accent-bright); margin-left: auto; }
+    .ps-caption {
+      font-size: 0.62rem;
+      color: var(--sand-dim);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+
+    /* Role selector mockup (after persona) */
+    .role-shell {
+      border: 1px solid var(--ink-mid);
+      background: var(--bg-void);
+      padding: 24px;
+    }
+    .rs-options { display: flex; flex-direction: column; gap: 6px; }
+    .rs-btn {
+      border: 1px solid var(--ink-mid);
+      border-left: 2px solid transparent;
+      background: var(--bg-panel);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .rs-btn.active {
+      border-left-color: var(--accent-bright);
+    }
+    .rs-name { font-size: 0.7rem; color: var(--sand); }
+    .rs-badge {
+      font-size: 0.55rem;
+      color: var(--accent-bright);
+      border: 1px solid var(--accent-bright);
+      padding: 1px 5px;
+    }
+    .rs-sub { font-size: 0.6rem; color: var(--sand-dim); margin-left: auto; }
+
+    /* loading overlay */
+    .canvas-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-void);
+      font-size: 0.65rem;
+      color: var(--sand-dim);
+      letter-spacing: 0.1em;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    .canvas-wrap {
+      position: relative;
+    }
+    .canvas-wrap.loaded .canvas-loading { opacity: 0; }
+  </style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<header class="page-header">
+  <a href="/en/concept/" class="ph-back">← CONCEPT INDEX</a>
+  <span class="ph-title">PROC::DESIGN_COMPANION · CITY OVERHAUL</span>
+  <span class="ph-main">City Portfolio</span>
+  <span class="ph-tag">PHASE 3.x</span>
+</header>
+
+<!-- FLOW DIAGRAM -->
+<section class="flow-section">
+  <div class="flow-label">PROPOSED USER FLOW</div>
+  <div class="flow-row">
+    <div class="flow-step new">① PERSONA SELECT<br><span style="font-size:0.6rem;color:var(--sand-dim)">Recruiter / Eng / Founder</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step new">② ROLE SELECT<br><span style="font-size:0.6rem;color:var(--sand-dim)">DA / AI / DS</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step new">③ CITY LOADS<br><span style="font-size:0.6rem;color:var(--sand-dim)">9S appears on street</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step existing">④ CHARACTER WALKS<br><span style="font-size:0.6rem;color:var(--sand-dim)">auto-walk, billboards ahead</span></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step existing">⑤ CLICK BILLBOARD<br><span style="font-size:0.6rem;color:var(--sand-dim)">project panel slides in</span></div>
+  </div>
+  <div class="flow-legend">
+    <div class="legend-item"><div class="legend-dot new"></div>NEW</div>
+    <div class="legend-item"><div class="legend-dot existing"></div>EXTENDED FROM PHASE 3</div>
+    <div class="legend-item"><div class="legend-dot unchanged"></div>UNCHANGED</div>
+  </div>
+</section>
+
+<!-- OPTIONS GRID -->
+<section class="options-section">
+  <div class="section-label">CITY SCENE DESIGN — SELECT APPROACH</div>
+  <div class="options-grid">
+
+    <!-- OPTION A -->
+    <div class="option-card" id="card-a">
+      <div class="opt-header">
+        <span class="opt-title">A — PROCEDURAL</span>
+        <span class="opt-badge fast">[FASTEST]</span>
+      </div>
+      <div class="canvas-wrap" id="wrap-a">
+        <canvas class="concept-canvas" id="canvas-a"></canvas>
+        <div class="canvas-loading" id="loading-a">INITIALIZING SCENE…</div>
+      </div>
+      <div class="opt-stats">
+        <div class="stat-row"><span class="stat-key">BUILD TIME</span><span class="stat-val ok">1–2 DAYS</span></div>
+        <div class="stat-row"><span class="stat-key">BUNDLE</span><span class="stat-val ok">+0 KB</span></div>
+        <div class="stat-row"><span class="stat-key">MOBILE</span><span class="stat-val ok">FULL</span></div>
+        <div class="stat-row"><span class="stat-key">VISUAL IMPACT</span><span class="stat-val warn">MEDIUM</span></div>
+      </div>
+      <p class="opt-desc">Toda la geometría generada en Three.js — sin assets externos. Edificios como BoxGeometry con ventanas emissivas. Carteles con CanvasTexture.</p>
+      <div class="opt-pros">
+        <div class="pro-item">Control total del look IRON DUST</div>
+        <div class="pro-item">Zero descarga adicional</div>
+        <div class="pro-item">Más fácil de mantener</div>
+        <div class="con-item">Menos detalle visual</div>
+        <div class="con-item">No hay assets reales de ciudad</div>
+      </div>
+      <button class="choose-btn" onclick="selectOption('A')">[ SELECT OPTION A ]</button>
+    </div>
+
+    <!-- OPTION C (RECOMMENDED) -->
+    <div class="option-card recommended" id="card-c">
+      <div class="opt-header">
+        <span class="opt-title">C — ATMOSPHERIC</span>
+        <span class="opt-badge rec">[RECOMMENDED]</span>
+      </div>
+      <div class="canvas-wrap" id="wrap-c">
+        <canvas class="concept-canvas" id="canvas-c"></canvas>
+        <div class="canvas-loading" id="loading-c">INITIALIZING SCENE…</div>
+      </div>
+      <div class="opt-stats">
+        <div class="stat-row"><span class="stat-key">BUILD TIME</span><span class="stat-val warn">3–4 DAYS</span></div>
+        <div class="stat-row"><span class="stat-key">BUNDLE</span><span class="stat-val ok">+~2 MB HDRI</span></div>
+        <div class="stat-row"><span class="stat-key">MOBILE</span><span class="stat-val ok">FULL</span></div>
+        <div class="stat-row"><span class="stat-key">VISUAL IMPACT</span><span class="stat-val ok">HIGH</span></div>
+      </div>
+      <p class="opt-desc">Misma geometría procedural + HDRI nocturno de Polyhaven + niebla + luces de neón mint en carteles + ventanas emissivas. Atmosfera cyberpunk sin salir del estilo IRON DUST.</p>
+      <div class="opt-pros">
+        <div class="pro-item">Profundidad visual máxima</div>
+        <div class="pro-item">HDRI "Cobblestone Street Night" — reflecciones realistas</div>
+        <div class="pro-item">Compatible con IRON DUST</div>
+        <div class="con-item">2 MB extra (HDRI comprimido)</div>
+        <div class="con-item">Más tiempo de build</div>
+      </div>
+      <button class="choose-btn" onclick="selectOption('C')">[ SELECT OPTION C ↗ ]</button>
+    </div>
+
+    <!-- OPTION B -->
+    <div class="option-card muted" id="card-b">
+      <div class="opt-header">
+        <span class="opt-title">B — KENNEY ASSETS</span>
+        <span class="opt-badge blender">[BLENDER REQUIRED]</span>
+      </div>
+      <div class="no-canvas">
+        <span class="no-canvas-icon">⬡</span>
+        <span class="no-canvas-text">NO LIVE PREVIEW</span>
+        <span class="no-canvas-sub">Requires Blender pipeline</span>
+      </div>
+      <div class="opt-stats">
+        <div class="stat-row"><span class="stat-key">BUILD TIME</span><span class="stat-val bad">1–2 WEEKS</span></div>
+        <div class="stat-row"><span class="stat-key">BUNDLE</span><span class="stat-val warn">+5–15 MB GLB</span></div>
+        <div class="stat-row"><span class="stat-key">MOBILE</span><span class="stat-val warn">REDUCED</span></div>
+        <div class="stat-row"><span class="stat-key">VISUAL IMPACT</span><span class="stat-val ok">MAX</span></div>
+      </div>
+      <p class="opt-desc">Descarga del Kenney City Pack (CC0), armado de calle en Blender, export a world.glb. Carteles como objetos 3D dentro del .glb con carteles baked.</p>
+      <div class="opt-pros">
+        <div class="pro-item">Máximo realismo visual</div>
+        <div class="pro-item">Assets de ciudad reales (CC0)</div>
+        <div class="con-item">Pipeline Blender complejo</div>
+        <div class="con-item">Bundle grande → loading lento</div>
+        <div class="con-item">Más difícil de modificar</div>
+      </div>
+      <button class="choose-btn" onclick="selectOption('B')">[ SELECT OPTION B ]</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- MOCKUP SECTION -->
+<section class="mockup-section">
+  <div class="section-label">UI COMPONENTS — DESIGN MOCKUPS</div>
+  <div class="mockup-row">
+
+    <!-- BILLBOARD DESIGN -->
+    <div>
+      <div class="mockup-header">PROC::BILLBOARD_DESIGN — PROJECT SIGN IN WORLD</div>
+      <div class="mockup-body">
+        <div class="billboard-mock">
+          <div class="bb-accent-bar"></div>
+          <div class="bb-inner">
+            <div class="bb-sys">SYSTEM::PROJECT · DATA_ANALYST</div>
+            <div class="bb-name">FRAUD RISK ENGINE</div>
+            <hr class="bb-divider">
+            <div class="bb-stack">PostgreSQL &nbsp;·&nbsp; XGBoost &nbsp;·&nbsp; FastAPI &nbsp;·&nbsp; Python</div>
+            <div class="bb-outcome">◆ Reduced false positive rate 34%</div>
+            <hr class="bb-divider2">
+            <span class="bb-cta">[ REVIEW PROJECT ↗ ]</span>
+          </div>
+        </div>
+        <p class="bb-caption">
+          Renderizado como CanvasTexture en una PlaneGeometry 3D.<br>
+          Hover → cartel se ilumina con PointLight mint.<br>
+          Click → panel de detalle aparece desde la derecha.
+        </p>
+      </div>
+    </div>
+
+    <!-- SCREENS FLOW -->
+    <div>
+      <div class="mockup-header">PROC::PERSONA_SELECT — INTRO SCREEN (NEW)</div>
+      <div class="mockup-body" style="display:flex;flex-direction:column;gap:16px;">
+
+        <div class="persona-shell">
+          <div class="ps-sys">UNIT::VISITOR — PROC::IDENTIFY</div>
+          <div class="ps-title">Who are you?</div>
+          <div class="ps-options">
+            <div class="ps-btn active">
+              <span class="ps-tag">[ RECRUITER ]</span>
+              <span class="ps-sub">evaluating portfolio strength</span>
+              <span class="ps-dot"></span>
+            </div>
+            <div class="ps-btn">
+              <span class="ps-tag">[ ENGINEER ]</span>
+              <span class="ps-sub">reviewing technical depth</span>
+            </div>
+            <div class="ps-btn">
+              <span class="ps-tag">[ FOUNDER ]</span>
+              <span class="ps-sub">assessing problem-solving ability</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="role-shell">
+          <div class="ps-sys" style="margin-bottom:10px;">PROC::AREA_SELECT</div>
+          <div class="rs-options">
+            <div class="rs-btn active">
+              <span class="rs-name">DATA ANALYST</span>
+              <span class="rs-badge">PRIMARY</span>
+              <span class="rs-sub">fraud risk · BI · pipeline</span>
+            </div>
+            <div class="rs-btn">
+              <span class="rs-name">AI ENGINEER</span>
+              <span class="rs-sub">LLM · RAG · agents</span>
+            </div>
+            <div class="rs-btn">
+              <span class="rs-name">DATA SCIENTIST</span>
+              <span class="rs-sub">ML · modeling</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="ps-caption">
+          Persona persiste en sessionStorage.<br>
+          Afecta el framing en los paneles (lenguaje de impacto vs técnico).<br>
+          Role selector determina qué proyectos aparecen en los carteles.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function selectOption(opt) {
+    document.querySelectorAll('.option-card').forEach(c => {
+      c.style.outline = '';
+    });
+    const card = document.getElementById('card-' + opt.toLowerCase());
+    if (card) card.style.outline = '2px solid var(--accent-bright)';
+
+    const msg = {
+      A: 'Option A selected — pure procedural. Fast build, full IRON DUST control.',
+      B: 'Option B selected — Kenney city assets. Best visuals, needs Blender pipeline.',
+      C: 'Option C selected — atmospheric procedural + Polyhaven HDRI. Recommended balance.'
+    }[opt];
+    alert('SYSTEM::SELECTION\n\n' + msg + '\n\nDecile a Claude qué opción elegís para empezar.');
+  }
+
+  // ── THREE.JS SCENES ──
+  async function main() {
+    const probe = document.createElement('canvas');
+    const hasWebGL = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!hasWebGL) {
+      ['loading-a', 'loading-c'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = 'WEBGL NOT AVAILABLE';
+      });
+      return;
+    }
+
+    const THREE = await import('three');
+
+    initScene(THREE, 'canvas-a', 'wrap-a', 'loading-a', {
+      fog: false, glow: false, emissive: false, edgeColor: 0x363b30
+    });
+    initScene(THREE, 'canvas-c', 'wrap-c', 'loading-c', {
+      fog: true, glow: true, emissive: true, edgeColor: 0x5ee7aa
+    });
+  }
+
+  function initScene(THREE, canvasId, wrapId, loadingId, opts) {
+    const canvas = document.getElementById(canvasId);
+    const wrap = document.getElementById(wrapId);
+    if (!canvas) return;
+
+    const W = Math.max(canvas.clientWidth, 300);
+    const H = canvas.clientHeight || 240;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: opts.glow, alpha: false });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x1b1e1a);
+    if (opts.glow) {
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+    }
+
+    const scene = new THREE.Scene();
+    if (opts.fog) scene.fog = new THREE.FogExp2(0x1b1e1a, 0.04);
+
+    const camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 120);
+    camera.position.set(0, 5, 14);
+    camera.lookAt(0, 2, -10);
+
+    // Lighting
+    if (opts.glow) {
+      scene.add(new THREE.HemisphereLight(0x2e3229, 0x1b1e1a, 1.0));
+      const key = new THREE.DirectionalLight(0xb0ac9c, 0.8);
+      key.position.set(8, 18, 6);
+      scene.add(key);
+    } else {
+      scene.add(new THREE.AmbientLight(0x363b30, 2.0));
+      const dir = new THREE.DirectionalLight(0xe8e4d0, 1.5);
+      dir.position.set(6, 15, 8);
+      scene.add(dir);
+    }
+
+    buildStreet(THREE, scene, opts);
+
+    // Notify loaded
+    setTimeout(() => {
+      if (wrap) wrap.classList.add('loaded');
+    }, 300);
+
+    // Animation loop — gentle camera sway
+    let t = 0;
+    function tick() {
+      requestAnimationFrame(tick);
+      t += 0.006;
+      camera.position.x = Math.sin(t * 0.35) * 2.5;
+      camera.position.y = 5 + Math.sin(t * 0.18) * 0.4;
+      camera.lookAt(Math.sin(t * 0.2) * 0.8, 2.5, -12);
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    // Resize
+    const ro = new ResizeObserver(() => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (w > 0 && h > 0) {
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }
+    });
+    ro.observe(canvas);
+  }
+
+  function buildStreet(THREE, scene, opts) {
+    const { glow, emissive, edgeColor } = opts;
+
+    // Floor
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1b1e1a, roughness: 1, metalness: 0 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(28, 80), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, 0, -25);
+    scene.add(floor);
+
+    // Sidewalks
+    const walkMat = new THREE.MeshStandardMaterial({ color: 0x252820, roughness: 1 });
+    [-1, 1].forEach(s => {
+      const w = new THREE.Mesh(new THREE.PlaneGeometry(6, 80), walkMat);
+      w.rotation.x = -Math.PI / 2;
+      w.position.set(s * 11, 0.01, -25);
+      scene.add(w);
+    });
+
+    // Center lane lines
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0x363b30 });
+    for (let z = -4; z > -60; z -= 9) {
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4.5), lineMat);
+      line.rotation.x = -Math.PI / 2;
+      line.position.set(0, 0.02, z);
+      scene.add(line);
+    }
+
+    // Buildings
+    const buildings = [
+      [-14, -6,  6, 3, 14], [-14, -15, 5, 3, 20], [-14, -24, 7, 3, 11],
+      [-14, -33, 6, 3, 17], [-14, -42, 5, 3, 13],
+      [ 14, -6,  6, 3, 16], [ 14, -15, 5, 3, 12], [ 14, -24, 7, 3, 22],
+      [ 14, -33, 6, 3, 15], [ 14, -42, 5, 3, 18],
+    ];
+
+    buildings.forEach(([x, z, w, d, h]) => {
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x252820,
+        roughness: 0.9,
+        metalness: emissive ? 0.1 : 0,
+        emissive: emissive ? 0x8fa882 : 0x000000,
+        emissiveIntensity: emissive ? 0.025 : 0,
+      });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      mesh.position.set(x, h / 2, z);
+      scene.add(mesh);
+
+      // Edge lines
+      const edges = new THREE.EdgesGeometry(mesh.geometry);
+      const eMat = new THREE.LineBasicMaterial({ color: edgeColor });
+      const lines = new THREE.LineSegments(edges, eMat);
+      lines.position.copy(mesh.position);
+      scene.add(lines);
+
+      // Emissive windows
+      if (emissive) addWindows(THREE, scene, x, z, w, d, h);
+    });
+
+    // Billboards
+    const projects = [
+      { x: -9, z: -5,  title: 'FRAUD RISK ENGINE',  stack: 'PostgreSQL · XGBoost · FastAPI', outcome: 'FPR reduced 34%',     face: 1 },
+      { x:  9, z: -16, title: 'RAG PIPELINE',        stack: 'LangChain · pgvector · GPT-4',  outcome: 'Context recall +68%',  face: -1 },
+      { x: -9, z: -27, title: 'CHURN PREDICTOR',     stack: 'Sklearn · Pandas · Airflow',    outcome: 'AUC 0.91 holdout',     face: 1 },
+    ];
+
+    projects.forEach(p => {
+      addBillboard(THREE, scene, p.x, p.z, p.title, p.stack, p.outcome, p.face, glow);
+    });
+  }
+
+  function addWindows(THREE, scene, bx, bz, bw, bd, bh) {
+    const winMat = new THREE.MeshBasicMaterial({
+      color: 0x8fa882, transparent: true, opacity: 0.55
+    });
+    const rows = Math.max(2, Math.floor(bh / 3.5));
+    const cols = Math.max(2, Math.floor(bw / 2));
+    const faceZ = bz + bd / 2 * (bx < 0 ? 1 : -1); // face toward street
+    const faceNormalX = bx < 0 ? -1 : 1;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (Math.random() < 0.55) {
+          const win = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.38), winMat.clone());
+          win.position.set(
+            bx + faceNormalX * (bd / 2 + 0.02),
+            1.5 + r * (bh / rows),
+            bz - bw / 2 + 0.6 + c * (bw / cols)
+          );
+          win.rotation.y = faceNormalX > 0 ? Math.PI : 0;
+          scene.add(win);
+        }
+      }
+    }
+  }
+
+  function addBillboard(THREE, scene, x, z, title, stack, outcome, faceDir, glow) {
+    // Pole
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x363b30, roughness: 0.8 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 9, 6), poleMat);
+    pole.position.set(x, 4.5, z);
+    scene.add(pole);
+
+    // Frame geometry
+    const frameGeo = new THREE.BoxGeometry(5.2, 3, 0.12);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x252820, roughness: 0.8 });
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    const rotY = faceDir > 0 ? Math.PI * 0.06 : -Math.PI * 0.06;
+    frame.position.set(x, 9.5, z);
+    frame.rotation.y = rotY;
+    scene.add(frame);
+
+    // Frame edges
+    const fEdges = new THREE.EdgesGeometry(frameGeo);
+    const fEdgeMat = new THREE.LineBasicMaterial({ color: glow ? 0x5ee7aa : 0x4a5044 });
+    const fLines = new THREE.LineSegments(fEdges, fEdgeMat);
+    fLines.position.copy(frame.position);
+    fLines.rotation.copy(frame.rotation);
+    scene.add(fLines);
+
+    // Canvas texture
+    const ctex = makeBillboardTexture(title, stack, outcome);
+    const tex = new THREE.CanvasTexture(ctex);
+    const planeMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 2.8), planeMat);
+    plane.position.set(
+      x,
+      9.5,
+      z + faceDir * 0.07
+    );
+    plane.rotation.y = rotY + (faceDir < 0 ? Math.PI : 0);
+    scene.add(plane);
+
+    // Glow light
+    if (glow) {
+      const light = new THREE.PointLight(0x5ee7aa, 2.5, 14, 2);
+      light.position.set(x * 0.7, 9, z);
+      scene.add(light);
+    }
+
+    // Street lamp (glow mode)
+    if (glow) {
+      const lampMat = new THREE.MeshStandardMaterial({ color: 0x787668, emissive: 0xb0ac9c, emissiveIntensity: 0.4 });
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), lampMat);
+      lamp.position.set(x * 0.5, 8.5, z + 2);
+      scene.add(lamp);
+      const lampLight = new THREE.PointLight(0xb0ac9c, 1.2, 18, 2);
+      lampLight.position.copy(lamp.position);
+      scene.add(lampLight);
+    }
+  }
+
+  function makeBillboardTexture(title, stack, outcome) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 320;
+    const ctx = c.getContext('2d');
+
+    // BG
+    ctx.fillStyle = '#252820';
+    ctx.fillRect(0, 0, 512, 320);
+
+    // Left accent bar
+    ctx.fillStyle = '#5ee7aa';
+    ctx.fillRect(0, 0, 5, 320);
+
+    // Border
+    ctx.strokeStyle = '#4a5044';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(5.75, 0.75, 505.5, 318.5);
+
+    // System tag
+    ctx.fillStyle = '#787668';
+    ctx.font = '15px "Courier New"';
+    ctx.fillText('SYSTEM::PROJECT', 18, 28);
+
+    // Title
+    ctx.fillStyle = '#E8E4D0';
+    ctx.font = 'bold 27px "Courier New"';
+    ctx.fillText(title, 18, 66);
+
+    // Divider
+    ctx.strokeStyle = '#363b30';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(18, 80); ctx.lineTo(494, 80); ctx.stroke();
+
+    // Stack
+    ctx.fillStyle = '#787668';
+    ctx.font = '15px "Courier New"';
+    ctx.fillText(stack, 18, 108);
+
+    // Outcome
+    ctx.fillStyle = '#5ee7aa';
+    ctx.font = '18px "Courier New"';
+    ctx.fillText('◆ ' + outcome, 18, 146);
+
+    // Divider
+    ctx.strokeStyle = '#363b30';
+    ctx.beginPath(); ctx.moveTo(18, 268); ctx.lineTo(494, 268); ctx.stroke();
+
+    // CTA
+    ctx.strokeStyle = '#5ee7aa';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(18, 278, 210, 32);
+    ctx.fillStyle = '#5ee7aa';
+    ctx.font = '14px "Courier New"';
+    ctx.fillText('[ REVIEW PROJECT ↗ ]', 26, 299);
+
+    return c;
+  }
+
+  // Init on idle
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(main, { timeout: 1500 });
+  } else {
+    setTimeout(main, 200);
+  }
+</script>
+
+</body>
+</html>

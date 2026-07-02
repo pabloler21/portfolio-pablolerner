@@ -1,60 +1,29 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
 import ProjectCard from '../../../components/ui/ProjectCard.astro';
+import { aiProjects } from '../../../data/projects';
 
-const projects = [
-  {
-    name: 'Iris — Asistente de IA Personal',
-    desc: 'Asistente disponible 24/7 en homelab Linux — interfaz por Discord, RAG sobre documentos personales (Qdrant), digest semanal automatizado de noticias de IA',
-    stack: ['Python', 'Qdrant', 'OpenAI', 'Discord', 'systemd'],
-    status: 'ACTIVO',
-    featured: true,
-    github: 'https://github.com/pabloler21/Iris',
-  },
-  {
-    name: 'CV Evaluator + Tablero de Empleos',
-    desc: 'Analizador de CVs tipo ATS y tablero de empleos remotos — backend con FastAPI, orquestación con LangChain, scoring con Claude Haiku. Desplegado en Render con demo en vivo.',
-    stack: ['FastAPI', 'LangChain', 'Claude API', 'Python'],
-    status: 'DEPLOYED',
-    github: 'https://github.com/pabloler21/bot_curriculum',
-    demo: 'https://bot-curriculum-1.onrender.com',
-  },
-  {
-    name: 'Team Agent Ops — Hermes',
-    desc: 'Bot multi-agente de equipo: Hermes LLM + cola durable BullMQ/Redis + interfaz Discord + integración GitHub via MCP — reemplazando workflows de n8n',
-    stack: ['Python', 'Hermes Agent', 'BullMQ', 'Redis', 'Discord', 'MCP'],
-    status: 'DEPLOYED',
-    github: 'https://github.com/pabloler21/prbot-hermes',
-  },
-  {
-    name: 'Python TutorBot',
-    desc: 'Tutor agéntico con LangChain y tool-calling: búsqueda en Stack Overflow bajo demanda, memoria conversacional, interfaz de chat en Gradio',
-    stack: ['Python', 'LangChain', 'Gradio'],
-    status: 'COMPLETADO',
-    github: 'https://github.com/pabloler21/TutorBot',
-  },
-  {
-    name: 'Obsidian Job Tracker',
-    desc: 'Slash commands de Claude Code para rastrear búsqueda laboral de forma estructurada dentro de Obsidian — tooling personalizado con IA',
-    stack: ['Claude Code', 'Markdown', 'Obsidian'],
-    status: 'HERRAMIENTA',
-    github: 'https://github.com/pabloler21/obsidian-job-tracker',
-  },
-  {
-    name: 'Second Brain Challenge',
-    desc: 'Agente que procesa imágenes de comprobantes de transferencia por WhatsApp — solución para el workshop de Second Brain de Galo, pipeline agéntico de análisis documental',
-    stack: ['Python', 'AI Agents'],
-    status: 'COMPLETADO',
-    github: 'https://github.com/pabloler21/workshop-challenge',
-  },
-] as const;
+const lang = 'es';
+const cards = aiProjects.map(p => ({
+  name:     p.es.name,
+  desc:     p.es.problem,
+  outcome:  p.es.outcome || undefined,
+  stack:    p.stack,
+  status:   p.statusEs ?? p.status,
+  featured: p.featured,
+  github:   p.github,
+  demo:     p.demo,
+}));
 ---
 
 <RoleLayout title="AI Engineer — Registros" lang="es" role="ai"
   description="Pablo Lerner — AI Engineer: sistemas LLM, pipelines multi-agente, RAG, servicios FastAPI.">
 
-  <h2 class="role-title">AI ENGINEER</h2>
-  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: 6</p>
+  <div class="role-header">
+    <h2 class="role-title">AI ENGINEER</h2>
+    <span class="role-badge">ESPECIALIZACIÓN</span>
+  </div>
+  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: {cards.length}</p>
 
   <div class="stats">
     <div class="stat-row">
@@ -63,7 +32,7 @@ const projects = [
     </div>
     <div class="stat-row">
       <span class="stat-label">PROYECTO ESTRELLA</span>
-      <span class="accent">IRIS — ASISTENTE DE IA PERSONAL</span>
+      <span class="accent-bright">IRIS — Asistente de IA Personal · 1.2M vectores indexados</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">HERRAMIENTAS</span>
@@ -71,25 +40,41 @@ const projects = [
     </div>
     <div class="stat-row">
       <span class="stat-label">ESTADO</span>
-      <span class="accent">ACTIVO · DISPONIBLE</span>
+      <span class="accent-bright">ACTIVO · DISPONIBLE</span>
     </div>
   </div>
 
-  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent">6 ARCHIVOS ENCONTRADOS</span></p>
+  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent-bright">{cards.length} ARCHIVOS ENCONTRADOS</span></p>
 
   <ul class="project-list">
-    {projects.map(p => <ProjectCard {...p} />)}
+    {cards.map(p => <ProjectCard {...p} />)}
   </ul>
 </RoleLayout>
 
 <style>
+  .role-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+  }
+
   .role-title {
     font-family: var(--font-display);
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--sand);
-    margin-bottom: 0.2rem;
+  }
+
+  .role-badge {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
   }
 
   .role-sub {
@@ -99,14 +84,14 @@ const projects = [
     margin-bottom: 1rem;
   }
 
-  .stats { margin-bottom: 1.2rem; }
+  .stats { margin-bottom: 1rem; }
 
   .stat-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
-    padding: 0.3rem 0;
+    padding: 0.35rem 0;
     border-bottom: 1px dotted var(--ink);
     font-family: var(--font-mono);
     font-size: 0.72rem;
@@ -120,12 +105,17 @@ const projects = [
     letter-spacing: 0.1em;
   }
 
-  .accent { color: var(--accent); }
+  .accent-bright { color: var(--accent-bright); }
 
   .archive-label {
     font-size: 0.6rem;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
   }
 
-  .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+  .project-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 </style>

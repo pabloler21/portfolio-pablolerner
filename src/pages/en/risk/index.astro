@@ -1,66 +1,29 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
 import ProjectCard from '../../../components/ui/ProjectCard.astro';
+import { riskProjects } from '../../../data/projects';
 
-const projects = [
-  {
-    name: 'FraudSense AI — Fraud Risk Analytics',
-    desc: 'End-to-end fraud detection: SQL pattern analysis on 1.85M transactions → EDA → ML baseline → Power BI dashboard → AI explanation API (FastAPI + Claude Haiku)',
-    stack: ['Python', 'PostgreSQL', 'scikit-learn', 'Power BI', 'FastAPI', 'Claude API'],
-    status: 'FLAGSHIP',
-    featured: true,
-    github: 'https://github.com/pabloler21/fraud-risk-analytics',
-  },
-  {
-    name: 'Credit Scoring — Give Me Some Credit',
-    desc: 'Complete credit scoring pipeline: EDA, ETL, feature selection, multiple ML models, and a Streamlit app — Kaggle competition dataset',
-    stack: ['Python', 'scikit-learn', 'Streamlit', 'Pandas', 'XGBoost'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/credit-scoring-give-me-some-credit',
-  },
-  {
-    name: 'Adventure Works Financial Dashboard',
-    desc: 'Financial analysis and interactive Power BI dashboard on Adventure Works: revenue, costs, margins, and commercial performance across product lines',
-    stack: ['Power BI', 'DAX', 'Data Modeling'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/adventure-works-financial-dashboard',
-  },
-  {
-    name: 'SQL Fast Food Data Analysis',
-    desc: 'Relational database design and analytical queries for a fast food ordering system — data modeling, multi-table JOINs, aggregation functions',
-    stack: ['SQL', 'T-SQL', 'Data Modeling'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/sql-fast-food-data-analysis',
-  },
-  {
-    name: 'Google Sheets Sales Analysis',
-    desc: 'Financial analysis and dashboards built in Google Sheets: sales performance, cost tracking, and profit margin visualization',
-    stack: ['Google Sheets', 'Data Viz'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/google-sheets-sales-analysis',
-  },
-  {
-    name: 'Smart Inventory — Group Project',
-    desc: 'Predictive analytics for inventory management — group project (6 members); Pablo\'s role: Predictive Analyst',
-    stack: ['Python', 'Pandas', 'Data Analytics'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/Proyecto_Final_Grupo_2',
-  },
-  {
-    name: 'Byogenesis Lab Location Analysis',
-    desc: 'Python/Pandas analysis to determine optimal countries for lab expansion using 2021 COVID-19 case data and vaccination correlation modeling',
-    stack: ['Python', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn'],
-    status: 'BUILT',
-    github: 'https://github.com/pabloler21/proyecto_integrador_m4_python',
-  },
-] as const;
+const lang = 'en';
+const cards = riskProjects.map(p => ({
+  name:     p.en.name,
+  desc:     p.en.problem,
+  outcome:  p.en.outcome || undefined,
+  stack:    p.stack,
+  status:   p.status,
+  featured: p.featured,
+  github:   p.github,
+  demo:     p.demo,
+}));
 ---
 
 <RoleLayout title="Data Analyst — Records" lang="en" role="risk"
   description="Pablo Lerner — Data Analyst: fraud detection, credit scoring, SQL, Power BI dashboards.">
 
-  <h2 class="role-title">DATA ANALYST</h2>
-  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: 7</p>
+  <div class="role-header">
+    <h2 class="role-title">DATA ANALYST</h2>
+    <span class="role-badge-primary">PRIMARY ROLE</span>
+  </div>
+  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: {cards.length}</p>
 
   <div class="stats">
     <div class="stat-row">
@@ -69,33 +32,49 @@ const projects = [
     </div>
     <div class="stat-row">
       <span class="stat-label">FLAGSHIP</span>
-      <span class="accent">FRAUDSENSE AI — FRAUD RISK ANALYTICS</span>
+      <span class="accent-bright">FRAUDSENSE AI — AUC-ROC 0.971 · precision 0.943 · 1.85M rows</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">TOOLS</span>
-      <span>Python · SQL · Power BI · scikit-learn · FastAPI</span>
+      <span>Python · SQL · Power BI · scikit-learn · FastAPI · Claude API</span>
     </div>
     <div class="stat-row">
       <span class="stat-label">STATUS</span>
-      <span class="accent">ACTIVE · OPEN TO WORK</span>
+      <span class="accent-bright">ACTIVE · OPEN TO WORK</span>
     </div>
   </div>
 
-  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent">7 FILES FOUND</span></p>
+  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent-bright">{cards.length} FILES FOUND</span></p>
 
   <ul class="project-list">
-    {projects.map(p => <ProjectCard {...p} />)}
+    {cards.map(p => <ProjectCard {...p} />)}
   </ul>
 </RoleLayout>
 
 <style>
+  .role-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+  }
+
   .role-title {
     font-family: var(--font-display);
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--sand);
-    margin-bottom: 0.2rem;
+  }
+
+  .role-badge-primary {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--accent-bright);
+    color: var(--accent-bright);
   }
 
   .role-sub {
@@ -105,14 +84,14 @@ const projects = [
     margin-bottom: 1rem;
   }
 
-  .stats { margin-bottom: 1.2rem; }
+  .stats { margin-bottom: 1rem; }
 
   .stat-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
-    padding: 0.3rem 0;
+    padding: 0.35rem 0;
     border-bottom: 1px dotted var(--ink);
     font-family: var(--font-mono);
     font-size: 0.72rem;
@@ -126,12 +105,17 @@ const projects = [
     letter-spacing: 0.1em;
   }
 
-  .accent { color: var(--accent); }
+  .accent-bright { color: var(--accent-bright); }
 
   .archive-label {
     font-size: 0.6rem;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
   }
 
-  .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+  .project-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 </style>

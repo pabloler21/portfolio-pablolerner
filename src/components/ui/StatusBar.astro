@@ -7,6 +7,11 @@ const { lang = 'en' } = Astro.props;
 
 const now = new Date();
 const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+
+const t = {
+  plain: lang === 'en' ? 'CLEAR MODE' : 'MODO CLARO',
+  normal: lang === 'en' ? 'OS MODE' : 'MODO OS',
+};
 ---
 
 <footer class="status-bar">
@@ -16,18 +21,60 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
     <span class="control"><span class="key">ESC</span>BACK</span>
   </div>
 
-  <div class="lang-toggle">
-    <a href="/en/" class:list={['lang-btn', { active: lang === 'en' }]} aria-label="English">EN</a>
-    <span class="sys-text">|</span>
-    <a href="/es/" class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
+  <div class="bar-center">
+    <!-- Plain mode toggle -->
+    <button class="plain-toggle" id="plain-toggle" aria-label="Toggle plain / high-legibility mode">
+      <span class="toggle-label" id="plain-label">{t.plain}</span>
+    </button>
+
     <span class="sys-text sep-v">·</span>
-    <a href="/pablo-lerner-cv.pdf" class="lang-btn" download aria-label="Download CV">CV ↓</a>
+
+    <div class="lang-toggle">
+      <a href="/en/" class:list={['lang-btn', { active: lang === 'en' }]} aria-label="English">EN</a>
+      <span class="sys-text">|</span>
+      <a href="/es/" class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
+      <span class="sys-text sep-v">·</span>
+      <a href="/pablo-lerner-cv.pdf" class="lang-btn cta-accent" download aria-label="Download CV">CV ↓</a>
+    </div>
   </div>
 
   <span class="coord sys-text">
     LAT:-34.6037 LON:-58.3816 · {sysDate} · NODE:ACTIVE
   </span>
 </footer>
+
+<script>
+  const btn = document.getElementById('plain-toggle');
+  const label = document.getElementById('plain-label');
+  const html = document.documentElement;
+  const STORAGE_KEY = 'iron-dust-plain';
+
+  const labelPlain = btn?.dataset.labelPlain ?? 'OS MODE';
+  const labelNormal = btn?.dataset.labelNormal ?? 'CLEAR MODE';
+
+  function updateLabel() {
+    if (label) {
+      label.textContent = html.hasAttribute('data-plain') ? labelPlain : labelNormal;
+    }
+  }
+
+  // Restore preference on load (before paint, no flash)
+  if (localStorage.getItem(STORAGE_KEY)) {
+    html.setAttribute('data-plain', '');
+  }
+  updateLabel();
+
+  btn?.addEventListener('click', () => {
+    if (html.hasAttribute('data-plain')) {
+      html.removeAttribute('data-plain');
+      localStorage.removeItem(STORAGE_KEY);
+    } else {
+      html.setAttribute('data-plain', '');
+      localStorage.setItem(STORAGE_KEY, '1');
+    }
+    updateLabel();
+  });
+</script>
 
 <style>
   .status-bar {
@@ -63,6 +110,29 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
     color: var(--sand-dim);
   }
 
+  .bar-center {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .plain-toggle {
+    background: none;
+    border: var(--border);
+    padding: 0.15rem 0.55rem;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    color: var(--sand-dim);
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .plain-toggle:hover {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+
   .lang-toggle {
     display: flex;
     align-items: center;
@@ -82,6 +152,18 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
     color: var(--accent);
   }
 
+  .lang-btn.cta-accent {
+    color: var(--accent-bright);
+    border: 1px solid var(--accent-bright);
+    padding: 0.1rem 0.4rem;
+    transition: background 0.12s, color 0.12s;
+  }
+
+  .lang-btn.cta-accent:hover {
+    background: var(--accent-bright);
+    color: var(--bg-void);
+  }
+
   .sep-v {
     opacity: 0.3;
   }
@@ -90,8 +172,12 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
     font-size: 0.57rem;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     .coord { display: none; }
     .controls { gap: 0.8rem; }
+  }
+
+  @media (max-width: 480px) {
+    .controls { display: none; }
   }
 </style>

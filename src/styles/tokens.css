@@ -1,22 +1,47 @@
-/* IRON DUST — design tokens */
+/* IRON DUST v2 — design tokens */
 :root {
-  /* Color */
-  --bg-void:    #1b1e1a;
-  --bg-panel:   #252820;
-  --sand:       #c4c0a8;
-  --sand-dim:   #626858;
-  --ink:        #363b30;
-  --accent:     #8fa882;
+  /* ── Backgrounds ── */
+  --bg-void:      #1b1e1a;   /* main background */
+  --bg-panel:     #252820;   /* panels, selected rows, active tabs */
+  --bg-surface:   #2e3229;   /* card hover, lifted surfaces */
 
-  /* Typography */
+  /* ── Text scale ── */
+  --sand:         #E8E4D0;   /* body text — high-contrast off-white */
+  --sand-muted:   #B0AC9C;   /* secondary prose, descriptions */
+  --sand-dim:     #787668;   /* labels, meta, inactive UI chrome */
+
+  /* ── Borders ── */
+  --ink:          #363b30;   /* subtle borders */
+  --ink-mid:      #4a5044;   /* card rims, stronger dividers */
+
+  /* ── Accents ── */
+  --accent:       #8fa882;   /* olive — decorative: ◆ cursor, DotRow, badge borders */
+  --accent-bright: #5ee7aa;  /* mint — CTAs, active states, hover highlights */
+
+  /* ── Typography ── */
   --font-display: 'IM Fell English', Georgia, serif;
   --font-mono:    'Share Tech Mono', 'Courier New', monospace;
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Layout */
+  /* ── Layout ── */
   --radius:     0px;
   --border:     1px solid var(--ink);
+  --border-mid: 1px solid var(--ink-mid);
 
-  /* Effects */
+  /* ── Effects ── */
   --scanline-opacity: 0.04;
   --grain-opacity:    0.045;
+}
+
+/* ── Plain / high-legibility mode ─────────────────────────────────────── */
+[data-plain] {
+  --sand:          #F2EFE2;
+  --sand-muted:    #C8C5B8;
+  --scanline-opacity: 0;
+  --grain-opacity:    0;
+}
+
+[data-plain] body::before,
+[data-plain] body::after {
+  display: none !important;
 }

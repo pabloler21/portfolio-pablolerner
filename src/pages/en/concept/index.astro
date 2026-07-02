@@ -1,0 +1,717 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base title="Phase 3 — Concept Selector" lang="en">
+  <div class="concept-shell">
+
+    <div class="concept-header">
+      <div class="sys-text">PHASE 3 · PORTFOLIO REDESIGN CONCEPTS</div>
+      <h1 class="concept-title">3D INTERACTIVE WORLD — SELECT APPROACH</h1>
+      <p class="concept-sub">Three interactive prototypes. Hover / click inside each scene to feel the interaction model.</p>
+    </div>
+
+    <div class="options-grid">
+
+      <!-- OPTION A — Isometric Diorama -->
+      <div class="option-card" id="option-a">
+        <div class="option-header">
+          <span class="opt-tag">[RECOMMENDED]</span>
+          <h2 class="opt-title">A — ISOMETRIC DIORAMA</h2>
+        </div>
+        <canvas class="concept-canvas" id="canvas-a"></canvas>
+        <div class="hover-hint sys-text">HOVER ZONES TO PREVIEW · CLICK TO SELECT</div>
+        <div class="option-info">
+          <div class="info-row"><span class="info-label">SCOPE</span><span class="info-val accent">3–4 WEEKS</span></div>
+          <div class="info-row"><span class="info-label">MOBILE</span><span class="info-val ok">FULL SUPPORT</span></div>
+          <div class="info-row"><span class="info-label">PERF</span><span class="info-val ok">LIGHTWEIGHT</span></div>
+        </div>
+        <p class="opt-desc">Fixed isometric camera. Three floor zones for DA / AI / DS. Character stands center. Click a zone → camera pans there, project cards appear. No controls needed.</p>
+        <div class="opt-assets">
+          <span class="asset-tag">Kenney.nl CC0</span>
+          <span class="asset-tag">UAL2 idle anim</span>
+          <span class="asset-tag">Three.js</span>
+        </div>
+      </div>
+
+      <!-- OPTION B — Third-person exploration -->
+      <div class="option-card" id="option-b">
+        <div class="option-header">
+          <span class="opt-tag opt-tag--alt">[AMBITIOUS]</span>
+          <h2 class="opt-title">B — EXPLORATION MODE</h2>
+        </div>
+        <canvas class="concept-canvas" id="canvas-b"></canvas>
+        <div class="hover-hint sys-text">CLICK CORRIDORS TO WALK · ZONES AHEAD</div>
+        <div class="option-info">
+          <div class="info-row"><span class="info-label">SCOPE</span><span class="info-val warn">2–3 MONTHS</span></div>
+          <div class="info-row"><span class="info-label">MOBILE</span><span class="info-val warn">DEGRADED</span></div>
+          <div class="info-row"><span class="info-label">PERF</span><span class="info-val warn">HEAVY</span></div>
+        </div>
+        <p class="opt-desc">Third-person character controller. YoRHa base corridor with three paths. Walking to a zone triggers project display. WASD or click-to-move. Full game experience.</p>
+        <div class="opt-assets">
+          <span class="asset-tag">Quaternius CC0 rooms</span>
+          <span class="asset-tag">UAL2 walk/run</span>
+          <span class="asset-tag">Nav mesh</span>
+        </div>
+      </div>
+
+      <!-- OPTION C — 2.5D Parallax -->
+      <div class="option-card" id="option-c">
+        <div class="option-header">
+          <span class="opt-tag opt-tag--dim">[FAST SHIP]</span>
+          <h2 class="opt-title">C — 2.5D PARALLAX</h2>
+        </div>
+        <canvas class="concept-canvas" id="canvas-c"></canvas>
+        <div class="hover-hint sys-text">DRAG LEFT / RIGHT TO SCROLL ZONES</div>
+        <div class="option-info">
+          <div class="info-row"><span class="info-label">SCOPE</span><span class="info-val ok">1–2 WEEKS</span></div>
+          <div class="info-row"><span class="info-label">MOBILE</span><span class="info-val ok">PERFECT</span></div>
+          <div class="info-row"><span class="info-label">PERF</span><span class="info-val ok">ULTRA LIGHT</span></div>
+        </div>
+        <p class="opt-desc">Side-scrolling layered scene. Character runs automatically. Scroll reveals DA / AI / DS zones. Projects appear as cards when zone is centered. CSS layers + minimal Three.js.</p>
+        <div class="opt-assets">
+          <span class="asset-tag">CSS parallax layers</span>
+          <span class="asset-tag">Character sprite</span>
+          <span class="asset-tag">No nav needed</span>
+        </div>
+      </div>
+
+    </div><!-- /options-grid -->
+
+  </div><!-- /concept-shell -->
+</Base>
+
+<script>
+(function () {
+  const THREE_IMPORT = import('three');
+
+  /* ─── Shared palette ─── */
+  const C = {
+    void:   0x1b1e1a,
+    panel:  0x252820,
+    surface:0x2e3229,
+    ink:    0x363b30,
+    inkMid: 0x4a5044,
+    sand:   0xe8e4d0,
+    sandMuted: 0xb0ac9c,
+    sandDim:   0x787668,
+    accent: 0x8fa882,
+    bright: 0x5ee7aa,
+  };
+
+  /* ─── Utility: make renderer ─── */
+  function makeRenderer(THREE: any, canvas: HTMLCanvasElement) {
+    const W = canvas.clientWidth  || 400;
+    const H = canvas.clientHeight || 260;
+    const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    r.setSize(W, H);
+    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r.setClearColor(C.void, 1);
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    return r;
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCENE A — Isometric Diorama
+  ═══════════════════════════════════════════════ */
+  async function initA() {
+    const THREE = await THREE_IMPORT;
+    const canvas = document.getElementById('canvas-a') as HTMLCanvasElement;
+    if (!canvas) return;
+    const W = canvas.clientWidth || 400;
+    const H = canvas.clientHeight || 260;
+
+    const renderer = makeRenderer(THREE, canvas);
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(C.void, 12, 25);
+
+    // Isometric-ish camera
+    const aspect = W / H;
+    const camSize = 4.5;
+    const camera = new THREE.OrthographicCamera(
+      -camSize * aspect, camSize * aspect, camSize, -camSize, 0.1, 100
+    );
+    camera.position.set(8, 8, 8);
+    camera.lookAt(0, 0, 0);
+
+    // Grid floor
+    const grid = new THREE.GridHelper(20, 20, C.ink, C.ink);
+    (grid.material as any).opacity = 0.4;
+    (grid.material as any).transparent = true;
+    scene.add(grid);
+
+    // Light
+    scene.add(new THREE.AmbientLight(0xb0ac9c, 1.0));
+    const key = new THREE.DirectionalLight(0xe8e4d0, 1.2);
+    key.position.set(5, 8, 5);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(C.bright, 0.5);
+    rim.position.set(-5, 3, -5);
+    scene.add(rim);
+
+    // Zones: floor pads
+    const zones = [
+      { id: 'da',  label: 'DATA ANALYST',  pos: [-3.5, 0, 0],  color: C.accent,  hColor: C.bright, size: [3, 0.08, 3] },
+      { id: 'ai',  label: 'AI ENGINEER',   pos: [0.5,  0, -3.5], color: C.inkMid, hColor: C.bright, size: [3, 0.08, 3] },
+      { id: 'ds',  label: 'DATA SCIENTIST',pos: [0.5,  0, 3.5],  color: C.panel,  hColor: C.sandMuted, size: [3, 0.08, 3] },
+    ];
+
+    const zoneMeshes: any[] = [];
+    zones.forEach(z => {
+      const geo = new THREE.BoxGeometry(...z.size);
+      const mat = new THREE.MeshStandardMaterial({ color: z.color, roughness: 0.9 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(...z.pos as [number,number,number]);
+      mesh.userData = { zone: z, baseColor: z.color, hColor: z.hColor };
+      scene.add(mesh);
+      zoneMeshes.push(mesh);
+
+      // Small label pillar
+      const pillar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 1.2, 0.06),
+        new THREE.MeshStandardMaterial({ color: z.hColor, emissive: z.hColor, emissiveIntensity: 0.4 })
+      );
+      pillar.position.set(z.pos[0], 0.6, z.pos[2]);
+      scene.add(pillar);
+    });
+
+    // Character placeholder (9S stand-in box)
+    const charGeo = new THREE.CapsuleGeometry(0.22, 0.8, 4, 8);
+    const charMat = new THREE.MeshStandardMaterial({ color: 0x1a1c18, roughness: 0.8, metalness: 0.2 });
+    const charMesh = new THREE.Mesh(charGeo, charMat);
+    charMesh.position.set(-1.5, 0.7, 0);
+    scene.add(charMesh);
+
+    // Head
+    const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
+    const headMesh = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: 0xd0ccc0 }));
+    headMesh.position.set(-1.5, 1.7, 0);
+    scene.add(headMesh);
+
+    // Raycaster for hover
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredZone: any = null;
+    let targetCamPos = { x: 8, y: 8, z: 8 };
+    let targetLookAt = { x: 0, y: 0, z: 0 };
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(zoneMeshes);
+      if (hits.length > 0) {
+        const hit = hits[0].object;
+        if (hit !== hoveredZone) {
+          if (hoveredZone) (hoveredZone.material as any).color.setHex(hoveredZone.userData.baseColor);
+          hoveredZone = hit;
+          (hoveredZone.material as any).color.setHex(hoveredZone.userData.hColor);
+        }
+      } else if (hoveredZone) {
+        (hoveredZone.material as any).color.setHex(hoveredZone.userData.baseColor);
+        hoveredZone = null;
+      }
+    });
+
+    canvas.addEventListener('click', () => {
+      if (!hoveredZone) return;
+      const z = hoveredZone.userData.zone;
+      const p = z.pos;
+      targetCamPos = { x: p[0] + 5, y: 6, z: p[2] + 5 };
+      targetLookAt  = { x: p[0], y: 0, z: p[2] };
+      // Move character toward zone
+      charMesh.position.set(p[0] - 0.5, 0.7, p[2]);
+      headMesh.position.set(p[0] - 0.5, 1.7, p[2]);
+    });
+
+    canvas.addEventListener('dblclick', () => {
+      targetCamPos = { x: 8, y: 8, z: 8 };
+      targetLookAt  = { x: 0, y: 0, z: 0 };
+    });
+
+    let camX = 8, camY = 8, camZ = 8;
+    let lookX = 0, lookY = 0, lookZ = 0;
+    let t = 0;
+
+    function tick() {
+      requestAnimationFrame(tick);
+      t += 0.01;
+
+      // Lerp camera
+      camX += (targetCamPos.x - camX) * 0.04;
+      camY += (targetCamPos.y - camY) * 0.04;
+      camZ += (targetCamPos.z - camZ) * 0.04;
+      lookX += (targetLookAt.x - lookX) * 0.04;
+      lookY += (targetLookAt.y - lookY) * 0.04;
+      lookZ += (targetLookAt.z - lookZ) * 0.04;
+
+      camera.position.set(camX, camY, camZ);
+      camera.lookAt(lookX, lookY, lookZ);
+
+      // Floating character bob
+      charMesh.position.y = 0.7 + Math.sin(t * 1.5) * 0.04;
+      headMesh.position.y = 1.7 + Math.sin(t * 1.5) * 0.04;
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    window.addEventListener('resize', () => {
+      const nw = canvas.clientWidth || 400;
+      const nh = canvas.clientHeight || 260;
+      const na = nw / nh;
+      (camera as any).left   = -camSize * na;
+      (camera as any).right  =  camSize * na;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    });
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCENE B — Third-person Corridor
+  ═══════════════════════════════════════════════ */
+  async function initB() {
+    const THREE = await THREE_IMPORT;
+    const canvas = document.getElementById('canvas-b') as HTMLCanvasElement;
+    if (!canvas) return;
+    const W = canvas.clientWidth || 400;
+    const H = canvas.clientHeight || 260;
+
+    const renderer = makeRenderer(THREE, canvas);
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(C.void, 10, 22);
+
+    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 80);
+    camera.position.set(0, 1.6, 6);
+    camera.lookAt(0, 1.0, 0);
+
+    scene.add(new THREE.AmbientLight(0x80897a, 1.0));
+    const key = new THREE.DirectionalLight(0xe8e4d0, 0.8);
+    key.position.set(0, 6, 4);
+    scene.add(key);
+
+    // Floor
+    const floorMat = new THREE.MeshStandardMaterial({ color: C.panel, roughness: 0.95 });
+
+    function corridor(x: number, z: number, w: number, d: number) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), floorMat);
+      mesh.position.set(x, 0, z);
+      scene.add(mesh);
+      // Walls
+      const wallMat = new THREE.MeshStandardMaterial({ color: C.surface, roughness: 0.9, side: THREE.BackSide });
+      const rm = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
+      rm.position.set(x, 1.5, z);
+      scene.add(rm);
+    }
+
+    corridor(0, 0, 2.5, 14);   // main forward corridor
+    corridor(-5, -5, 2.5, 4);  // left branch (DA)
+    corridor(5, -5, 2.5, 4);   // right branch (DS)
+
+    // Zone glows at corridor ends
+    const daGlow = new THREE.PointLight(C.bright, 3, 5);
+    daGlow.position.set(-5, 1.5, -8);
+    scene.add(daGlow);
+
+    const aiGlow = new THREE.PointLight(C.accent, 3, 6);
+    aiGlow.position.set(0, 1.5, -10);
+    scene.add(aiGlow);
+
+    const dsGlow = new THREE.PointLight(0xc0c0d0, 2, 5);
+    dsGlow.position.set(5, 1.5, -8);
+    scene.add(dsGlow);
+
+    // Zone portal planes
+    [[0, 1.5, -9, C.accent, 'AI'], [-5, 1.5, -7.5, C.bright, 'DA'], [5, 1.5, -7.5, 0xc0c0d0, 'DS']].forEach(
+      ([x, y, z, col]) => {
+        const portal = new THREE.Mesh(
+          new THREE.PlaneGeometry(2, 2.5),
+          new THREE.MeshBasicMaterial({ color: col as number, transparent: true, opacity: 0.15, side: THREE.DoubleSide })
+        );
+        portal.position.set(x as number, y as number, z as number);
+        scene.add(portal);
+        const frame = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2.5, 0.01)),
+          new THREE.LineBasicMaterial({ color: col as number })
+        );
+        frame.position.set(x as number, y as number, z as number);
+        scene.add(frame);
+      }
+    );
+
+    // Character
+    const charBody = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.2, 0.7, 4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1a1c18 })
+    );
+    charBody.position.set(0, 0.7, 4.5);
+    scene.add(charBody);
+    const charHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xd0ccc0 })
+    );
+    charHead.position.set(0, 1.55, 4.5);
+    scene.add(charHead);
+
+    let targetZ = 4.5;
+    let targetX = 0;
+    let charZ = 4.5;
+    let charX = 0;
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      if (nx < -0.3) { targetX = -5; targetZ = -5; }  // left → DA
+      else if (nx > 0.3) { targetX = 5; targetZ = -5; }  // right → DS
+      else { targetX = 0; targetZ = -8; }  // forward → AI
+    });
+
+    canvas.addEventListener('dblclick', () => {
+      targetX = 0; targetZ = 4.5;
+    });
+
+    let t = 0;
+    function tick() {
+      requestAnimationFrame(tick);
+      t += 0.016;
+
+      charZ += (targetZ - charZ) * 0.03;
+      charX += (targetX - charX) * 0.03;
+
+      const bob = Math.abs(charZ - targetZ) > 0.1 ? Math.sin(t * 8) * 0.04 : Math.sin(t * 2) * 0.02;
+      charBody.position.set(charX, 0.7 + bob, charZ);
+      charHead.position.set(charX, 1.55 + bob, charZ);
+
+      camera.position.set(charX, 1.8, charZ + 2.2);
+      camera.lookAt(charX, 1.0, charZ - 2);
+
+      // Pulse glows
+      daGlow.intensity = 2 + Math.sin(t * 2) * 0.5;
+      aiGlow.intensity = 2 + Math.sin(t * 2.3 + 1) * 0.5;
+      dsGlow.intensity = 1.5 + Math.sin(t * 1.7 + 2) * 0.4;
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    window.addEventListener('resize', () => {
+      const nw = canvas.clientWidth || 400;
+      const nh = canvas.clientHeight || 260;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    });
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCENE C — 2.5D Parallax
+  ═══════════════════════════════════════════════ */
+  async function initC() {
+    const THREE = await THREE_IMPORT;
+    const canvas = document.getElementById('canvas-c') as HTMLCanvasElement;
+    if (!canvas) return;
+    const W = canvas.clientWidth || 400;
+    const H = canvas.clientHeight || 260;
+
+    const renderer = makeRenderer(THREE, canvas);
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.OrthographicCamera(-W/100, W/100, H/100, -H/100, 0.1, 50);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+    // Far layer: grid strips (z=-4)
+    for (let i = -3; i <= 3; i++) {
+      const line = new THREE.Mesh(
+        new THREE.PlaneGeometry(60, 0.02),
+        new THREE.MeshBasicMaterial({ color: C.ink })
+      );
+      line.position.set(0, i * 0.4, -4);
+      scene.add(line);
+    }
+    for (let i = -6; i <= 6; i++) {
+      const col = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.02, 4),
+        new THREE.MeshBasicMaterial({ color: C.ink })
+      );
+      col.position.set(i * 1.5, 0, -4);
+      scene.add(col);
+    }
+
+    // Mid layer: building silhouettes (z=-2)
+    const buildings = [
+      [-8, 0, 0.5, 2.0], [-5, 0, 0.4, 1.4], [-2, 0, 0.6, 2.4],
+      [2, 0, 0.5, 1.8], [5, 0, 0.3, 1.2], [8, 0, 0.7, 2.8],
+      [-11, 0, 0.4, 1.6], [11, 0, 0.5, 2.0],
+    ];
+    buildings.forEach(([x, , w, h]) => {
+      const b = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: C.surface })
+      );
+      b.position.set(x, (h as number)/2 - 1.3, -2);
+      scene.add(b);
+    });
+
+    // Zone markers (z=-1) — three columns
+    const zones = [
+      { label: 'DATA ANALYST', x: -6, color: C.bright },
+      { label: 'AI ENGINEER',  x: 0,  color: C.accent },
+      { label: 'DATA SCIENTIST', x: 6, color: C.sandMuted },
+    ];
+
+    const zonePlanes: any[] = [];
+    zones.forEach(z => {
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.8, 3.0),
+        new THREE.MeshBasicMaterial({ color: z.color, transparent: true, opacity: 0.08 })
+      );
+      plane.position.set(z.x, 0, -1);
+      scene.add(plane);
+      zonePlanes.push(plane);
+
+      const frame = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(2.8, 3.0, 0.01)),
+        new THREE.LineBasicMaterial({ color: z.color, transparent: true, opacity: 0.5 })
+      );
+      frame.position.set(z.x, 0, -1);
+      scene.add(frame);
+      zonePlanes.push(frame);
+    });
+
+    // Ground line
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(60, 0.04),
+      new THREE.MeshBasicMaterial({ color: C.inkMid })
+    );
+    ground.position.set(0, -1.35, 0);
+    scene.add(ground);
+
+    // Character (foreground z=0)
+    const charBody = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.14, 0.55, 4, 8),
+      new THREE.MeshBasicMaterial({ color: 0x1a1c18 })
+    );
+    charBody.position.set(-8, -0.65, 0);
+    scene.add(charBody);
+    const charHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xd0ccc0 })
+    );
+    charHead.position.set(-8, -0.05, 0);
+    scene.add(charHead);
+
+    // Drag scrolling
+    let scrollX = 0;
+    let targetScrollX = 0;
+    let isDragging = false;
+    let dragStart = 0;
+
+    canvas.addEventListener('mousedown', (e) => { isDragging = true; dragStart = e.clientX; });
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = (e.clientX - dragStart) / 60;
+      targetScrollX = Math.max(-6, Math.min(6, scrollX + dx));
+    });
+    canvas.addEventListener('mouseup', () => { isDragging = false; scrollX = targetScrollX; });
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+    let t = 0;
+    function tick() {
+      requestAnimationFrame(tick);
+      t += 0.016;
+
+      // Auto-run character
+      const autoX = -8 + (t * 0.3) % 16 - 4;
+      charBody.position.x = autoX;
+      charHead.position.x = autoX;
+      charBody.position.y = -0.65 + Math.abs(Math.sin(t * 5)) * 0.05;
+      charHead.position.y = -0.05 + Math.abs(Math.sin(t * 5)) * 0.05;
+
+      // Lerp scroll
+      const lerpedScroll = scrollX + (targetScrollX - scrollX) * 0.08;
+      camera.position.x = lerpedScroll;
+      camera.lookAt(lerpedScroll, 0, 0);
+
+      // Parallax: far layer moves slower
+      scene.children.forEach((obj: any) => {
+        if (obj.position.z === -4) obj.position.x = -lerpedScroll * 0.2;
+        if (obj.position.z === -2) obj.position.x = obj.userData.baseX !== undefined
+          ? obj.userData.baseX - lerpedScroll * 0.5 : obj.position.x;
+      });
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    window.addEventListener('resize', () => {
+      const nw = canvas.clientWidth || 400;
+      const nh = canvas.clientHeight || 260;
+      (camera as any).left   = -nw/100;
+      (camera as any).right  =  nw/100;
+      (camera as any).top    =  nh/100;
+      (camera as any).bottom = -nh/100;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    });
+  }
+
+  // Init all three
+  Promise.all([initA(), initB(), initC()]);
+})();
+</script>
+
+<style>
+  .concept-shell {
+    padding: 2rem 2.5rem 4rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .concept-header {
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--ink-mid);
+    padding-bottom: 1.2rem;
+  }
+
+  .sys-text {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    color: var(--sand-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .concept-title {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    color: var(--sand);
+    letter-spacing: 0.1em;
+    margin: 0.4rem 0;
+  }
+
+  .concept-sub {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--sand-muted);
+    margin: 0.5rem 0 0;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 1100px) {
+    .options-grid { grid-template-columns: 1fr; }
+  }
+
+  .option-card {
+    border: 1px solid var(--ink-mid);
+    background: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .option-header {
+    padding: 0.8rem 1rem 0.6rem;
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+
+  .opt-tag {
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+    color: var(--accent-bright);
+    border: 1px solid var(--accent-bright);
+    padding: 0.1rem 0.4rem;
+  }
+
+  .opt-tag--alt  { color: var(--sand-muted); border-color: var(--sand-muted); }
+  .opt-tag--dim  { color: var(--sand-dim);   border-color: var(--sand-dim); }
+
+  .opt-title {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: var(--sand);
+    margin: 0;
+  }
+
+  .concept-canvas {
+    display: block;
+    width: 100%;
+    height: 260px;
+    cursor: crosshair;
+  }
+
+  .hover-hint {
+    padding: 0.3rem 0.6rem;
+    background: var(--bg-void);
+    border-bottom: 1px solid var(--ink);
+    font-size: 0.48rem;
+  }
+
+  .option-info {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    gap: 1rem;
+  }
+
+  .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .info-label {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    color: var(--sand-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .info-val {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--sand-muted);
+  }
+
+  .info-val.accent { color: var(--accent-bright); }
+  .info-val.ok     { color: #5ee7aa; }
+  .info-val.warn   { color: #e0a870; }
+
+  .opt-desc {
+    font-family: var(--font-sans);
+    font-size: 0.80rem;
+    color: var(--sand-muted);
+    line-height: 1.6;
+    padding: 0.8rem 1rem;
+    margin: 0;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .opt-assets {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding: 0.7rem 1rem;
+  }
+
+  .asset-tag {
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    color: var(--sand-dim);
+    border: 1px solid var(--ink-mid);
+    padding: 0.15rem 0.5rem;
+    letter-spacing: 0.05em;
+  }
+</style>
