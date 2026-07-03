@@ -1,21 +1,21 @@
-/* IRON DUST v2 — design tokens */
+/* IRON DUST v2 — design tokens (NieR Reforged palette) */
 :root {
   /* ── Backgrounds ── */
-  --bg-void:      #1b1e1a;   /* main background */
-  --bg-panel:     #252820;   /* panels, selected rows, active tabs */
-  --bg-surface:   #2e3229;   /* card hover, lifted surfaces */
+  --bg-void:      #0d0f14;   /* main background */
+  --bg-panel:     #12151c;   /* panels, selected rows, active tabs */
+  --bg-surface:   #181b22;   /* card hover, lifted surfaces */
 
   /* ── Text scale ── */
-  --sand:         #E8E4D0;   /* body text — high-contrast off-white */
-  --sand-muted:   #B0AC9C;   /* secondary prose, descriptions */
-  --sand-dim:     #787668;   /* labels, meta, inactive UI chrome */
+  --sand:         #e8e6dd;   /* body text — high-contrast warm white */
+  --sand-muted:   #a0a8b8;   /* secondary prose, descriptions */
+  --sand-dim:     #6b7280;   /* labels, meta, inactive UI chrome */
 
   /* ── Borders ── */
-  --ink:          #363b30;   /* subtle borders */
-  --ink-mid:      #4a5044;   /* card rims, stronger dividers */
+  --ink:          #1c2030;   /* subtle borders */
+  --ink-mid:      #2a3040;   /* card rims, stronger dividers */
 
   /* ── Accents ── */
-  --accent:       #8fa882;   /* olive — decorative: ◆ cursor, DotRow, badge borders */
+  --accent:       #3d7a64;   /* teal muted — decorative: ◆ cursor, DotRow, badge borders */
   --accent-bright: #5ee7aa;  /* mint — CTAs, active states, hover highlights */
 
   /* ── Typography ── */

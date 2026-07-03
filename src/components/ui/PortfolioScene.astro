@@ -6,21 +6,25 @@ const { lang = 'en' } = Astro.props;
 
 type ZoneKey = 'risk' | 'ai' | 'ds';
 
-const take3 = (arr: typeof aiProjects, l: 'en' | 'es') =>
-  arr.slice(0, 3).map(p => ({
-    name: p[l].name,
-    desc: p[l].problem,
-    outcome: p[l].outcome,
-    status: l === 'en' ? p.status : (p.statusEs ?? p.status),
-    github: p.github,
-    demo: p.demo ?? '',
-    featured: p.featured ?? false,
-  }));
+const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
+  name:     p[l].name,
+  desc:     p[l].problem,
+  outcome:  p[l].outcome,
+  status:   l === 'en' ? p.status : (p.statusEs ?? p.status),
+  github:   p.github,
+  demo:     p.demo ?? '',
+  featured: p.featured ?? false,
+});
 
+/* Explicit project selection per zone:
+   risk → FraudSense(0), Credit Scoring(1), E-commerce Inventory(5), SQL Fast Food(3)
+           billboards show projIdx 0,1,2 — SQL Fast Food (projIdx 3) appears in panel only
+   ai   → Iris(0), CV Evaluator(1), Hermes(2)
+   ds   → no projects (COMING SOON overlay) */
 const zoneProjects = {
-  risk: take3(riskProjects, lang),
-  ai:   take3(aiProjects, lang),
-  ds:   [] as ReturnType<typeof take3>,
+  risk: [riskProjects[0], riskProjects[1], riskProjects[5], riskProjects[3]].map(p => mapProj(p, lang)),
+  ai:   [aiProjects[0],   aiProjects[1],   aiProjects[2]].map(p => mapProj(p, lang)),
+  ds:   [] as ReturnType<typeof mapProj>[],
 };
 
 const zoneLabels = {
@@ -35,6 +39,7 @@ const allUrl: Record<ZoneKey, string> = {
 };
 
 const allLabel        = lang === 'en' ? 'VIEW ALL RECORDS →' : 'VER TODOS →';
+const bannerFmt       = lang === 'en' ? 'ACCESSING :: % RECORDS' : 'ACCEDIENDO :: REGISTROS %';
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const hintLabel       = lang === 'en' ? 'WASD TO WALK · CLICK BILLBOARD' : 'WASD PARA CAMINAR · CLICK CARTEL';
 const comingSoonTitle = lang === 'en' ? 'COMING SOON' : 'PRÓXIMAMENTE';
@@ -57,6 +62,10 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
   <div class="ps-hud" id="ps-hud" aria-hidden="true">
     <div class="ps-hint sys-text" id="ps-hint">{hintLabel}</div>
     <div class="ps-zone-id sys-text hidden" id="ps-zone-id">ZONE: —</div>
+    <div class="ps-minimap" id="ps-minimap">
+      <canvas id="ps-minimap-canvas" width="140" height="190"></canvas>
+    </div>
+    <div class="ps-banner" id="ps-banner"></div>
     <button class="ps-back hidden" id="ps-back">{backLabel}</button>
   </div>
 
@@ -104,11 +113,11 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
 
 </div>
 
-<script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel })}></script>
+<script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt })}></script>
 <script>
 /* Plain <script> — no define:vars — so Vite bundles it and import('three') resolves.
    define:vars forces is:inline, which skips Vite processing entirely. */
-const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getElementById('ps-data').textContent);
+const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt } = JSON.parse(document.getElementById('ps-data').textContent);
 (function () {
   /* ── Guards ── */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -137,7 +146,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
   let camTgtX = CENTER.x, camTgtZ = CENTER.z;
   let isMoving = false;
   let activeZone = null;
-  let zoneMeshes = [];   // [{mesh: hitbox, key}]
+  let zoneMeshes = [];   // [{mesh: hitbox, key, projIdx}]
   let visible = true;
   let t = 0;
   let mixer = null;
@@ -151,8 +160,13 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
   let composer = null;
   const zoneSprites = {};
   const targetZoneOpacity = { risk: 0.18, ai: 0.18, ds: 0.18 };
-  const zoneBillRefs = {};
+  let activeRole = null;
+  const zoneBillRefs = {};   // { [zoneKey]: [{mesh, edges, borderColor, cvW, cvH, isHero, projIdx}] }
+  const zoneBeacons = {};    // { [zoneKey]: Mesh } — light pillar per zone
+  const targetBeaconOpacity = { risk: 0, ai: 0, ds: 0 };
   let sceneW = 1; let sceneH = 1;
+  let minimapCtx = null;     // 2D context of the HUD minimap canvas
+  let frameCount = 0;
   let particles = null; let particleVelocities = null;
   let tagHudEl = null; let _tagPos = null;
 
@@ -174,6 +188,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
 
     _tagPos = new THREE.Vector3();
     tagHudEl = document.getElementById('unit-tag-hud');
+    const mmCv = document.getElementById('ps-minimap-canvas');
+    if (mmCv) minimapCtx = mmCv.getContext('2d');
 
     /* Measure AFTER imports — layout is stable by now */
     const rect = shell.getBoundingClientRect();
@@ -237,7 +253,67 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
         document.fonts.load('11px "Share Tech Mono"'),
       ]);
     } catch (_) { /* non-critical — canvas will use fallback monospace */ }
-    for (const [key, zone] of Object.entries(ZONES)) buildBillboard(THREE, key, zone);
+    for (const [key, zone] of Object.entries(ZONES)) buildZoneBillboards(THREE, key, zone);
+
+    /* ── nier:zone listener — registered HERE (before GLB load) so PersonaSelector's
+       600ms dispatch is never missed even if the model takes time to download. ── */
+    window.addEventListener('nier:zone', (e) => {
+      const zone = e.detail?.zone;
+      if (!zone) return;
+      /* Dedupe — PersonaSelector (600ms) and our sessionStorage fallback (200ms)
+         can both fire on reload; the second identical event must no-op or
+         showPanel runs twice and scramble/type animations interleave. */
+      if (zone === activeRole) return;
+      activeRole = zone;
+
+      /* Update unit tag label */
+      const utagRole = document.querySelector('.utag-role');
+      if (utagRole) utagRole.textContent = '◆ ' + (zoneLabels[zone] ?? '');
+
+      /* Highlight selected zone sprite, dim others (ds near-invisible —
+         a visible label would imply content that doesn't exist yet) */
+      Object.keys(targetZoneOpacity).forEach(k => {
+        targetZoneOpacity[k] = k === zone ? 1.0 : (k === 'ds' ? 0.05 : 0.12);
+      });
+
+      /* Redraw ALL 9 billboards. Each gets a FRESH canvas + CanvasTexture
+         swapped into material.map — in-place CanvasTexture mutation does not
+         reliably update the GPU texture (CLAUDE.md lesson 11).
+         Active zone → role's projects · ds → COMING SOON · rest → OFFLINE. */
+      Object.keys(ZONES).forEach(billKey => {
+        const refs = zoneBillRefs[billKey];
+        if (!refs || !refs.length) return;
+        const isActive = billKey === zone;
+        refs.forEach(ref => {
+          const proj = isActive ? (zoneProjects[zone]?.[ref.projIdx] ?? null) : null;
+          const drawKey = isActive ? billKey : (billKey === 'ds' ? 'ds' : '_empty');
+          const cv = document.createElement('canvas');
+          cv.width = ref.cvW; cv.height = ref.cvH;
+          drawBillboardCanvas(cv.getContext('2d'), ref.cvW, ref.cvH, proj, drawKey, ref.isHero);
+          const newTex = new THREE.CanvasTexture(cv);
+          if (ref.mesh.material.map) ref.mesh.material.map.dispose();
+          ref.mesh.material.map = newTex;
+          ref.mesh.material.needsUpdate = true;
+          if (isActive) flickerOn(ref.mesh.material);
+        });
+      });
+
+      /* Beacon: light pillar over the active zone only */
+      Object.keys(zoneBeacons).forEach(k => {
+        targetBeaconOpacity[k] = k === zone ? 0.14 : 0;
+      });
+
+      if (zone === 'ds') showComingSoon();
+      else navigateTo(zone);
+    });
+
+    /* Fallback: if sessionStorage has a stored zone, re-dispatch after init completes */
+    const storedZone = sessionStorage.getItem('nier-persona');
+    if (storedZone) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('nier:zone', { detail: { zone: storedZone } }));
+      }, 200);
+    }
 
     /* ── Character ── */
     buildCharPlaceholder(THREE);
@@ -326,7 +402,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
     document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
     new MutationObserver(() => {
-      canvas.style.opacity = document.documentElement.hasAttribute('data-plain') ? '0' : '1';
+      const plain = document.documentElement.hasAttribute('data-plain');
+      canvas.style.opacity = plain ? '0' : '1';
+      const mm = document.getElementById('ps-minimap');
+      if (mm) mm.style.opacity = plain ? '0' : '1';
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
 
     /* WASD — scoped to movement keys only so we don't block browser shortcuts */
@@ -335,32 +414,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
       if (WASD_CODES.includes(e.code)) { keys[e.code] = true; e.preventDefault(); }
     });
     document.addEventListener('keyup', e => { keys[e.code] = false; });
-
-    /* PersonaSelector → zone navigation */
-    window.addEventListener('nier:zone', (e) => {
-      const zone = e.detail?.zone;
-      if (!zone) return;
-      if (zone === 'ds') showComingSoon();
-      else {
-        navigateTo(zone);
-        Object.keys(targetZoneOpacity).forEach(k => {
-          targetZoneOpacity[k] = k === zone ? 1.0 : 0.12;
-        });
-        Object.keys(zoneBillRefs).forEach(k => {
-          const refs = zoneBillRefs[k];
-          if (!refs) return;
-          const isActive = k === zone;
-          refs.bill.material.opacity = isActive ? 1.0 : 0.2;
-          refs.edgeLines.material.opacity = isActive ? 1.0 : 0.3;
-        });
-      }
-    });
-    /* Fallback: read stored zone in case PersonaSelector dispatched before init registered */
-    const storedZone = sessionStorage.getItem('nier-persona');
-    if (storedZone) {
-      if (storedZone === 'ds') setTimeout(showComingSoon, 400);
-      else setTimeout(() => navigateTo(storedZone), 400);
-    }
 
     /* COMING SOON close button */
     document.getElementById('cs-close').addEventListener('click', () => {
@@ -475,134 +528,245 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
     scene.add(particles);
   }
 
-  /* ────────────────── Billboards ───────────────────────── */
-  function buildBillboard(THREE, key, zone) {
-    const rotY = zone.side === 'left' ? 0.06 : -0.06;
-    const signZ = 0.07;
+  /* ────────────────── Billboards (fan cluster) ─────────── */
+  /* Each zone gets 3 billboard meshes in a slight arc:
+     [left flanking] [center hero (larger)] [right flanking]
+     Hero shows projIdx=0 (featured), flanking show projIdx=1,2. */
+  function buildZoneBillboards(THREE, key, zone) {
+    const sign = zone.side === 'left' ? 1 : -1;
 
-    /* Pole */
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.07, 0.07, 5, 8),
-      new THREE.MeshBasicMaterial({ color: 0x363b30 })
-    );
-    pole.position.set(zone.x, 2.5, zone.z);
-    scene.add(pole);
+    /* Three billboard configs: left flanking, center hero, right flanking */
+    const cluster = [
+      { projIdx: 1, dx: -2.5*sign, dz: -0.8, rotY:  0.22*sign, w: 3.6, h: 2.4, cvW: 576, cvH: 384, hero: false },
+      { projIdx: 0, dx:  0,        dz:  0,   rotY:  0.06*sign, w: 4.8, h: 3.2, cvW: 768, cvH: 512, hero: true  },
+      { projIdx: 2, dx:  2.5*sign, dz: -0.8, rotY: -0.04*sign, w: 3.6, h: 2.4, cvW: 576, cvH: 384, hero: false },
+    ];
 
-    /* Frame */
-    const frameGeo = new THREE.BoxGeometry(5.2, 3, 0.12);
-    const frame = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ color: 0x1e221c }));
-    frame.position.set(zone.x, 4.5, zone.z);
-    frame.rotation.y = rotY;
-    scene.add(frame);
-
-    /* Frame edges in zone color */
-    const edgeLines = new THREE.LineSegments(
-      new THREE.EdgesGeometry(frameGeo),
-      new THREE.LineBasicMaterial({ color: zone.color })
-    );
-    edgeLines.position.copy(frame.position);
-    edgeLines.rotation.copy(frame.rotation);
-    scene.add(edgeLines);
-
-    /* Billboard canvas texture */
-    const bbCv = document.createElement('canvas');
-    bbCv.width = 512; bbCv.height = 320;
-    const ctx = bbCv.getContext('2d');
-
-    ctx.fillStyle = '#1e221c';
-    ctx.fillRect(0, 0, 512, 320);
-
-    /* Left accent bar */
-    ctx.fillStyle = '#5ee7aa';
-    ctx.fillRect(0, 0, 4, 320);
-
-    /* Role label */
-    ctx.fillStyle = '#787668';
-    ctx.font = '11px "Share Tech Mono", monospace';
-    ctx.fillText('SYSTEM::PROJECT · ' + zoneLabels[key].toUpperCase(), 14, 22);
-
-    /* Project data */
-    const proj = zoneProjects[key]?.[0];
-    if (proj) {
-      ctx.fillStyle = '#E8E4D0';
-      ctx.font = 'bold 17px "Share Tech Mono", monospace';
-      bbWrapText(ctx, proj.name, 14, 50, 484, 22);
-
-      if (proj.outcome) {
-        const colorHex = '#' + zone.color.toString(16).padStart(6, '0');
-        ctx.fillStyle = colorHex;
-        ctx.font = '12px "Share Tech Mono", monospace';
-        ctx.fillText('◆ ' + proj.outcome.slice(0, 52), 14, 268);
-      }
-
-      /* CTA button outline */
-      ctx.strokeStyle = '#5ee7aa';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(14, 283, 110, 22);
-      ctx.fillStyle = '#5ee7aa';
-      ctx.font = '11px "Share Tech Mono", monospace';
-      ctx.fillText('[ REVIEW ↗ ]', 20, 298);
-    } else {
-      /* Empty zone placeholder (DS) */
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#4a5044';
-      ctx.font = '11px "Share Tech Mono", monospace';
-      ctx.fillText('UNIT::DS-SECTOR', 256, 80);
-      ctx.fillStyle = '#363b30';
-      ctx.font = 'bold 36px "Share Tech Mono", monospace';
-      ctx.fillText('◆ ◆ ◆', 256, 175);
-      ctx.fillStyle = '#4a5044';
-      ctx.font = 'bold 15px "Share Tech Mono", monospace';
-      ctx.fillText('COMING SOON', 256, 235);
-      ctx.fillStyle = '#363b30';
-      ctx.font = '11px "Share Tech Mono", monospace';
-      ctx.fillText('DATA SCIENCE SECTOR', 256, 262);
-      ctx.strokeStyle = '#4a5044';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(156, 278, 100, 22);
-      ctx.fillStyle = '#4a5044';
-      ctx.fillText('[ DEPLOYING ]', 256, 293);
-      ctx.textAlign = 'left';
-    }
-
-    const tex = new THREE.CanvasTexture(bbCv);
-    tex.needsUpdate = true;
-    const bill = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.0, 2.9),
-      new THREE.MeshBasicMaterial({ map: tex, color: 0xffffff })
-    );
-    bill.position.set(zone.x, 4.5, zone.z + signZ);
-    bill.rotation.y = rotY;
-    scene.add(bill);
-    bill.material.transparent = true;
-    edgeLines.material.transparent = true;
-    zoneBillRefs[key] = { bill, edgeLines };
-
-    /* Transparent hitbox — raycaster target (replaces old zone pad).
-       Must NOT use visible:false — Three.js raycaster skips invisible objects. */
-    const hit = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.2, 3),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-    );
-    hit.position.set(zone.x, 4.5, zone.z + signZ * 1.1);
-    hit.rotation.y = rotY;
-    hit.userData = { zone: key };
-    scene.add(hit);
-    zoneMeshes.push({ mesh: hit, key });
-
-    /* Zone label sprite above billboard — starts dim, brightens on zone selection */
+    /* Zone label sprite above center hero */
     const colorStr = '#' + zone.color.toString(16).padStart(6, '0');
     const sprite = makeLabel(THREE, zoneLabels[key].toUpperCase(), colorStr);
-    sprite.position.set(zone.x, 7.0, zone.z);
+    sprite.position.set(zone.x, 8.2, zone.z);
     sprite.material.opacity = 0.18;
     zoneSprites[key] = sprite;
     scene.add(sprite);
 
-    /* Glow point light */
-    const light = new THREE.PointLight(zone.color, 3.0, 16);
+    /* Zone glow light (single, at center) */
+    const light = new THREE.PointLight(zone.color, 3.0, 18);
     light.position.set(zone.x, 5.0, zone.z);
     light.userData = { zone: key };
     scene.add(light);
+
+    /* Beacon — vertical light pillar, visible only on the active zone
+       (opacity lerped toward targetBeaconOpacity[key] in tick) */
+    const beacon = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.5, 26, 12, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x5ee7aa,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
+    );
+    beacon.position.set(zone.x, 13, zone.z);
+    zoneBeacons[key] = beacon;
+    scene.add(beacon);
+
+    cluster.forEach(cfg => {
+      const bx = zone.x + cfg.dx;
+      const bz = zone.z + cfg.dz;
+      const boardY = cfg.hero ? 5.0 : 4.4;
+      const poleH  = cfg.hero ? 5.5 : 4.8;
+      const borderColor = cfg.hero ? 0x5ee7aa : 0x3d7a64;
+
+      /* Pole */
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.055, poleH, 8),
+        new THREE.MeshBasicMaterial({ color: 0x363b30 })
+      );
+      pole.position.set(bx, poleH / 2, bz);
+      scene.add(pole);
+
+      /* Frame backing */
+      const frameGeo = new THREE.BoxGeometry(cfg.w + 0.18, cfg.h + 0.1, 0.1);
+      const frame = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ color: 0x111418 }));
+      frame.position.set(bx, boardY, bz);
+      frame.rotation.y = cfg.rotY;
+      scene.add(frame);
+
+      /* Frame edges */
+      const edgeLines = new THREE.LineSegments(
+        new THREE.EdgesGeometry(frameGeo),
+        new THREE.LineBasicMaterial({ color: borderColor })
+      );
+      edgeLines.position.copy(frame.position);
+      edgeLines.rotation.copy(frame.rotation);
+      scene.add(edgeLines);
+
+      /* Canvas texture */
+      const bbCv = document.createElement('canvas');
+      bbCv.width = cfg.cvW; bbCv.height = cfg.cvH;
+      const ctx = bbCv.getContext('2d');
+      /* Initial draw: ds → COMING SOON (always), others → OFFLINE ghost.
+         Real content is populated only on nier:zone (role selection). */
+      drawBillboardCanvas(ctx, cfg.cvW, cfg.cvH, null, key === 'ds' ? 'ds' : '_empty', cfg.hero);
+
+      const tex = new THREE.CanvasTexture(bbCv);
+      tex.needsUpdate = true;
+
+      const bill = new THREE.Mesh(
+        new THREE.PlaneGeometry(cfg.w, cfg.h),
+        new THREE.MeshBasicMaterial({ map: tex, color: 0xffffff })
+      );
+      bill.position.set(bx, boardY, bz + 0.06);
+      bill.rotation.y = cfg.rotY;
+      scene.add(bill);
+
+      /* Refs for dynamic role-change redraw. Textures are REPLACED (new
+         CanvasTexture + material.map swap) — never mutated in place, which
+         does not reliably reach the GPU (CLAUDE.md lesson 11). */
+      if (!zoneBillRefs[key]) zoneBillRefs[key] = [];
+      zoneBillRefs[key].push({
+        mesh: bill, edges: edgeLines, borderColor,
+        cvW: cfg.cvW, cvH: cfg.cvH, isHero: cfg.hero, projIdx: cfg.projIdx,
+      });
+
+      /* Transparent hitbox (never use visible:false — raycaster skips invisible) */
+      const hit = new THREE.Mesh(
+        new THREE.PlaneGeometry(cfg.w, cfg.h),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      );
+      hit.position.set(bx, boardY, bz + 0.07);
+      hit.rotation.y = cfg.rotY;
+      hit.userData = { zone: key, projIdx: cfg.projIdx };
+      scene.add(hit);
+      zoneMeshes.push({ mesh: hit, key, projIdx: cfg.projIdx });
+    });
+  }
+
+  /* Draws a billboard canvas texture for one project */
+  function drawBillboardCanvas(ctx, W, H, proj, key, isHero) {
+    const MINT  = '#5ee7aa';
+    const TEAL  = '#3d7a64';
+    const BAR   = isHero ? MINT : TEAL;
+    const MAIN  = '#E8E4D0';
+    const SUB   = '#a0a8b8';
+    const DIM   = '#6b7280';
+
+    ctx.fillStyle = '#111418';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = BAR;
+    ctx.fillRect(0, 0, 4, H);
+
+    if (!proj) {
+      if (key === 'ds') {
+        /* DS zone: show COMING SOON label */
+        ctx.fillStyle = DIM;
+        ctx.font = `${isHero ? 10 : 9}px "Share Tech Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('UNIT::DS-SECTOR', W/2, H * 0.32);
+        ctx.fillStyle = '#363b30';
+        ctx.font = `bold ${isHero ? 22 : 17}px "Share Tech Mono", monospace`;
+        ctx.fillText('◆ ◆ ◆', W/2, H * 0.55);
+        ctx.fillStyle = DIM;
+        ctx.font = `bold ${isHero ? 13 : 10}px "Share Tech Mono", monospace`;
+        ctx.fillText('COMING SOON', W/2, H * 0.72);
+        ctx.textAlign = 'left';
+      } else {
+        /* Non-active zone: faint OFFLINE ghost — signals the zone exists
+           without showing another role's projects */
+        ctx.fillStyle = '#2a3040';
+        ctx.font = `bold ${isHero ? 14 : 11}px "Share Tech Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText('◆ OFFLINE', W/2, H * 0.54);
+        ctx.textAlign = 'left';
+      }
+      return;
+    }
+
+    const TS = isHero ? 22 : 17;   /* title font size */
+    const DS = isHero ? 12 : 10;   /* desc font size  */
+    const MS = isHero ? 10 : 9;    /* meta font size  */
+
+    /* Header: role label */
+    ctx.fillStyle = DIM;
+    ctx.font = `${MS}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText('SYSTEM::PROJECT · ' + (zoneLabels[key] ?? key).toUpperCase(), 12, isHero ? 22 : 18);
+
+    /* Status badge (top-right) */
+    const STATUS_COLORS = { FLAGSHIP: MINT, ACTIVE: MINT, DEPLOYED: '#8fa882', BUILT: DIM, TOOLING: DIM };
+    const badgeColor = STATUS_COLORS[proj.status] ?? DIM;
+    ctx.font = `${MS}px "Share Tech Mono", monospace`;
+    const bw = ctx.measureText(proj.status).width + 14;
+    ctx.strokeStyle = badgeColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W - 12 - bw, isHero ? 11 : 9, bw, isHero ? 15 : 13);
+    ctx.fillStyle = badgeColor;
+    ctx.fillText(proj.status, W - 12 - bw + 7, isHero ? 21 : 18);
+
+    /* Thin separator */
+    ctx.strokeStyle = BAR;
+    ctx.lineWidth = 0.5;
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    const sepY = isHero ? 32 : 27;
+    ctx.moveTo(12, sepY); ctx.lineTo(W - 12, sepY);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    /* Project title (wrapped) */
+    ctx.fillStyle = MAIN;
+    ctx.font = `bold ${TS}px "Share Tech Mono", monospace`;
+    bbWrapText(ctx, proj.name, 12, isHero ? 60 : 48, W - 24, TS * 1.35);
+
+    /* Description (2–3 lines) */
+    const descMaxLines = isHero ? 3 : 2;
+    const descStartY   = isHero ? 112 : 84;
+    ctx.fillStyle = SUB;
+    ctx.font = `${DS}px "Share Tech Mono", monospace`;
+    const descWords = proj.desc.split(' ');
+    let dLine = ''; let dY = descStartY; let dCount = 0;
+    for (const w of descWords) {
+      const test = dLine + w + ' ';
+      if (ctx.measureText(test).width > W - 24 && dLine) {
+        ctx.fillText(dLine.trim(), 12, dY);
+        dY += DS * 1.5;
+        dLine = w + ' ';
+        dCount++;
+        if (dCount >= descMaxLines) { ctx.fillText(dLine.trim() + '…', 12, dY); dLine = ''; break; }
+      } else { dLine = test; }
+    }
+    if (dLine) ctx.fillText(dLine.trim(), 12, dY);
+
+    /* Outcome metric */
+    if (proj.outcome) {
+      const outY = isHero ? 196 : 152;
+      ctx.fillStyle = BAR;
+      ctx.font = `${DS}px "Share Tech Mono", monospace`;
+      ctx.fillText('◆ ' + proj.outcome.slice(0, isHero ? 54 : 38), 12, outY);
+    }
+
+    /* CTA button (filled rect) */
+    const ctaBtnW = isHero ? 128 : 96;
+    const ctaBtnH = isHero ? 26 : 22;
+    const ctaY    = H - (isHero ? 42 : 34);
+    ctx.fillStyle = BAR;
+    ctx.fillRect(12, ctaY, ctaBtnW, ctaBtnH);
+    ctx.fillStyle = '#0d0f14';
+    ctx.font = `bold ${isHero ? 11 : 9}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('[ OPEN ↗ ]', 12 + ctaBtnW / 2, ctaY + ctaBtnH * 0.7);
+    ctx.textAlign = 'left';
+  }
+
+  /* CRT power-on flicker — modulates material.color (never opacity: keeping
+     the material opaque avoids transparent render-order issues) */
+  function flickerOn(material) {
+    if (reduced) { material.color.setHex(0xffffff); return; }
+    const seq = [[0, 0x222222], [70, 0xffffff], [140, 0x333333], [220, 0xffffff], [300, 0x555555], [400, 0xffffff]];
+    seq.forEach(([ms, hex]) => setTimeout(() => material.color.setHex(hex), ms));
   }
 
   function bbWrapText(ctx, text, x, y, maxW, lineH) {
@@ -693,23 +857,35 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
     raycaster.r.setFromCamera(mouse, camera);
     const hits = raycaster.r.intersectObjects(zoneMeshes.map(z => z.mesh));
     if (!hits.length) return null;
-    return zoneMeshes.find(z => z.mesh === hits[0].object)?.key ?? null;
+    const found = zoneMeshes.find(z => z.mesh === hits[0].object);
+    return found ? { key: found.key, projIdx: found.projIdx } : null;
   }
 
   function onCanvasClick(THREE, e) {
-    const zone = getZoneHit(THREE, e);
-    if (zone) showPanel(zone);
+    const hit = getZoneHit(THREE, e);
+    if (!hit) return;
+    /* Only the active role's billboards respond — OFFLINE/COMING SOON
+       boards have no content behind them */
+    if (activeRole && hit.key !== activeRole) return;
+    showPanel(hit.key, hit.projIdx);
   }
 
   function onHover(THREE, e) {
-    const zone = getZoneHit(THREE, e);
-    document.getElementById('ps-canvas').style.cursor = zone ? 'pointer' : 'default';
-    /* Boost hovered zone's light */
+    const hit = getZoneHit(THREE, e);
+    const interactive = hit && (!activeRole || hit.key === activeRole);
+    document.getElementById('ps-canvas').style.cursor = interactive ? 'pointer' : 'default';
     scene.traverse(obj => {
       if (obj.isLight && obj.userData.zone) {
         if (obj.userData.zone === activeZone) return;
-        obj.intensity = obj.userData.zone === zone ? 4.5 : 2.0;
+        obj.intensity = obj.userData.zone === (interactive ? hit.key : null) ? 4.5 : 2.0;
       }
+    });
+    /* Hover glow — hovered billboard's frame edges flash mint; others restore */
+    Object.keys(zoneBillRefs).forEach(k => {
+      zoneBillRefs[k].forEach(ref => {
+        const hovered = interactive && k === hit.key && ref.projIdx === hit.projIdx;
+        ref.edges.material.color.setHex(hovered ? 0x5ee7aa : ref.borderColor);
+      });
     });
   }
 
@@ -727,13 +903,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
   }
 
   function returnToCenter() {
-    activeZone = null;
-    targetX = CENTER.x;
-    targetZ = CENTER.z;
-    isMoving = true;
     hidePanel();
     document.getElementById('ps-back').classList.add('hidden');
-    document.getElementById('ps-zone-id').classList.add('hidden');
     document.getElementById('ps-hint').classList.remove('hidden');
   }
 
@@ -741,37 +912,120 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
     isMoving = false;
     if (!zone) return;
     document.getElementById('ps-back').classList.remove('hidden');
-    showPanel(zone);
+    showBanner(zone);
+    showPanel(zone, 0);
+  }
+
+  /* ────────────────── Arrival banner ──────────────────── */
+  function showBanner(zone) {
+    const banner = document.getElementById('ps-banner');
+    if (!banner) return;
+    banner.textContent = bannerFmt.replace('%', zoneLabels[zone]);
+    banner.classList.remove('sweep');
+    void banner.offsetWidth;   /* force reflow so the animation restarts */
+    banner.classList.add('sweep');
+  }
+
+  /* ────────────────── Minimap HUD ─────────────────────── */
+  /* World→map: x ∈ [-10,10] → px ∈ [15,125] · z ∈ [6,-34] → py ∈ [12,178] */
+  function drawMinimap() {
+    const ctx = minimapCtx;
+    const W = 140, H = 190;
+    const mx = (x) => 15 + ((x + 10) / 20) * 110;
+    const mz = (z) => 12 + ((6 - z) / 40) * 166;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(13,15,20,0.85)';
+    ctx.fillRect(0, 0, W, H);
+    /* street */
+    ctx.strokeStyle = '#1c2030';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(mx(0), mz(6));
+    ctx.lineTo(mx(0), mz(-34));
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    /* header */
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('MAP::SECTOR-7', 6, 10);
+    /* zone markers */
+    Object.entries(ZONES).forEach(([k, z]) => {
+      const px = mx(z.x), py = mz(z.z);
+      const isActive = k === activeRole;
+      ctx.fillStyle = isActive ? '#5ee7aa' : (k === 'ds' ? '#464c58' : '#3d7a64');
+      ctx.fillRect(px - 3, py - 3, 6, 6);
+      if (isActive) {
+        ctx.strokeStyle = '#5ee7aa';
+        ctx.globalAlpha = 0.45 + Math.sin(t * 3) * 0.3;
+        ctx.strokeRect(px - 6.5, py - 6.5, 13, 13);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = isActive ? '#5ee7aa' : '#6b7280';
+      ctx.font = '7px "Share Tech Mono", monospace';
+      ctx.textAlign = z.side === 'left' ? 'right' : 'left';
+      ctx.fillText(k === 'risk' ? 'DA' : k.toUpperCase(), px + (z.side === 'left' ? -9 : 9), py + 3);
+    });
+    ctx.textAlign = 'left';
+    /* character */
+    ctx.fillStyle = '#5ee7aa';
+    ctx.beginPath();
+    ctx.arc(mx(charX), mz(charZ), 2.5 + Math.sin(t * 4) * 0.6, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   /* ────────────────── Panel ───────────────────────────── */
-  function typeOut(el, text, msPerChar) {
-    el.textContent = '';
-    let i = 0;
-    (function step() {
-      if (i < text.length) { el.textContent += text[i++]; setTimeout(step, msPerChar); }
-    })();
+  /* Scramble-settle text reveal (NieR style). Cancel-safe: re-entering on the
+     same element clears the previous interval, so concurrent calls never
+     interleave characters (the old typeOut bug). */
+  const SCRAMBLE_CHARS = '◆◇▸▪░▒▓XZQV0123456789';
+  function scrambleIn(el, text) {
+    if (el._scrambleTimer) { clearInterval(el._scrambleTimer); el._scrambleTimer = null; }
+    if (reduced || !text) { el.textContent = text; return; }
+    const DURATION = 480, STEP = 40;
+    const totalSteps = Math.ceil(DURATION / STEP);
+    let step = 0;
+    el._scrambleTimer = setInterval(() => {
+      step++;
+      const settled = Math.floor((step / totalSteps) * text.length);
+      if (settled >= text.length) {
+        el.textContent = text;
+        clearInterval(el._scrambleTimer);
+        el._scrambleTimer = null;
+        return;
+      }
+      let out = text.slice(0, settled);
+      for (let i = settled; i < text.length; i++) {
+        out += text[i] === ' ' ? ' ' : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+      }
+      el.textContent = out;
+    }, STEP);
   }
 
-  function showPanel(zone) {
-    typeOut(document.getElementById('panel-title'), zoneLabels[zone], 28);
-    document.getElementById('panel-sys').textContent =
-      'SYS::' + zoneLabels[zone].toUpperCase() + ' · ' + (zoneProjects[zone].length || 0) + ' RECORDS';
+  /* projIdx: which billboard was clicked (0=hero, 1,2=flanking). That project
+     becomes the panel hero; the other two appear as compact rows below. */
+  function showPanel(zone, projIdx = 0) {
+    const projects = zoneProjects[zone];
+    scrambleIn(document.getElementById('panel-title'), zoneLabels[zone]);
     document.getElementById('panel-all').href = allUrl[zone];
 
     const cards = document.getElementById('panel-cards');
     cards.innerHTML = '';
-    const projects = zoneProjects[zone];
-    if (!projects.length) {
+
+    if (!projects || !projects.length) {
+      document.getElementById('panel-sys').textContent = 'SYS::' + zoneLabels[zone] + ' · 0 RECORDS';
       cards.innerHTML = '<p class="panel-empty sys-text">[ RECORDS INCOMING ]</p>';
       document.getElementById('ps-panel').classList.add('open');
       return;
     }
 
-    /* Hero card — first featured project, or first if none featured */
-    const heroIdx = projects.findIndex(p => p.featured);
-    const hero = projects[heroIdx >= 0 ? heroIdx : 0];
-    const rest = projects.filter((_, i) => i !== (heroIdx >= 0 ? heroIdx : 0));
+    /* The clicked project is the hero — others are compact rows */
+    const heroIdx = (projIdx !== null && projIdx !== undefined && projIdx < projects.length) ? projIdx : 0;
+    const hero = projects[heroIdx];
+    const rest = projects.filter((_, i) => i !== heroIdx);
+
+    document.getElementById('panel-sys').textContent =
+      'SYS::' + zoneLabels[zone].toUpperCase() + ' · ' + projects.length + ' RECORDS';
 
     const heroEl = document.createElement('div');
     heroEl.className = 'panel-hero';
@@ -791,10 +1045,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
     cards.appendChild(heroEl);
     setTimeout(() => {
       heroEl.style.opacity = '1';
-      typeOut(heroEl.querySelector('.hero-name'), hero.name, 22);
+      scrambleIn(heroEl.querySelector('.hero-name'), hero.name);
     }, 80);
 
-    /* Compact rows for remaining projects */
     rest.forEach((p, idx) => {
       const row = document.createElement('div');
       row.className = 'panel-row';
@@ -811,7 +1064,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
       cards.appendChild(row);
       setTimeout(() => {
         row.style.opacity = '1';
-        typeOut(row.querySelector('.row-name'), p.name, 14);
+        scrambleIn(row.querySelector('.row-name'), p.name);
       }, (idx + 1) * 180 + 200);
     });
 
@@ -924,6 +1177,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
       sp.material.opacity += (tgt - sp.material.opacity) * 0.04;
     });
 
+    /* Beacon opacity lerp + subtle pulse on the active one */
+    Object.keys(zoneBeacons).forEach(k => {
+      const b = zoneBeacons[k];
+      const tgt = targetBeaconOpacity[k];
+      b.material.opacity += (tgt - b.material.opacity) * 0.05;
+      if (tgt > 0 && b.material.opacity > 0.02) {
+        b.material.opacity += Math.sin(t * 2) * 0.008;
+      }
+    });
+
+    /* Minimap redraw — every 3rd frame is plenty for a schematic */
+    frameCount++;
+    if (minimapCtx && frameCount % 3 === 0) drawMinimap();
+
     /* Camera follow — street perspective (low, behind character) */
     const lag = reduced ? 1 : 0.055;
     camTgtX += (charX - camTgtX) * lag;
@@ -1032,6 +1299,54 @@ const { zoneProjects, zoneLabels, allUrl, allLabel } = JSON.parse(document.getEl
   .ps-back:hover {
     color: var(--accent-bright);
     border-color: var(--accent-bright);
+  }
+
+  /* ── Minimap HUD ── */
+  .ps-minimap {
+    position: absolute;
+    top: 2.4rem;
+    left: 1rem;
+    border: 1px solid var(--ink-mid);
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .ps-minimap canvas {
+    display: block;
+  }
+
+  /* ── Arrival banner ── */
+  .ps-banner {
+    position: absolute;
+    top: 18%;
+    left: 0;
+    width: 100%;
+    padding: 0.55rem 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.35em;
+    color: var(--accent-bright);
+    background: linear-gradient(90deg, transparent, rgba(18,21,28,0.92) 18%, rgba(18,21,28,0.92) 82%, transparent);
+    border-top: 1px solid rgba(94,231,170,0.25);
+    border-bottom: 1px solid rgba(94,231,170,0.25);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ps-banner.sweep {
+    animation: banner-sweep 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  @keyframes banner-sweep {
+    0%   { opacity: 0; transform: translateX(-40px); }
+    12%  { opacity: 1; transform: translateX(0); }
+    78%  { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(40px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ps-banner.sweep { animation-duration: 0.01s; }
   }
 
   /* ── Project panel ── */
