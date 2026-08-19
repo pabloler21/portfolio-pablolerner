@@ -1,0 +1,353 @@
+---
+import Base from '../../../layouts/Base.astro';
+/* Visual companion — FLAGSHIP accent treatment decision.
+   Four game-UI-inspired directions rendered with the real design system.
+   Internal decision page (like /en/concept/city/) — not linked from nav. */
+---
+<Base title="Concept — Flagship Treatment" lang="en">
+  <div class="fc-shell">
+
+    <div class="fc-header">
+      <div class="sys-text">PHASE 3.18 · FLAGSHIP ACCENT — VISUAL COMPANION</div>
+      <h1 class="fc-title">FLAGSHIP TREATMENT — SELECT DIRECTION</h1>
+      <p class="fc-sub">
+        Four directions from iconic game UIs. Every mock below uses the real tokens, fonts and
+        components of the site — what you see is what ships. The flagship accent is used ONLY for
+        flagship marking (badge, billboard frame, list row, selector chip) — never interactive.
+      </p>
+    </div>
+
+    <!-- ══════════════ OPTION A — DEUS EX ══════════════ -->
+    <section class="fc-option" style="--flag: #9a7b2d; --flag-bright: #c9a94f; --flag-bg: #14110a;">
+      <div class="fc-opt-head">
+        <span class="fc-tag">[ A · RECOMMENDED ]</span>
+        <h2 class="fc-opt-title">DEUS EX — ÁMBAR PROFUNDO</h2>
+        <div class="fc-swatch-row">
+          <span class="fc-swatch" style="background:#9a7b2d"></span><code>--accent-flag: #9a7b2d</code>
+          <span class="fc-swatch" style="background:#c9a94f"></span><code>hover/bright: #c9a94f</code>
+          <span class="fc-swatch" style="background:#14110a"></span><code>bg cálido: #14110a</code>
+        </div>
+      </div>
+
+      <div class="fc-demos">
+        <!-- Dossier badge in context -->
+        <div class="fc-demo">
+          <div class="fc-demo-label">DOSSIER 3D — HEADER</div>
+          <div class="mock-dossier">
+            <div class="mock-sysrow"><span>SYS::DATA ANALYST</span><span class="mock-count">REC 01/04</span></div>
+            <div class="mock-badge deusex-badge">◆ FLAGSHIP</div>
+            <div class="mock-title">FraudSense AI — Fraud Risk Analytics</div>
+          </div>
+        </div>
+
+        <!-- Billboard mock -->
+        <div class="fc-demo">
+          <div class="fc-demo-label">CARTEL 3D FLAGSHIP</div>
+          <div class="mock-bill deusex-bill">
+            <div class="mock-bill-head"><span>SYSTEM::PROJECT</span><span class="mock-bill-badge deusex-badge">FLAGSHIP</span></div>
+            <div class="mock-bill-title">FraudSense AI</div>
+            <div class="mock-bill-desc">End-to-end fraud detection pipeline: SQL pattern mining on 1.85M transactions…</div>
+            <div class="mock-bill-metric deusex-metric">◆ AUC-ROC 0.971</div>
+            <div class="mock-bill-cta deusex-cta">[ OPEN ↗ ]</div>
+          </div>
+        </div>
+
+        <!-- Master-detail row -->
+        <div class="fc-demo">
+          <div class="fc-demo-label">ROLE PAGE — FILA + SELECTOR</div>
+          <div class="mock-rows">
+            <div class="mock-row is-flag"><span class="mock-num">01</span><span class="mock-name">FraudSense AI</span><span class="mock-rbadge deusex-badge">FLAGSHIP</span></div>
+            <div class="mock-row"><span class="mock-num">02</span><span class="mock-name">Credit Scoring</span><span class="mock-rbadge">BUILT</span></div>
+            <div class="mock-preview-flag deusex-panel">
+              <div class="fc-demo-label" style="margin-bottom:0.4rem">FLAGSHIP</div>
+              <div class="mock-pv-name">FraudSense AI</div>
+              <div class="mock-pv-metric">◆ AUC-ROC 0.971</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="fc-opt-desc">
+        Black &amp; gold renacentista. El flagship se lee como pieza de museo: borde y texto ámbar bronce
+        sobre fondo negro-cálido. Convive en silencio con el sand/mint — prestigio sin gritar.
+        En 3D: marco del cartel + PointLight cálida ámbar en vez de mint.
+      </p>
+    </section>
+
+    <!-- ══════════════ OPTION B — CYBERPUNK 2077 ══════════════ -->
+    <section class="fc-option" style="--flag: #d4c11f; --flag-bright: #f0e132; --flag-bg: #16150a;">
+      <div class="fc-opt-head">
+        <span class="fc-tag">[ B ]</span>
+        <h2 class="fc-opt-title">CYBERPUNK 2077 — AMARILLO ÁCIDO INVERTIDO</h2>
+        <div class="fc-swatch-row">
+          <span class="fc-swatch" style="background:#d4c11f"></span><code>--accent-flag: #d4c11f</code>
+          <span class="fc-swatch" style="background:#f0e132"></span><code>glitch: #f0e132</code>
+        </div>
+      </div>
+
+      <div class="fc-demos">
+        <div class="fc-demo">
+          <div class="fc-demo-label">DOSSIER 3D — HEADER (hover = glitch)</div>
+          <div class="mock-dossier">
+            <div class="mock-sysrow"><span>SYS::DATA ANALYST</span><span class="mock-count">REC 01/04</span></div>
+            <div class="mock-badge cp-badge">FLAGSHIP<span class="cp-cut"></span></div>
+            <div class="mock-title">FraudSense AI — Fraud Risk Analytics</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">CARTEL 3D FLAGSHIP</div>
+          <div class="mock-bill cp-bill">
+            <div class="mock-bill-head"><span>SYSTEM::PROJECT</span><span class="mock-bill-badge cp-badge">FLAGSHIP<span class="cp-cut"></span></span></div>
+            <div class="mock-bill-title">FraudSense AI</div>
+            <div class="mock-bill-desc">End-to-end fraud detection pipeline: SQL pattern mining on 1.85M transactions…</div>
+            <div class="mock-bill-metric cp-metric">◆ AUC-ROC 0.971</div>
+            <div class="mock-bill-cta cp-cta">[ OPEN ↗ ]</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">ROLE PAGE — FILA + SELECTOR</div>
+          <div class="mock-rows">
+            <div class="mock-row is-flag cp-row"><span class="mock-num">01</span><span class="mock-name">FraudSense AI</span><span class="mock-rbadge cp-badge">FLAGSHIP<span class="cp-cut"></span></span></div>
+            <div class="mock-row"><span class="mock-num">02</span><span class="mock-name">Credit Scoring</span><span class="mock-rbadge">BUILT</span></div>
+            <div class="mock-preview-flag cp-panel">
+              <div class="fc-demo-label" style="margin-bottom:0.4rem">FLAGSHIP</div>
+              <div class="mock-pv-name">FraudSense AI</div>
+              <div class="mock-pv-metric">◆ AUC-ROC 0.971</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="fc-opt-desc">
+        Badge sólido invertido (fondo amarillo, texto negro) con esquina cortada en diagonal y
+        micro-glitch al hover — el lenguaje agresivo de Night City. Máximo contraste instantáneo.
+        Riesgo real: compite con el mint por atención en cada pantalla.
+      </p>
+    </section>
+
+    <!-- ══════════════ OPTION C — DEATH STRANDING ══════════════ -->
+    <section class="fc-option" style="--flag: #c9762f; --flag-bright: #e8944a; --flag-bg: #160f08;">
+      <div class="fc-opt-head">
+        <span class="fc-tag">[ C ]</span>
+        <h2 class="fc-opt-title">DEATH STRANDING — NARANJA HOLO</h2>
+        <div class="fc-swatch-row">
+          <span class="fc-swatch" style="background:#c9762f"></span><code>--accent-flag: #c9762f</code>
+          <span class="fc-swatch" style="background:#e8944a"></span><code>holo bright: #e8944a</code>
+        </div>
+      </div>
+
+      <div class="fc-demos">
+        <div class="fc-demo">
+          <div class="fc-demo-label">DOSSIER 3D — HEADER</div>
+          <div class="mock-dossier">
+            <div class="mock-sysrow"><span>SYS::DATA ANALYST</span><span class="mock-count">REC 01/04</span></div>
+            <div class="mock-badge ds-badge">◆ FLAGSHIP</div>
+            <div class="mock-title">FraudSense AI — Fraud Risk Analytics</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">CARTEL 3D FLAGSHIP (doble marco + scanlines)</div>
+          <div class="mock-bill ds-bill">
+            <div class="mock-bill-head"><span>SYSTEM::PROJECT</span><span class="mock-bill-badge ds-badge">FLAGSHIP</span></div>
+            <div class="mock-bill-title">FraudSense AI</div>
+            <div class="mock-bill-desc">End-to-end fraud detection pipeline: SQL pattern mining on 1.85M transactions…</div>
+            <div class="mock-bill-metric ds-metric">◆ AUC-ROC 0.971</div>
+            <div class="mock-bill-cta ds-cta">[ OPEN ↗ ]</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">ROLE PAGE — FILA + SELECTOR</div>
+          <div class="mock-rows">
+            <div class="mock-row is-flag ds-row"><span class="mock-num">01</span><span class="mock-name">FraudSense AI</span><span class="mock-rbadge ds-badge">FLAGSHIP</span></div>
+            <div class="mock-row"><span class="mock-num">02</span><span class="mock-name">Credit Scoring</span><span class="mock-rbadge">BUILT</span></div>
+            <div class="mock-preview-flag ds-panel">
+              <div class="fc-demo-label" style="margin-bottom:0.4rem">FLAGSHIP</div>
+              <div class="mock-pv-name">FraudSense AI</div>
+              <div class="mock-pv-metric">◆ AUC-ROC 0.971</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="fc-opt-desc">
+        Temperatura opuesta al azul-void: el ojo va directo al naranja sin que haga falta tamaño.
+        Marco de doble línea + scanlines internas animadas, como los hologramas de las terminales
+        de DS. En 3D: luz naranja cálida bajo el cartel flagship.
+      </p>
+    </section>
+
+    <!-- ══════════════ OPTION D — ALIEN ISOLATION ══════════════ -->
+    <section class="fc-option" style="--flag: #b58a3a; --flag-bright: #d8ab55; --flag-bg: #131008;">
+      <div class="fc-opt-head">
+        <span class="fc-tag">[ D ]</span>
+        <h2 class="fc-opt-title">ALIEN ISOLATION — ÁMBAR CRT</h2>
+        <div class="fc-swatch-row">
+          <span class="fc-swatch" style="background:#b58a3a"></span><code>--accent-flag: #b58a3a</code>
+          <span class="fc-swatch" style="background:#d8ab55"></span><code>phosphor: #d8ab55</code>
+        </div>
+      </div>
+
+      <div class="fc-demos">
+        <div class="fc-demo">
+          <div class="fc-demo-label">DOSSIER 3D — HEADER (prompt style)</div>
+          <div class="mock-dossier">
+            <div class="mock-sysrow"><span>SYS::DATA ANALYST</span><span class="mock-count">REC 01/04</span></div>
+            <div class="mock-badge ai-badge">&gt; FLAGSHIP_RECORD.dat<span class="ai-cursor">█</span></div>
+            <div class="mock-title">FraudSense AI — Fraud Risk Analytics</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">CARTEL 3D FLAGSHIP (flicker CRT lento)</div>
+          <div class="mock-bill ai-bill">
+            <div class="mock-bill-head"><span>SYSTEM::PROJECT</span><span class="mock-bill-badge ai-badge">&gt; FLAGSHIP</span></div>
+            <div class="mock-bill-title">FraudSense AI</div>
+            <div class="mock-bill-desc">End-to-end fraud detection pipeline: SQL pattern mining on 1.85M transactions…</div>
+            <div class="mock-bill-metric ai-metric">◆ AUC-ROC 0.971</div>
+            <div class="mock-bill-cta ai-cta">[ OPEN ↗ ]</div>
+          </div>
+        </div>
+
+        <div class="fc-demo">
+          <div class="fc-demo-label">ROLE PAGE — FILA + SELECTOR</div>
+          <div class="mock-rows">
+            <div class="mock-row is-flag ai-row"><span class="mock-num">01</span><span class="mock-name">FraudSense AI</span><span class="mock-rbadge ai-badge">&gt; FLAG</span></div>
+            <div class="mock-row"><span class="mock-num">02</span><span class="mock-name">Credit Scoring</span><span class="mock-rbadge">BUILT</span></div>
+            <div class="mock-preview-flag ai-panel">
+              <div class="fc-demo-label" style="margin-bottom:0.4rem">FLAGSHIP</div>
+              <div class="mock-pv-name">FraudSense AI</div>
+              <div class="mock-pv-metric">◆ AUC-ROC 0.971</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="fc-opt-desc">
+        Fósforo ámbar de terminal retro: el flagship se marca como archivo del sistema
+        (<code>&gt; FLAGSHIP_RECORD.dat</code>) con cursor block parpadeante y flicker CRT lento.
+        Continúa el ADN de terminal que ya recorre todo el sitio (TerminalWindow, boot screen, unit tags).
+      </p>
+    </section>
+
+    <div class="fc-footer sys-text">
+      DECISION PENDING · REPLY WITH: A / B / C / D · TOKEN SHIPS AS --accent-flag IN tokens.css
+    </div>
+  </div>
+</Base>
+
+<style>
+  .fc-shell { padding: 2.5rem 2rem 4rem; max-width: 1200px; margin: 0 auto; }
+
+  .fc-header { margin-bottom: 2.6rem; }
+  .fc-title { font-family: var(--font-display); font-size: 1.9rem; letter-spacing: 0.1em; color: var(--sand); margin: 0.5rem 0; }
+  .fc-sub { font-family: var(--font-sans); font-size: 0.86rem; color: var(--sand-muted); line-height: 1.6; max-width: 760px; }
+
+  .fc-option {
+    border: 1px solid var(--ink-mid);
+    background: var(--bg-panel);
+    padding: 1.6rem;
+    margin-bottom: 2.2rem;
+  }
+
+  .fc-opt-head { margin-bottom: 1.4rem; }
+  .fc-tag { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--flag); }
+  .fc-opt-title { font-family: var(--font-mono); font-size: 1.1rem; letter-spacing: 0.14em; color: var(--sand); margin: 0.4rem 0 0.7rem; }
+  .fc-swatch-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .fc-swatch { width: 16px; height: 16px; display: inline-block; border: 1px solid var(--ink-mid); }
+  .fc-swatch-row code { font-family: var(--font-mono); font-size: 0.62rem; color: var(--sand-dim); margin-right: 1rem; }
+
+  .fc-demos { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+  @media (max-width: 980px) { .fc-demos { grid-template-columns: 1fr; } }
+
+  .fc-demo-label { font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.22em; color: var(--sand-dim); margin-bottom: 0.6rem; }
+
+  .fc-opt-desc { font-family: var(--font-sans); font-size: 0.84rem; color: var(--sand-muted); line-height: 1.65; margin: 0; max-width: 860px; }
+  .fc-opt-desc code { font-family: var(--font-mono); font-size: 0.75rem; color: var(--flag); }
+
+  /* ── shared mocks ── */
+  .mock-dossier { background: rgba(13,15,20,0.96); border: 1px solid var(--ink-mid); padding: 0.9rem; }
+  .mock-sysrow { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.16em; color: var(--sand-dim); margin-bottom: 0.7rem; }
+  .mock-count { color: var(--accent-bright); }
+  .mock-badge { display: inline-block; font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.16em; padding: 0.16rem 0.5rem; margin-bottom: 0.55rem; }
+  .mock-title { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; line-height: 1.35; color: var(--sand); }
+
+  .mock-bill { border: 1px solid var(--flag); background: #111418; padding: 0.9rem; position: relative; overflow: hidden; box-shadow: 0 0 22px color-mix(in srgb, var(--flag) 22%, transparent); }
+  .mock-bill-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.14em; color: var(--sand-dim); margin-bottom: 0.6rem; }
+  .mock-bill-badge { font-size: 0.5rem; padding: 0.1rem 0.4rem; }
+  .mock-bill-title { font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; color: #E8E4D0; margin-bottom: 0.45rem; }
+  .mock-bill-desc { font-family: var(--font-mono); font-size: 0.62rem; line-height: 1.55; color: var(--sand-muted); margin-bottom: 0.7rem; }
+  .mock-bill-metric { font-family: var(--font-mono); font-size: 0.68rem; margin-bottom: 0.8rem; }
+  .mock-bill-cta { display: inline-block; font-family: var(--font-mono); font-weight: 700; font-size: 0.6rem; padding: 0.35rem 0.9rem; }
+
+  .mock-rows { background: rgba(13,15,20,0.96); border: 1px solid var(--ink-mid); padding: 0.6rem; }
+  .mock-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.45rem; border-left: 2px solid transparent; border-bottom: 1px solid var(--ink); }
+  .mock-row.is-flag { border-left-color: var(--flag); background: var(--flag-bg); }
+  .mock-num { font-family: var(--font-mono); font-size: 0.58rem; color: var(--sand-dim); }
+  .mock-name { font-family: var(--font-mono); font-size: 0.7rem; color: var(--sand-muted); flex: 1; }
+  .mock-rbadge { font-family: var(--font-mono); font-size: 0.48rem; letter-spacing: 0.12em; color: var(--accent); border: 1px solid var(--accent); padding: 0.05rem 0.3rem; }
+  .mock-preview-flag { margin-top: 0.6rem; padding: 0.7rem; }
+  .mock-pv-name { font-family: var(--font-mono); font-size: 0.8rem; color: var(--sand); margin-bottom: 0.3rem; }
+  .mock-pv-metric { font-family: var(--font-mono); font-size: 0.62rem; }
+
+  /* ── A · DEUS EX ── */
+  .deusex-badge { color: var(--flag-bright); border: 1px solid var(--flag); background: var(--flag-bg); }
+  .deusex-metric, .mock-preview-flag.deusex-panel .mock-pv-metric { color: var(--flag-bright); }
+  .deusex-panel { border: 1px solid var(--flag); background: var(--flag-bg); }
+  .deusex-cta { color: #0d0f14; background: var(--flag-bright); }
+  .deusex-bill { border-width: 2px; }
+
+  /* ── B · CYBERPUNK ── */
+  .cp-badge { position: relative; color: #0d0f14; background: var(--flag); font-weight: 700; padding-right: 0.9rem; }
+  .cp-cut { position: absolute; right: 0; top: 0; width: 0; height: 0; border-style: solid; border-width: 0 0.55rem 0.55rem 0; border-color: transparent #0d0f14 transparent transparent; }
+  .cp-metric, .mock-preview-flag.cp-panel .mock-pv-metric { color: var(--flag-bright); }
+  .cp-panel { border: 1px solid var(--flag); background: var(--flag-bg); }
+  .cp-cta { color: #0d0f14; background: var(--flag); }
+  .cp-row.is-flag { border-left-color: var(--flag); }
+  .cp-bill:hover .mock-bill-title { animation: cp-glitch 0.3s steps(2) 2; }
+  @keyframes cp-glitch {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-2px); color: var(--flag-bright); }
+    50% { transform: translateX(2px); }
+    75% { transform: translateX(-1px); color: var(--flag-bright); }
+    100% { transform: translateX(0); }
+  }
+
+  /* ── C · DEATH STRANDING ── */
+  .ds-badge { color: var(--flag-bright); border: 1px double var(--flag); outline: 1px solid color-mix(in srgb, var(--flag) 40%, transparent); outline-offset: 2px; background: var(--flag-bg); }
+  .ds-metric, .mock-preview-flag.ds-panel .mock-pv-metric { color: var(--flag-bright); }
+  .ds-panel { border: 1px solid var(--flag); outline: 1px solid color-mix(in srgb, var(--flag) 35%, transparent); outline-offset: 3px; background: var(--flag-bg); }
+  .ds-cta { color: #0d0f14; background: var(--flag-bright); }
+  .ds-bill { outline: 1px solid color-mix(in srgb, var(--flag) 40%, transparent); outline-offset: 4px; }
+  .ds-bill::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent 0 3px, color-mix(in srgb, var(--flag) 7%, transparent) 3px 4px);
+    animation: ds-scan 4s linear infinite;
+  }
+  @keyframes ds-scan { from { background-position-y: 0; } to { background-position-y: 8px; } }
+
+  /* ── D · ALIEN ISOLATION ── */
+  .ai-badge { color: var(--flag-bright); background: var(--flag-bg); border: 1px solid color-mix(in srgb, var(--flag) 55%, transparent); }
+  .ai-cursor { animation: ai-blink 1.1s steps(1) infinite; margin-left: 0.15rem; }
+  @keyframes ai-blink { 50% { opacity: 0; } }
+  .ai-metric, .mock-preview-flag.ai-panel .mock-pv-metric { color: var(--flag-bright); }
+  .ai-panel { border: 1px solid var(--flag); background: var(--flag-bg); }
+  .ai-cta { color: #0d0f14; background: var(--flag-bright); }
+  .ai-bill { animation: ai-flicker 6s steps(1) infinite; }
+  @keyframes ai-flicker {
+    0%, 91%, 94%, 100% { opacity: 1; }
+    92% { opacity: 0.82; }
+    93% { opacity: 0.95; }
+    96% { opacity: 0.88; }
+    97% { opacity: 1; }
+  }
+
+  .fc-footer { text-align: center; padding: 1.6rem 0 0; letter-spacing: 0.25em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cp-bill:hover .mock-bill-title, .ds-bill::after, .ai-bill, .ai-cursor { animation-duration: 0.01s; }
+  }
+</style>

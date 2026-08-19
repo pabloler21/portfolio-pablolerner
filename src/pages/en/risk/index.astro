@@ -1,12 +1,11 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
-import ProjectCard from '../../../components/ui/ProjectCard.astro';
 import { riskProjects } from '../../../data/projects';
 
-const lang = 'en';
-const cards = riskProjects.map(p => ({
+const projects = riskProjects.map(p => ({
+  id:       p.id,
   name:     p.en.name,
-  desc:     p.en.problem,
+  problem:  p.en.problem,
   outcome:  p.en.outcome || undefined,
   stack:    p.stack,
   status:   p.status,
@@ -14,108 +13,24 @@ const cards = riskProjects.map(p => ({
   github:   p.github,
   demo:     p.demo,
 }));
+
+const stats = [
+  { label: 'SPECIALIZATION', value: 'Credit Risk · Fraud Detection · BI Dashboards · SQL' },
+  { label: 'FLAGSHIP', value: 'FRAUDSENSE AI', sub: 'AUC-ROC 0.971 · precision 0.943 · 1.85M rows' },
+  { label: 'TOOLS', value: 'Python · SQL · Power BI · scikit-learn · FastAPI · Claude API' },
+  { label: 'STATUS', value: 'ACTIVE · OPEN TO WORK', bright: true },
+];
 ---
 
-<RoleLayout title="Data Analyst — Records" lang="en" role="risk"
-  description="Pablo Lerner — Data Analyst: fraud detection, credit scoring, SQL, Power BI dashboards.">
-
-  <div class="role-header">
-    <h2 class="role-title">DATA ANALYST</h2>
-    <span class="role-badge-primary">PRIMARY ROLE</span>
-  </div>
-  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: {cards.length}</p>
-
-  <div class="stats">
-    <div class="stat-row">
-      <span class="stat-label">SPECIALIZATION</span>
-      <span>Credit Risk · Fraud Detection · BI Dashboards · SQL</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">FLAGSHIP</span>
-      <span class="accent-bright">FRAUDSENSE AI — AUC-ROC 0.971 · precision 0.943 · 1.85M rows</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">TOOLS</span>
-      <span>Python · SQL · Power BI · scikit-learn · FastAPI · Claude API</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">STATUS</span>
-      <span class="accent-bright">ACTIVE · OPEN TO WORK</span>
-    </div>
-  </div>
-
-  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent-bright">{cards.length} FILES FOUND</span></p>
-
-  <ul class="project-list">
-    {cards.map(p => <ProjectCard {...p} />)}
-  </ul>
-</RoleLayout>
-
-<style>
-  .role-header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.8rem;
-    margin-bottom: 0.3rem;
-    flex-wrap: wrap;
-  }
-
-  .role-title {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--sand);
-  }
-
-  .role-badge-primary {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid var(--accent-bright);
-    color: var(--accent-bright);
-  }
-
-  .role-sub {
-    padding-bottom: 0.8rem;
-    border-bottom: var(--border);
-    font-size: 0.6rem;
-    margin-bottom: 1rem;
-  }
-
-  .stats { margin-bottom: 1rem; }
-
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 0.35rem 0;
-    border-bottom: 1px dotted var(--ink);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-  }
-
-  .stat-label {
-    color: var(--sand-dim);
-    flex-shrink: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-  }
-
-  .accent-bright { color: var(--accent-bright); }
-
-  .archive-label {
-    font-size: 0.6rem;
-    margin-bottom: 0.6rem;
-  }
-
-  .project-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-</style>
+<RoleLayout
+  title="Data Analyst — Records"
+  lang="en"
+  role="risk"
+  description="Pablo Lerner — Data Analyst: fraud detection, credit scoring, SQL, Power BI dashboards."
+  heading="DATA ANALYST"
+  badge="PRIMARY ROLE"
+  badgeBright
+  subline={`UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: ${projects.length}`}
+  stats={stats}
+  projects={projects}
+/>

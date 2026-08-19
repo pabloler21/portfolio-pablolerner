@@ -21,9 +21,10 @@ const tabs = [
       href={tab.href}
       class:list={['tab', { active: tab.id === active }]}
       aria-current={tab.id === active ? 'page' : undefined}
+      data-scramble
     >
       <span class="tab-icon">⬡</span>
-      <span>{tab.label}</span>
+      <span data-scramble-text>{tab.label}</span>
     </a>
   ))}
 </nav>
@@ -50,12 +51,19 @@ const tabs = [
     color: var(--sand-dim);
     border-right: var(--border);
     white-space: nowrap;
-    transition: color 0.15s;
+    transition: color 0.18s ease, background-color 0.18s ease;
   }
 
   .tab:last-child { border-right: none; }
 
-  .tab:hover { color: var(--sand); }
+  .tab:hover {
+    color: var(--sand);
+    background: var(--bg-panel);
+  }
+
+  .tab:hover .tab-icon {
+    color: var(--accent-bright);
+  }
 
   .tab.active {
     background: var(--bg-panel);
@@ -66,6 +74,7 @@ const tabs = [
   .tab-icon {
     font-size: 0.75rem;
     color: var(--sand-dim);
+    transition: color 0.18s ease;
   }
 
   .tab.active .tab-icon {

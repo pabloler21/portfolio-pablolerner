@@ -23,8 +23,14 @@ const t = {
 
   <div class="bar-center">
     <!-- Plain mode toggle -->
-    <button class="plain-toggle" id="plain-toggle" aria-label="Toggle plain / high-legibility mode">
-      <span class="toggle-label" id="plain-label">{t.plain}</span>
+    <button
+      class="plain-toggle"
+      id="plain-toggle"
+      aria-label="Toggle plain / high-legibility mode"
+      data-label-plain={`[ ${t.normal} ]`}
+      data-label-normal={`[ ${t.plain} ]`}
+    >
+      <span class="toggle-label" id="plain-label">[ {t.plain} ]</span>
     </button>
 
     <span class="sys-text sep-v">·</span>
@@ -34,7 +40,7 @@ const t = {
       <span class="sys-text">|</span>
       <a href="/es/" class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
       <span class="sys-text sep-v">·</span>
-      <a href="/pablo-lerner-cv.pdf" class="lang-btn cta-accent" download aria-label="Download CV">CV ↓</a>
+      <a href="/pablo-lerner-cv.pdf" class="lang-btn cta-accent" download aria-label="Download CV">[ CV ↓ ]</a>
     </div>
   </div>
 
@@ -49,8 +55,8 @@ const t = {
   const html = document.documentElement;
   const STORAGE_KEY = 'iron-dust-plain';
 
-  const labelPlain = btn?.dataset.labelPlain ?? 'OS MODE';
-  const labelNormal = btn?.dataset.labelNormal ?? 'CLEAR MODE';
+  const labelPlain = btn?.dataset.labelPlain ?? '[ OS MODE ]';
+  const labelNormal = btn?.dataset.labelNormal ?? '[ CLEAR MODE ]';
 
   function updateLabel() {
     if (label) {
@@ -116,21 +122,32 @@ const t = {
     gap: 0.5rem;
   }
 
+  /* Action button — follows the site-wide .cta-btn convention
+     (secondary: --ink-mid border · hover mint+lift · active mint fill+press) */
   .plain-toggle {
-    background: none;
-    border: var(--border);
+    background: transparent;
+    border: var(--border-mid);
     padding: 0.15rem 0.55rem;
     cursor: pointer;
     font-family: var(--font-mono);
     font-size: 0.58rem;
     letter-spacing: 0.15em;
     color: var(--sand-dim);
-    transition: color 0.15s, border-color 0.15s;
+    transform: translateY(0);
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
   }
 
   .plain-toggle:hover {
     color: var(--accent-bright);
     border-color: var(--accent-bright);
+    transform: translateY(-1px);
+  }
+
+  .plain-toggle:active {
+    background: var(--accent-bright);
+    border-color: var(--accent-bright);
+    color: var(--bg-void);
+    transform: translateY(1px);
   }
 
   .lang-toggle {
@@ -152,16 +169,25 @@ const t = {
     color: var(--accent);
   }
 
+  /* Primary action button — follows the .cta-btn.cta-primary convention
+     (mint border always · hover lift · active mint fill+press) */
   .lang-btn.cta-accent {
     color: var(--accent-bright);
     border: 1px solid var(--accent-bright);
     padding: 0.1rem 0.4rem;
-    transition: background 0.12s, color 0.12s;
+    transform: translateY(0);
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
   }
 
   .lang-btn.cta-accent:hover {
+    color: var(--accent-bright);
+    transform: translateY(-1px);
+  }
+
+  .lang-btn.cta-accent:active {
     background: var(--accent-bright);
     color: var(--bg-void);
+    transform: translateY(1px);
   }
 
   .sep-v {

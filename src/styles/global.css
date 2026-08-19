@@ -76,7 +76,10 @@ a {
   text-decoration: none;
 }
 
-a:focus-visible {
+/* ── Focus states — consistent, keyboard-only ───────── */
+/* Low specificity (0,1,0) on purpose: any component-scoped
+   :focus-visible rule (e.g. PersonaSelector) wins over this. */
+:focus-visible {
   outline: 1px solid var(--accent-bright);
   outline-offset: 2px;
 }
@@ -100,7 +103,25 @@ a:focus-visible {
   user-select: none;
 }
 
-/* ── Utility: bright CTA button ─────────────────────── */
+/* ── Button system (site-wide convention) ───────────────────────────────
+   Every action button / CTA on the site follows this exact contract:
+
+   FORM
+   · font-mono, wide letter-spacing, label wrapped in brackets: [ LABEL ]
+   · external actions carry ↗ INSIDE the brackets:  [ VIEW CODE ↗ ]
+   · internal navigation carries →:                 [ VIEW ALL RECORDS → ]
+   · downloads carry ↓:                             [ CV ↓ ]
+
+   CLASSES
+   · .cta-btn              secondary — border --ink-mid, text --sand-dim
+   · .cta-btn.cta-primary  primary   — border + text --accent-bright always
+
+   STATES (identical on both variants)
+   · hover          border + text mint (--accent-bright), translateY(-1px)
+   · active/pressed solid mint background, text --bg-void, translateY(1px)
+   · focus-visible  global mint outline, offset 2px (see :focus-visible above)
+
+   --accent-flag NEVER appears on buttons — flagship gold is non-interactive. */
 .cta-btn {
   display: inline-flex;
   align-items: center;
@@ -112,13 +133,23 @@ a:focus-visible {
   text-decoration: none;
   border: 1px solid var(--ink-mid);
   color: var(--sand-dim);
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  background: transparent;
+  transform: translateY(0);
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
   cursor: pointer;
 }
 
 .cta-btn:hover {
-  color: var(--sand);
-  border-color: var(--accent);
+  color: var(--accent-bright);
+  border-color: var(--accent-bright);
+  transform: translateY(-1px);
+}
+
+.cta-btn:active {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: var(--bg-void);
+  transform: translateY(1px);
 }
 
 .cta-btn.cta-primary {
@@ -126,9 +157,14 @@ a:focus-visible {
   color: var(--accent-bright);
 }
 
-.cta-btn.cta-primary:hover {
-  background: var(--accent-bright);
-  color: var(--bg-void);
+@media (prefers-reduced-motion: reduce) {
+  .cta-btn {
+    transition-duration: 0.01s;
+  }
+  .cta-btn:hover,
+  .cta-btn:active {
+    transform: none;
+  }
 }
 
 /* ── Utility: 1px separator ─────────────────────────── */

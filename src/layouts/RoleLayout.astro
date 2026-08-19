@@ -3,14 +3,77 @@ import Base from './Base.astro';
 import RoleNav from '../components/ui/RoleNav.astro';
 import TerminalWindow from '../components/ui/TerminalWindow.astro';
 
+export interface StatBox {
+  label: string;
+  value: string;
+  sub?: string;
+  bright?: boolean; // mint value — reserved for active states (STATUS box)
+  flag?: boolean;   // flagship gold treatment (auto-detected from label if omitted)
+}
+
+export interface DossierProject {
+  id: string;
+  name: string;
+  problem: string;
+  outcome?: string;
+  stack: readonly string[];
+  status: string;
+  featured?: boolean;
+  github: string;
+  demo?: string;
+}
+
 interface Props {
   title: string;
   lang: 'en' | 'es';
   role: 'ai' | 'risk' | 'ds';
   description?: string;
+  heading?: string;        // "DATA ANALYST"
+  badge?: string;          // "PRIMARY ROLE"
+  badgeBright?: boolean;   // mint badge (primary role only)
+  subline?: string;        // sys-text line under the heading
+  stats?: StatBox[];       // compact HUD stat grid
+  projects?: DossierProject[]; // if present → master-detail dossier
 }
 
-const { title, lang, role, description } = Astro.props;
+const {
+  title, lang, role, description,
+  heading, badge, badgeBright = false, subline,
+  stats = [], projects = [],
+} = Astro.props;
+
+const hasDossier = projects.length > 0;
+
+// Short name for the master list rows ("Iris — Personal AI Assistant" → "Iris")
+const shortName = (n: string) => n.split(' — ')[0];
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Flagship HUD stat box: explicit flag prop, or label match (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
+const isFlagStat = (s: StatBox) => s.flag ?? /flagship|estrella/i.test(s.label);
+
+const L = lang === 'en'
+  ? {
+      files:    'PROJECT FILES',
+      file:     'FILE',
+      mission:  'MISSION',
+      result:   'KEY RESULT',
+      stack:    'STACK',
+      code:     '[ VIEW CODE ↗ ]',
+      live:     '[ LIVE ↗ ]',
+      listAria: 'Project files',
+      hint:     '↑↓ SELECT · ENTER → CODE',
+    }
+  : {
+      files:    'ARCHIVOS DE PROYECTO',
+      file:     'ARCHIVO',
+      mission:  'MISIÓN',
+      result:   'RESULTADO CLAVE',
+      stack:    'STACK',
+      code:     '[ VER CODE ↗ ]',
+      live:     '[ LIVE ↗ ]',
+      listAria: 'Archivos de proyecto',
+      hint:     '↑↓ SELECCIONAR · ENTER → CODE',
+    };
 
 const termContent = {
   ai: {
@@ -76,14 +139,207 @@ const term = termContent[role];
 <Base title={title} lang={lang} activeTab="projects" description={description}>
   <div class="role-grid">
     <RoleNav current={role} lang={lang} />
-    <section class="panel-right">
+
+    <section class="panel-center">
+      {heading && (
+        <header class="role-head">
+          <div class="role-head-top">
+            <h2 class="role-title">{heading}</h2>
+            {badge && <span class:list={['role-badge', { bright: badgeBright }]}>{badge}</span>}
+          </div>
+          {subline && <p class="role-sub sys-text">{subline}</p>}
+          {stats.length > 0 && (
+            <div class="stat-grid">
+              {stats.map(s => (
+                <div class:list={['stat-box', { 'is-flag': isFlagStat(s) }]}>
+                  <span class="stat-label sys-text">{s.label}</span>
+                  <span class:list={['stat-value', { bright: s.bright, flag: isFlagStat(s) }]}>{s.value}</span>
+                  {s.sub && <span class="stat-sub">{s.sub}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </header>
+      )}
+
       <slot />
+
+      {hasDossier && (
+        <div class="dossier">
+          <!-- ── Master: numbered OS file list ── -->
+          <div class="dossier-master">
+            <p class="master-label sys-text">{L.files} · {pad2(projects.length)}</p>
+            <div
+              class="dossier-list"
+              role="listbox"
+              tabindex="0"
+              aria-label={L.listAria}
+              aria-activedescendant={`pf-${role}-0`}
+            >
+              {projects.map((p, i) => (
+                <div
+                  class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
+                  role="option"
+                  id={`pf-${role}-${i}`}
+                  aria-selected={i === 0 ? 'true' : 'false'}
+                  data-idx={i}
+                >
+                  <span class="row-cursor" aria-hidden="true">◆</span>
+                  <span class="row-num">{pad2(i + 1)}</span>
+                  <span class="row-name">{shortName(p.name)}</span>
+                  <span class:list={['row-badge', { flag: p.featured }]}>{p.status}</span>
+                </div>
+              ))}
+            </div>
+            <p class="list-hint sys-text">{L.hint}</p>
+          </div>
+
+          <!-- ── Detail: pre-rendered pane per project (SSG) ── -->
+          <div class="dossier-detail">
+            {projects.map((p, i) => (
+              <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${role}-${i}`}>
+                <div class="detail-top">
+                  <span class:list={['detail-badge', { flag: p.featured }]}>{p.status}</span>
+                  <span class="detail-file sys-text">{L.file} {pad2(i + 1)}/{pad2(projects.length)} · ID: {p.id.toUpperCase()}</span>
+                </div>
+
+                <h3 class="detail-title" data-text={p.name}>{p.name}</h3>
+
+                <div class="detail-section">
+                  <p class="detail-label sys-text">{L.mission}</p>
+                  <p class="detail-problem">{p.problem}</p>
+                </div>
+
+                {p.outcome && (
+                  <div class="detail-outcome">
+                    <span class="outcome-pip" aria-hidden="true">◆</span>
+                    <div class="outcome-body">
+                      <span class="outcome-label sys-text">{L.result}</span>
+                      <span class="outcome-value">{p.outcome}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div class="detail-section">
+                  <p class="detail-label sys-text">{L.stack}</p>
+                  <div class="detail-stack">
+                    {p.stack.map(t => <span class="chip">{t}</span>)}
+                  </div>
+                </div>
+
+                <div class="detail-ctas">
+                  <a class="cta-btn cta-primary detail-code" href={p.github} target="_blank" rel="noopener noreferrer">{L.code}</a>
+                  {p.demo && <a class="cta-btn" href={p.demo} target="_blank" rel="noopener noreferrer">{L.live}</a>}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
+
     <aside class="panel-terminal" aria-hidden="true">
       <TerminalWindow title={term.title} lines={term.lines} />
     </aside>
   </div>
 </Base>
+
+<script>
+  // ── Master-detail dossier controller ──────────────────────────
+  // All panes are pre-rendered (SSG); JS only toggles [hidden] and
+  // runs a cancel-safe scramble-settle reveal on the detail title.
+  type ScrambleEl = HTMLElement & { _scrambleTimer?: ReturnType<typeof setInterval> | null };
+
+  const SCRAMBLE_CHARS = '◆◇▸▪░▒▓XZQV0123456789';
+  const SCRAMBLE_MS = 480;
+  const SCRAMBLE_STEP = 30;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function scrambleIn(el: ScrambleEl, text: string) {
+    // Cancel-safe: clear any in-flight timer stored on the element
+    if (el._scrambleTimer) { clearInterval(el._scrambleTimer); el._scrambleTimer = null; }
+    if (reducedMotion.matches) { el.textContent = text; return; }
+    const frames = Math.ceil(SCRAMBLE_MS / SCRAMBLE_STEP);
+    let frame = 0;
+    el._scrambleTimer = setInterval(() => {
+      frame++;
+      if (frame >= frames) {
+        clearInterval(el._scrambleTimer as ReturnType<typeof setInterval>);
+        el._scrambleTimer = null;
+        el.textContent = text;
+        return;
+      }
+      const settled = Math.floor((frame / frames) * text.length);
+      let out = text.slice(0, settled);
+      for (let i = settled; i < text.length; i++) {
+        out += text[i] === ' ' ? ' ' : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+      }
+      el.textContent = out;
+    }, SCRAMBLE_STEP);
+  }
+
+  document.querySelectorAll<HTMLElement>('.dossier').forEach(root => {
+    const list  = root.querySelector<HTMLElement>('.dossier-list');
+    const rows  = Array.from(root.querySelectorAll<HTMLElement>('.dossier-row'));
+    const panes = Array.from(root.querySelectorAll<HTMLElement>('.detail-pane'));
+    if (!list || rows.length === 0 || panes.length !== rows.length) return;
+
+    let active = 0;
+    const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
+
+    function revealPane(pane: HTMLElement, fromPointer: boolean) {
+      if (fromPointer && isNarrow()) {
+        pane.scrollIntoView({ block: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+      }
+    }
+
+    function select(idx: number, fromPointer = false) {
+      if (idx === active) { revealPane(panes[idx], fromPointer); return; }
+      active = idx;
+
+      rows.forEach((r, i) => {
+        r.classList.toggle('is-active', i === idx);
+        r.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+      });
+      list!.setAttribute('aria-activedescendant', rows[idx].id);
+
+      panes.forEach((p, i) => { p.hidden = i !== idx; });
+      const pane = panes[idx];
+      pane.classList.remove('pane-enter');
+      void pane.offsetWidth; // reflow → restart CSS fade
+      pane.classList.add('pane-enter');
+
+      const titleEl = pane.querySelector<ScrambleEl>('.detail-title');
+      if (titleEl) scrambleIn(titleEl, titleEl.dataset.text || titleEl.textContent || '');
+
+      rows[idx].scrollIntoView({ block: 'nearest' });
+      revealPane(pane, fromPointer);
+    }
+
+    rows.forEach((row, i) => {
+      row.addEventListener('click', () => {
+        list!.focus({ preventScroll: true });
+        select(i, true);
+      });
+    });
+
+    list.addEventListener('keydown', (e: KeyboardEvent) => {
+      const k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Home' || k === 'End') {
+        e.preventDefault();
+        const next =
+          k === 'ArrowDown' ? Math.min(active + 1, rows.length - 1) :
+          k === 'ArrowUp'   ? Math.max(active - 1, 0) :
+          k === 'Home'      ? 0 :
+          rows.length - 1;
+        select(next);
+      } else if (k === 'Enter') {
+        e.preventDefault();
+        panes[active].querySelector<HTMLAnchorElement>('.detail-code')?.click();
+      }
+    });
+  });
+</script>
 
 <style>
   .role-grid {
@@ -93,13 +349,14 @@ const term = termContent[role];
     min-height: 0;
   }
 
-  .panel-right {
+  .panel-center {
     padding: 1.2rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.9rem;
     border-left: var(--border);
+    min-width: 0;
   }
 
   .panel-terminal {
@@ -109,12 +366,343 @@ const term = termContent[role];
     overflow: hidden;
   }
 
+  /* ── Role header ──────────────────────────────────── */
+  .role-head { display: flex; flex-direction: column; gap: 0.45rem; }
+
+  .role-head-top {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .role-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sand);
+  }
+
+  .role-badge {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .role-badge.bright {
+    border-color: var(--accent-bright);
+    color: var(--accent-bright);
+  }
+
+  .role-sub { font-size: 0.6rem; }
+
+  /* ── HUD stat grid ────────────────────────────────── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+  }
+
+  .stat-box {
+    border: var(--border-mid);
+    background: var(--bg-panel);
+    padding: 0.55rem 0.7rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+    min-width: 0;
+  }
+
+  .stat-label { font-size: 0.55rem; }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    color: var(--sand);
+    overflow-wrap: break-word;
+  }
+  .stat-value.bright { color: var(--accent-bright); }
+
+  /* Flagship stat box — gold marking (never interactive) */
+  .stat-box.is-flag { border-color: var(--accent-flag); }
+  .stat-value.flag  { color: var(--accent-flag-bright); }
+
+  .stat-sub {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    color: var(--sand-dim);
+    line-height: 1.5;
+  }
+
+  /* ── Dossier: master-detail ───────────────────────── */
+  .dossier {
+    display: grid;
+    grid-template-columns: 265px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    flex: 1;
+  }
+
+  .dossier-master {
+    position: sticky;
+    top: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .master-label { font-size: 0.56rem; }
+
+  .dossier-list {
+    border: var(--border-mid);
+    background: var(--bg-void);
+  }
+  .dossier-list:focus-visible {
+    outline: 1px solid var(--accent-bright);
+    outline-offset: 1px;
+  }
+
+  .dossier-row {
+    display: grid;
+    grid-template-columns: 0.8rem 1.4rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.52rem 0.55rem;
+    border-left: 2px solid transparent;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .dossier-row + .dossier-row { border-top: var(--border); }
+  .dossier-row:hover { background: var(--bg-panel); }
+  .dossier-row:hover .row-name { color: var(--sand); }
+
+  /* Flagship row — gold border-left + cursor mark "is flagship".
+     MUST come before .is-active: mint (interactive, "is selected")
+     wins on border-left when the flagship row is the active one. */
+  .dossier-row.is-flagship { border-left-color: var(--accent-flag); }
+
+  .dossier-row.is-active {
+    background: var(--bg-panel);
+    border-left-color: var(--accent-bright);
+  }
+
+  .row-cursor {
+    color: var(--accent);
+    font-size: 0.6rem;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .dossier-row.is-active .row-cursor { opacity: 1; }
+  .dossier-row.is-flagship .row-cursor {
+    color: var(--accent-flag);
+    opacity: 1;
+  }
+
+  .row-num {
+    color: var(--sand-dim);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .row-name {
+    color: var(--sand-muted);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dossier-row.is-active .row-name { color: var(--sand); }
+
+  .row-badge {
+    font-size: 0.5rem;
+    letter-spacing: 0.14em;
+    color: var(--sand-dim);
+  }
+  .row-badge.flag {
+    color: var(--accent-flag-bright);
+    border: 1px solid var(--accent-flag);
+    background: var(--accent-flag-bg);
+    padding: 0.08rem 0.35rem;
+  }
+
+  .list-hint { font-size: 0.52rem; }
+
+  /* ── Detail pane ──────────────────────────────────── */
+  .dossier-detail {
+    min-width: 0;
+    border: var(--border-mid);
+    background: var(--bg-panel);
+    padding: 1.1rem 1.25rem 1.3rem;
+  }
+
+  .detail-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+  .detail-pane[hidden] { display: none; }
+
+  .pane-enter { animation: paneFade 0.22s ease both; }
+
+  @keyframes paneFade {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .detail-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .detail-badge {
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.18em;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .detail-badge.flag {
+    border-color: var(--accent-flag);
+    color: var(--accent-flag-bright);
+    background: var(--accent-flag-bg);
+  }
+
+  .detail-file { font-size: 0.54rem; }
+
+  .detail-title {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    letter-spacing: 0.08em;
+    line-height: 1.25;
+    color: var(--sand);
+    min-height: 1.25em;
+  }
+
+  .detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .detail-label { font-size: 0.56rem; }
+
+  .detail-problem {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--sand-muted);
+    max-width: 62ch;
+  }
+
+  .detail-outcome {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    border: 1px solid var(--accent-bright);
+    background: rgba(94, 231, 170, 0.05);
+    padding: 0.55rem 0.8rem 0.6rem;
+  }
+
+  .outcome-pip {
+    color: var(--accent-bright);
+    font-size: 0.55rem;
+    flex-shrink: 0;
+  }
+
+  .outcome-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .outcome-label { font-size: 0.5rem; }
+
+  .outcome-value {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    color: var(--accent-bright);
+    overflow-wrap: break-word;
+  }
+
+  /* Flagship pane — KEY RESULT box goes gold (non-flagship panes stay mint) */
+  .detail-pane.is-flagship .detail-outcome {
+    border-color: var(--accent-flag);
+    background: var(--accent-flag-bg);
+  }
+  .detail-pane.is-flagship .outcome-pip,
+  .detail-pane.is-flagship .outcome-value {
+    color: var(--accent-flag-bright);
+  }
+
+  .detail-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid var(--accent);
+    color: var(--sand-muted);
+  }
+
+  .detail-ctas {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.15rem;
+  }
+
+  /* ── Responsive ───────────────────────────────────── */
+  @media (max-width: 1200px) {
+    .dossier { grid-template-columns: 235px minmax(0, 1fr); }
+  }
+
   @media (max-width: 1024px) {
     .role-grid { grid-template-columns: 280px 1fr; }
     .panel-terminal { display: none; }
   }
 
+  @media (max-width: 900px) {
+    .dossier { grid-template-columns: 1fr; gap: 0.8rem; }
+    .dossier-master { position: static; }
+    .list-hint { display: none; }
+    .detail-title { font-size: 1.3rem; }
+  }
+
   @media (max-width: 640px) {
     .role-grid { grid-template-columns: 1fr; }
+    .panel-center { border-left: none; }
+  }
+
+  @media (max-width: 480px) {
+    .stat-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pane-enter { animation-duration: 0.01s; }
+    .dossier-row, .row-cursor { transition-duration: 0.01s; }
   }
 </style>

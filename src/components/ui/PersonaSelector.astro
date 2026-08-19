@@ -1,45 +1,143 @@
 ---
+import { aiProjects, riskProjects } from '../../data/projects.ts';
+import type { ProjectData } from '../../data/projects.ts';
+
 interface Props { lang?: 'en' | 'es'; }
 const { lang = 'en' } = Astro.props;
 
-const labels = {
+/* ── Preview data (computed at build time — SSG) ─────────────── */
+function roleStats(projects: ProjectData[]) {
+  const flagship = projects.find(p => p.featured) ?? projects[0];
+  const stack = [...new Set(projects.flatMap(p => p.stack))].slice(0, 6);
+  return { records: projects.length, flagship, stack };
+}
+const riskStats = roleStats(riskProjects);
+const aiStats   = roleStats(aiProjects);
+
+const pad2      = (n: number) => String(n).padStart(2, '0');
+const shortName = (p: ProjectData) => p[lang].name.split(' — ')[0];
+const metric    = (p: ProjectData) => p[lang].outcome.split('·')[0].trim();
+
+const t = {
   en: {
-    sys:   'UNIT::ACCESS — PROC::IDENTIFY',
-    title: 'Select access profile',
+    sys:      'UNIT::ACCESS — PROC::IDENTIFY',
+    title:    'Select access profile',
+    records:  'RECORDS',
+    flagship: 'FLAGSHIP',
+    stack:    'STACK ::',
+    primary:  '◆ PRIMARY',
+    soon:     '[ COMING SOON ]',
+    dsTitle:  'COMING SOON',
+    dsText:   'Data science projects deploying...',
+    hints:    '↑↓ NAVIGATE · ENTER CONFIRM',
+    coords:   'LAT:-34.6037 · LON:-58.3816',
     opts: [
-      { zone: 'risk', label: 'DATA ANALYST',    desc: 'primary role · risk & data pipelines' },
-      { zone: 'ai',   label: 'AI ENGINEER',      desc: 'LLMs · RAG · multi-agent systems' },
-      { zone: 'ds',   label: 'DATA SCIENTIST',   desc: '[ COMING SOON ]', dim: true },
+      { zone: 'risk', label: 'DATA ANALYST',       desc: 'primary role · risk & data pipelines' },
+      { zone: 'ai',   label: 'AI ENGINEER',        desc: 'LLMs · RAG · multi-agent systems' },
+      { zone: 'ds',   label: 'DATA SCIENTIST',     desc: 'ML experimentation · modeling', dim: true },
     ],
   },
   es: {
-    sys:   'UNIT::ACCESO — PROC::IDENTIFICAR',
-    title: 'Seleccionar perfil de acceso',
+    sys:      'UNIT::ACCESO — PROC::IDENTIFICAR',
+    title:    'Seleccionar perfil de acceso',
+    records:  'REGISTROS',
+    flagship: 'DESTACADO',
+    stack:    'STACK ::',
+    primary:  '◆ PRIMARY',
+    soon:     '[ PRÓXIMAMENTE ]',
+    dsTitle:  'PRÓXIMAMENTE',
+    dsText:   'Proyectos de data science en camino...',
+    hints:    '↑↓ NAVEGAR · ENTER CONFIRMAR',
+    coords:   'LAT:-34.6037 · LON:-58.3816',
     opts: [
-      { zone: 'risk', label: 'ANALISTA DE DATOS',   desc: 'rol primario · riesgo y pipelines' },
-      { zone: 'ai',   label: 'INGENIERO DE IA',      desc: 'LLMs · RAG · sistemas multi-agente' },
-      { zone: 'ds',   label: 'CIENTÍFICO DE DATOS',  desc: '[ PRÓXIMAMENTE ]', dim: true },
+      { zone: 'risk', label: 'ANALISTA DE DATOS',   desc: 'rol primario · riesgo y pipelines de datos' },
+      { zone: 'ai',   label: 'INGENIERO DE IA',     desc: 'LLMs · RAG · sistemas multi-agente' },
+      { zone: 'ds',   label: 'CIENTÍFICO DE DATOS', desc: 'ML · experimentación y modelado', dim: true },
     ],
   },
 }[lang];
+
+const previews = [
+  { zone: 'risk', label: t.opts[0].label, stats: riskStats },
+  { zone: 'ai',   label: t.opts[1].label, stats: aiStats },
+];
 ---
 
-<div class="persona-overlay" id="persona-overlay" role="dialog" aria-modal="true" aria-label={labels.title}>
-  <div class="persona-box">
+<div class="persona-overlay" id="persona-overlay" role="dialog" aria-modal="true" aria-label={t.title}>
+  <div class="persona-stage">
+    <span class="boot-line" aria-hidden="true"></span>
+    <div class="persona-box">
+
+    <!-- ── Header: sys line + live clock ─────────────────────── -->
     <div class="persona-header">
-      <span class="persona-sys">{labels.sys}</span>
+      <span class="persona-sys">{t.sys}</span>
+      <span class="persona-clock" id="persona-clock">--:--:--</span>
     </div>
 
-    <h2 class="persona-title">{labels.title}</h2>
+    <h2 class="persona-title">{t.title}</h2>
 
-    <nav class="persona-options" role="menu">
-      {labels.opts.map(opt => (
-        <button class={'persona-opt' + (opt.dim ? ' opt-dim' : '')} data-zone={opt.zone} role="menuitem">
-          <span class="opt-label">{opt.label}</span>
-          <span class="opt-desc">{opt.desc}</span>
-        </button>
-      ))}
-    </nav>
+    <!-- ── Body: options (left) + preview (right) ────────────── -->
+    <div class="persona-body">
+
+      <nav class="persona-options" role="menu" aria-label={t.title}>
+        {t.opts.map((opt, i) => (
+          <button
+            class={'persona-opt' + (opt.dim ? ' opt-dim' : '')}
+            data-zone={opt.zone}
+            role="menuitem"
+            style={`animation-delay: ${520 + i * 70}ms`}
+          >
+            <span class="opt-num">{pad2(i + 1)}</span>
+            <span class="opt-main">
+              <span class="opt-label-row">
+                <span class="opt-label">{opt.label}</span>
+                {opt.zone === 'risk' && <span class="opt-badge badge-primary">{t.primary}</span>}
+                {opt.dim && <span class="opt-badge badge-soon">{t.soon}</span>}
+              </span>
+              <span class="opt-desc">{opt.desc}</span>
+            </span>
+          </button>
+        ))}
+      </nav>
+
+      <aside class="persona-preview" id="persona-preview">
+        {previews.map(pv => (
+          <div class={'preview-pane' + (pv.zone === 'risk' ? ' is-active' : '')} data-preview={pv.zone}>
+            <span class="pv-role">{pv.label}</span>
+            <span class="pv-records">{pad2(pv.stats.records)} {t.records}</span>
+            <div class="pv-flag">
+              <span class="pv-flag-label">{t.flagship}</span>
+              <span class="pv-flag-name">{shortName(pv.stats.flagship)}</span>
+              <span class="pv-flag-metric">◆ {metric(pv.stats.flagship)}</span>
+            </div>
+            <div class="pv-stack">
+              <span class="pv-stack-label">{t.stack}</span>
+              <span class="pv-chips">
+                {pv.stats.stack.map(s => <span class="pv-chip">{s}</span>)}
+              </span>
+            </div>
+          </div>
+        ))}
+
+        <div class="preview-pane pane-ds" data-preview="ds">
+          <span class="pv-role pv-role-dim">{t.opts[2].label}</span>
+          <div class="pv-ds-body">
+            <span class="pv-ds-marks">◆ ◆ ◆</span>
+            <span class="pv-ds-title">{t.dsTitle}</span>
+            <span class="pv-ds-text">{t.dsText}</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- ── Footer: hints + coords ─────────────────────────────── -->
+    <div class="persona-footer">
+      <span class="persona-hints">{t.hints}</span>
+      <span class="persona-coords">{t.coords}</span>
+    </div>
+
+    </div>
   </div>
 </div>
 
@@ -56,28 +154,136 @@ const labels = {
       return;
     }
 
-    function choose(zone) {
+    /* Live clock — data, not decoration: runs even under reduced motion */
+    const clock = document.getElementById('persona-clock');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    function tickClock() {
+      if (!clock) return;
+      const d = new Date();
+      clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    tickClock();
+    const clockTimer = setInterval(tickClock, 500);
+
+    /* Preview switching — all panes pre-rendered, toggle .is-active */
+    const panes = [...overlay.querySelectorAll<HTMLElement>('.preview-pane')];
+    function showPreview(zone?: string) {
+      if (!zone) return;
+      panes.forEach(p => p.classList.toggle('is-active', p.dataset.preview === zone));
+    }
+
+    function choose(zone?: string) {
+      if (!zone) return;
       sessionStorage.setItem('nier-persona', zone);
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
-      setTimeout(() => overlay.remove(), 400);
+      setTimeout(() => { clearInterval(clockTimer); overlay.remove(); }, 400);
       window.dispatchEvent(new CustomEvent('nier:zone', { detail: { zone } }));
     }
 
-    overlay.querySelectorAll('.persona-opt').forEach(btn => {
-      btn.addEventListener('click', () => choose(btn.dataset.zone));
+    const opts = [...overlay.querySelectorAll<HTMLElement>('.persona-opt')];
+    opts.forEach(btn => {
+      btn.addEventListener('click',      () => choose(btn.dataset.zone));
+      btn.addEventListener('mouseenter', () => showPreview(btn.dataset.zone));
+      btn.addEventListener('focus',      () => showPreview(btn.dataset.zone));
     });
 
     /* Keyboard nav within options */
-    const opts = [...overlay.querySelectorAll('.persona-opt')];
     overlay.addEventListener('keydown', e => {
-      const cur = opts.indexOf(document.activeElement);
+      const cur = opts.indexOf(document.activeElement as HTMLElement);
       if (e.key === 'ArrowDown' && cur < opts.length - 1) { opts[cur + 1].focus(); e.preventDefault(); }
       if (e.key === 'ArrowUp'   && cur > 0)               { opts[cur - 1].focus(); e.preventDefault(); }
       if ((e.key === 'Enter' || e.key === ' ') && cur >= 0) { opts[cur].click(); e.preventDefault(); }
     });
 
-    requestAnimationFrame(() => opts[0]?.focus());
+    /* ── Boot-build sequence (G8) ────────────────────────────
+       CSS timeline runs once .boot-run lands on the overlay;
+       .boot-done forces the final state (natural end or skip).
+       Label scrambles are JS-driven, cancel-safe (interval stored
+       on the element) and ALWAYS restore the original text. */
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    type ScrambleEl = HTMLElement & { _scrTimer?: ReturnType<typeof setInterval> | null };
+    const labels = [...overlay.querySelectorAll<HTMLElement>('.opt-label')] as ScrambleEl[];
+    const origText = labels.map(el => el.textContent ?? '');
+    const SCRAMBLE_CHARS = '◆◇▸▪0123456789XZQV';
+    const SCRAMBLE_MS = 300;
+    const SCR_DELAYS = [520, 590, 660]; /* mirror the CSS per-option delays */
+    const BOOT_TOTAL = 980;
+    const scrStarts: ReturnType<typeof setTimeout>[] = [];
+    let bootTimer: ReturnType<typeof setTimeout> | undefined;
+    let bootDone = false;
+
+    function scrambleIn(el: ScrambleEl, orig: string) {
+      if (el._scrTimer) clearInterval(el._scrTimer); /* cancel-safe re-entry */
+      const t0 = performance.now();
+      el._scrTimer = setInterval(() => {
+        const p = Math.min(1, (performance.now() - t0) / SCRAMBLE_MS);
+        const settled = Math.floor(orig.length * p);
+        let out = orig.slice(0, settled);
+        for (let i = settled; i < orig.length; i++) {
+          out += orig[i] === ' ' ? ' ' : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+        }
+        el.textContent = out;
+        if (p >= 1) {
+          if (el._scrTimer) clearInterval(el._scrTimer);
+          el._scrTimer = null;
+          el.textContent = orig; /* original always restored */
+        }
+      }, 30);
+    }
+
+    function finishBoot() {
+      if (bootDone) return;
+      bootDone = true;
+      if (bootTimer) clearTimeout(bootTimer);
+      scrStarts.forEach(id => clearTimeout(id));
+      labels.forEach((el, i) => {
+        if (el._scrTimer) { clearInterval(el._scrTimer); el._scrTimer = null; }
+        el.textContent = origText[i] ?? '';
+      });
+      overlay.classList.add('boot-done');
+      window.removeEventListener('keydown', onSkipKey, true);
+      overlay.removeEventListener('click', onSkipClick, true);
+      opts[0]?.focus();
+    }
+
+    /* Any key/click during boot skips straight to the final state.
+       Capture phase: a click on a still-materialising option must
+       skip, never choose. Both listeners removed in finishBoot. */
+    function onSkipKey(e: KeyboardEvent) { e.stopPropagation(); finishBoot(); }
+    function onSkipClick(e: MouseEvent)  { e.stopPropagation(); e.preventDefault(); finishBoot(); }
+
+    function startBoot() {
+      overlay.classList.add('boot-run');
+      window.addEventListener('keydown', onSkipKey, true);
+      overlay.addEventListener('click', onSkipClick, true);
+      if (!reduced) {
+        labels.forEach((el, i) =>
+          scrStarts.push(setTimeout(() => scrambleIn(el, origText[i] ?? ''), SCR_DELAYS[i] ?? 660)));
+      }
+      /* PRIMARY end signal: animationend of the footer — the last element in
+         the CSS timeline. CSS animations run on the compositor's wall-clock,
+         so this fires at the true visual end even when the JS event loop is
+         janked by the 7.8MB GLB parse. Relying on the timeout alone left the
+         skip listeners alive past the visible boot, eating the user's first
+         click on an option. The timeout stays as fallback only. */
+      overlay.querySelector('.persona-footer')?.addEventListener('animationend', finishBoot, { once: true });
+      bootTimer = setTimeout(finishBoot, reduced ? 50 : BOOT_TOTAL + 600);
+    }
+
+    /* First visit: hold the overlay while the scene plays its cinematic
+       intro (~2.4s); the boot-build starts the moment .wait is removed.
+       No .wait (reduced motion / fallback) → boot runs on load. */
+    if (reduced) {
+      startBoot();
+    } else {
+      overlay.classList.add('wait');
+      setTimeout(() => {
+        overlay.classList.remove('wait');
+        startBoot();
+      }, 2400);
+    }
   })();
 </script>
 
@@ -89,21 +295,110 @@ const labels = {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(27, 30, 26, 0.95);
+    background: rgba(13, 15, 20, 0.94);
     opacity: 1;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.5s ease;
     backdrop-filter: blur(2px);
   }
 
+  /* Held during the scene's cinematic intro on first visit */
+  .persona-overlay.wait {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .persona-stage {
+    position: relative;
+    width: min(760px, 92vw);
+  }
+
   .persona-box {
-    width: min(480px, 90vw);
-    border: 1px solid var(--ink-mid);
+    width: 100%;
+    border: 1px solid rgba(94, 231, 170, 0.18);
+    box-shadow: 0 0 32px rgba(94, 231, 170, 0.06), 0 0 0 1px rgba(13, 15, 20, 0.8);
     background: var(--bg-panel);
-    padding: 0;
     overflow: hidden;
   }
 
+  /* ── Boot-build sequence (YoRHa OS power-on, ~950ms) ─────────
+     Pre-boot: everything folded/hidden (scoped to :not(.boot-done)).
+     .boot-run starts the CSS timeline; .boot-done releases every
+     rule below → elements land on their normal (final) styles. */
+  .boot-line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 2px;
+    background: var(--accent-bright);
+    box-shadow: 0 0 14px rgba(94, 231, 170, 0.55);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .persona-overlay:not(.boot-done) .persona-box { clip-path: inset(50% 0 50% 0); }
+
+  .persona-overlay:not(.boot-done) .persona-header,
+  .persona-overlay:not(.boot-done) .persona-title,
+  .persona-overlay:not(.boot-done) .persona-opt,
+  .persona-overlay:not(.boot-done) .persona-preview,
+  .persona-overlay:not(.boot-done) .persona-footer { opacity: 0; }
+
+  /* 1. (0–200ms) mint seam expands from the center; fades ~450–600ms */
+  .persona-overlay.boot-run:not(.boot-done) .boot-line {
+    animation: bootLine 0.6s ease-out both;
+  }
+  /* 2. (150–450ms) frame unfolds vertically from the seam */
+  .persona-overlay.boot-run:not(.boot-done) .persona-box {
+    animation: bootFrame 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  }
+  /* 3. (400–920ms) content stagger: header → title → opts → preview → footer */
+  .persona-overlay.boot-run:not(.boot-done) .persona-header {
+    animation: bootFade 0.18s ease-out 0.4s both;
+  }
+  .persona-overlay.boot-run:not(.boot-done) .persona-title {
+    animation: bootRise 0.18s ease-out 0.46s both;
+  }
+  .persona-overlay.boot-run:not(.boot-done) .persona-opt {
+    animation: bootRise 0.18s ease-out both; /* per-option delay inline: 520/590/660ms */
+  }
+  .persona-overlay.boot-run:not(.boot-done) .persona-preview {
+    animation: bootFade 0.18s ease-out 0.7s both;
+  }
+  .persona-overlay.boot-run:not(.boot-done) .persona-footer {
+    animation: bootFade 0.18s ease-out 0.74s both;
+  }
+
+  @keyframes bootLine {
+    0%   { width: 0;    opacity: 1; }
+    33%  { width: 100%; opacity: 1; }
+    75%  { width: 100%; opacity: 1; }
+    100% { width: 100%; opacity: 0; }
+  }
+
+  @keyframes bootFrame {
+    from { clip-path: inset(50% 0 50% 0); }
+    to   { clip-path: inset(0 0 0 0); }
+  }
+
+  @keyframes bootFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes bootRise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
   .persona-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     padding: 0.7rem 1.2rem;
     border-bottom: 1px solid var(--ink);
     background: var(--bg-void);
@@ -116,26 +411,45 @@ const labels = {
     color: var(--sand-dim);
   }
 
+  .persona-clock {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--accent-bright);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Title ───────────────────────────────────────────────── */
   .persona-title {
     font-family: var(--font-display);
-    font-size: 1.3rem;
+    font-size: 1.35rem;
+    font-weight: 400;
     letter-spacing: 0.12em;
     color: var(--sand);
     margin: 0;
-    padding: 1.2rem 1.2rem 0.8rem;
+    padding: 1.1rem 1.2rem 0.85rem;
     border-bottom: 1px solid var(--ink);
   }
 
+  /* ── Body: two columns ───────────────────────────────────── */
+  .persona-body {
+    display: grid;
+    grid-template-columns: 55fr 45fr;
+    align-items: stretch;
+  }
+
+  /* ── Left: options ───────────────────────────────────────── */
   .persona-options {
     display: flex;
     flex-direction: column;
   }
 
   .persona-opt {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: baseline;
-    gap: 1rem;
-    padding: 0.85rem 1.2rem;
+    gap: 0.85rem;
+    padding: 0.95rem 1rem 0.95rem 1.2rem;
     background: none;
     border: none;
     border-left: 2px solid transparent;
@@ -148,38 +462,256 @@ const labels = {
 
   .persona-opt:last-child { border-bottom: none; }
 
-  .persona-opt:hover {
-    border-left-color: var(--accent);
-    background: var(--bg-surface);
-  }
-
+  .persona-opt:hover,
   .persona-opt:focus-visible {
     outline: none;
     border-left-color: var(--accent-bright);
     background: var(--bg-surface);
   }
 
+  .persona-opt:hover .opt-label,
   .persona-opt:focus-visible .opt-label {
     color: var(--accent-bright);
   }
 
+  .opt-num {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    color: var(--sand-dim);
+  }
+
+  .opt-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .opt-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
   .opt-label {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: 0.86rem;
     letter-spacing: 0.14em;
     color: var(--sand);
-    flex-shrink: 0;
     transition: color 0.15s;
   }
 
   .opt-desc {
     font-family: var(--font-mono);
-    font-size: 0.58rem;
+    font-size: 0.56rem;
     letter-spacing: 0.1em;
     color: var(--sand-dim);
   }
 
+  .opt-badge {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    letter-spacing: 0.16em;
+    padding: 0.14rem 0.4rem;
+    white-space: nowrap;
+  }
+
+  .badge-primary {
+    color: var(--accent-bright);
+    border: 1px solid rgba(94, 231, 170, 0.45);
+  }
+
+  .badge-soon {
+    color: var(--sand-dim);
+    border: 1px solid var(--ink-mid);
+  }
+
   .opt-dim .opt-label { color: var(--sand-dim); }
   .opt-dim .opt-desc  { opacity: 0.7; }
-  .opt-dim:hover .opt-label { color: var(--sand-muted); }
+  .opt-dim:hover .opt-label,
+  .opt-dim:focus-visible .opt-label { color: var(--sand-muted); }
+
+  /* ── Right: preview panel ────────────────────────────────── */
+  .persona-preview {
+    border-left: 1px solid var(--ink);
+    background: var(--bg-void);
+    min-height: 15rem;
+    position: relative;
+  }
+
+  .preview-pane {
+    display: none;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.1rem 1.2rem;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .preview-pane.is-active {
+    display: flex;
+    animation: pvIn 0.2s ease both;
+  }
+
+  @keyframes pvIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .pv-role {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    color: var(--accent-bright);
+  }
+
+  .pv-role-dim { color: var(--sand-dim); }
+
+  .pv-records {
+    font-family: var(--font-mono);
+    font-size: 0.54rem;
+    letter-spacing: 0.18em;
+    color: var(--sand-muted);
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  /* FLAGSHIP block — amber flagship accent tier (tokens land in
+     tokens.css in parallel; literal fallbacks keep this working) */
+  .pv-flag {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--accent-flag, #9a7b2d);
+    background: var(--accent-flag-bg, #14110a);
+  }
+
+  .pv-flag-label {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    letter-spacing: 0.22em;
+    color: var(--accent-flag, #9a7b2d);
+  }
+
+  .pv-flag-name {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-flag-bright, #c9a94f);
+  }
+
+  .pv-flag-metric {
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-muted);
+  }
+
+  .pv-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: auto;
+  }
+
+  .pv-stack-label {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    letter-spacing: 0.22em;
+    color: var(--sand-dim);
+  }
+
+  .pv-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .pv-chip {
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-muted);
+    border: 1px solid var(--accent);
+    padding: 0.14rem 0.38rem;
+    white-space: nowrap;
+  }
+
+  /* DS pane — coming soon */
+  .pane-ds .pv-ds-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    text-align: center;
+  }
+
+  .pv-ds-marks {
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    color: var(--accent);
+  }
+
+  .pv-ds-title {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+    color: var(--sand-muted);
+  }
+
+  .pv-ds-text {
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    color: var(--sand-dim);
+    max-width: 16ch;
+    line-height: 1.7;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .persona-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1.2rem;
+    border-top: 1px solid var(--ink);
+    background: var(--bg-void);
+  }
+
+  .persona-hints,
+  .persona-coords {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+  }
+
+  /* ── Narrow viewports: single column, preview hidden ─────── */
+  @media (max-width: 640px) {
+    .persona-body { grid-template-columns: 1fr; }
+    .persona-preview { display: none; }
+  }
+
+  /* ── Reduced motion: near-zero duration, NEVER animation:none
+       (killing the animation kills fill-mode → invisible elements).
+       !important beats the inline per-option animation-delay. ── */
+  @media (prefers-reduced-motion: reduce) {
+    .boot-line,
+    .persona-box,
+    .persona-header,
+    .persona-title,
+    .persona-opt,
+    .persona-preview,
+    .persona-footer,
+    .preview-pane.is-active {
+      animation-duration: 0.01s !important;
+      animation-delay: 0s !important;
+    }
+  }
 </style>

@@ -45,6 +45,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   </head>
 
   <body>
+    <!-- Page-entry scanline sweep — one-shot mint line crossing top→bottom -->
+    <div class="page-sweep" aria-hidden="true"></div>
+
     <!-- Ambient 3D background — lazy-loaded, non-blocking, behind all content -->
     <AmbientCanvas />
 
@@ -75,12 +78,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
           </span>
         </div>
         <nav class="id-ctas" aria-label="Contact links">
-          <a href="https://github.com/pabloler21" class="cta-btn" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-          <a href="https://www.linkedin.com/in/pablo-lerner-591180336" class="cta-btn" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
-          <a href="mailto:lerner.pb@gmail.com" class="cta-btn">Email</a>
-          <a href="/pablo-lerner-cv.pdf" class="cta-btn cta-primary" download>
-            {lang === 'en' ? 'CV ↓' : 'CV ↓'}
-          </a>
+          <a href="https://github.com/pabloler21" class="cta-btn" target="_blank" rel="noopener noreferrer" data-scramble>[ GitHub ↗ ]</a>
+          <a href="https://www.linkedin.com/in/pablo-lerner-591180336" class="cta-btn" target="_blank" rel="noopener noreferrer" data-scramble>[ LinkedIn ↗ ]</a>
+          <a href="mailto:lerner.pb@gmail.com" class="cta-btn" data-scramble>[ Email ]</a>
+          <a href="/pablo-lerner-cv.pdf" class="cta-btn cta-primary" download data-scramble>[ CV ↓ ]</a>
         </nav>
       </div>
 
@@ -148,6 +149,60 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 
         makeRain('margin-rain-left');
         makeRain('margin-rain-right');
+      })();
+    </script>
+
+    <script>
+      // ── Hover scramble — nav tabs + header CTAs (opt-in via data-scramble) ──
+      // Cancel-safe: timer stored on the element, cleared on re-enter/leave,
+      // text ALWAYS restored to the exact original. Hover only — never focus.
+      (function () {
+        const SCRAMBLE_CHARS = '◆◇▸▪0123456789XZQV';
+        const DURATION = 350;
+        const STEP = 30;
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        function stopScramble(el: any) {
+          if (el._scrambleTimer) {
+            clearInterval(el._scrambleTimer);
+            el._scrambleTimer = null;
+          }
+          if (typeof el._scrambleOriginal === 'string') {
+            el.textContent = el._scrambleOriginal;
+          }
+        }
+
+        function startScramble(el: any) {
+          if (reducedMotion.matches) return;
+          if (typeof el._scrambleOriginal !== 'string') {
+            el._scrambleOriginal = el.textContent || '';
+          }
+          stopScramble(el); // clear any running pass before restarting
+          const original: string = el._scrambleOriginal;
+          const len = original.length;
+          if (!len) return;
+          const steps = Math.ceil(DURATION / STEP);
+          let frame = 0;
+          el._scrambleTimer = setInterval(() => {
+            frame++;
+            const settled = Math.floor((frame / steps) * len);
+            let out = '';
+            for (let i = 0; i < len; i++) {
+              const ch = original[i];
+              out += (i < settled || ch === ' ')
+                ? ch
+                : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+            }
+            el.textContent = out;
+            if (frame >= steps) stopScramble(el); // settle back to exact original
+          }, STEP);
+        }
+
+        document.querySelectorAll('[data-scramble]').forEach((host) => {
+          const target = host.querySelector('[data-scramble-text]') || host;
+          host.addEventListener('mouseenter', () => startScramble(target));
+          host.addEventListener('mouseleave', () => stopScramble(target));
+        });
       })();
     </script>
   </body>
@@ -330,5 +385,47 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     display: block;
     width: 100%;
     height: 100%;
+  }
+
+  /* ── Page-entry scanline sweep ─────────────────────── */
+  /* One-shot mint line crossing the viewport top→bottom on load.
+     z-index 800: above content, below PersonaSelector (9000) and
+     scanlines/grain (9997+). */
+  .page-sweep {
+    position: fixed;
+    top: -6px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(94, 231, 170, 0.4) 18%,
+      rgba(94, 231, 170, 0.4) 82%,
+      transparent
+    );
+    box-shadow: 0 0 14px 2px rgba(94, 231, 170, 0.16);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 800;
+    animation: page-sweep-drop 0.7s cubic-bezier(0.3, 0.1, 0.3, 1) 1 forwards;
+  }
+
+  @keyframes page-sweep-drop {
+    0%   { transform: translateY(0); opacity: 0; }
+    8%   { opacity: 0.85; }
+    78%  { opacity: 0.45; }
+    100% { transform: translateY(calc(100vh + 12px)); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-sweep {
+      animation-duration: 0.01s; /* never animation:none — kills fill-mode */
+    }
+  }
+
+  /* Plain mode: no scene FX overlays */
+  :global(html[data-plain]) .page-sweep {
+    display: none;
   }
 </style>

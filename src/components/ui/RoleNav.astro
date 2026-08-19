@@ -48,7 +48,7 @@ const t = {
     <p>LAT: -34.6037</p>
     <p>LON: -58.3816</p>
     <p>{t.status}</p>
-    <p>{t.available}</p>
+    <p class="available">{t.available}</p>
   </div>
 </div>
 
@@ -88,16 +88,17 @@ const t = {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.6rem 1rem;
+    padding: 0.6rem 1rem 0.6rem 0.85rem;
+    border-left: 2px solid transparent;
     font-family: var(--font-mono);
     font-size: 0.82rem;
     letter-spacing: 0.12em;
     color: var(--sand-dim);
     text-decoration: none;
-    transition: color 0.12s, background 0.12s;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
   }
   .role-item:hover         { color: var(--sand); background: var(--bg-panel); }
-  .role-item.active        { background: var(--bg-panel); color: var(--sand); }
+  .role-item.active        { background: var(--bg-panel); color: var(--sand); border-left-color: var(--accent-bright); }
   .role-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 
   .cursor { font-size: 0.68rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
@@ -109,4 +110,6 @@ const t = {
     line-height: 2;
     font-size: 0.63rem;
   }
+
+  .meta-block .available { color: var(--accent-bright); opacity: 1; }
 </style>

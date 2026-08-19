@@ -1,12 +1,11 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
-import ProjectCard from '../../../components/ui/ProjectCard.astro';
 import { aiProjects } from '../../../data/projects';
 
-const lang = 'en';
-const cards = aiProjects.map(p => ({
+const projects = aiProjects.map(p => ({
+  id:       p.id,
   name:     p.en.name,
-  desc:     p.en.problem,
+  problem:  p.en.problem,
   outcome:  p.en.outcome || undefined,
   stack:    p.stack,
   status:   p.status,
@@ -14,108 +13,23 @@ const cards = aiProjects.map(p => ({
   github:   p.github,
   demo:     p.demo,
 }));
+
+const stats = [
+  { label: 'SPECIALIZATION', value: 'LLM · Multi-agent · RAG · Tool-calling' },
+  { label: 'FLAGSHIP', value: 'IRIS — PERSONAL AI ASSISTANT', sub: '1.2M vectors indexed · unattended on systemd' },
+  { label: 'TOOLS', value: 'Python · LangChain · FastAPI · Claude API · Qdrant' },
+  { label: 'STATUS', value: 'ACTIVE · OPEN TO WORK', bright: true },
+];
 ---
 
-<RoleLayout title="AI Engineer — Records" lang="en" role="ai"
-  description="Pablo Lerner — AI Engineer: LLM systems, multi-agent pipelines, RAG, FastAPI services.">
-
-  <div class="role-header">
-    <h2 class="role-title">AI ENGINEER</h2>
-    <span class="role-badge">SPECIALIZATION</span>
-  </div>
-  <p class="role-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: {cards.length}</p>
-
-  <div class="stats">
-    <div class="stat-row">
-      <span class="stat-label">SPECIALIZATION</span>
-      <span>LLM · Multi-agent · RAG · Tool-calling</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">FLAGSHIP</span>
-      <span class="accent-bright">IRIS — Personal AI Assistant · 1.2M vectors indexed</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">TOOLS</span>
-      <span>Python · LangChain · FastAPI · Claude API · Qdrant</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">STATUS</span>
-      <span class="accent-bright">ACTIVE · OPEN TO WORK</span>
-    </div>
-  </div>
-
-  <p class="archive-label sys-text">MEMORY ARCHIVE · <span class="accent-bright">{cards.length} FILES FOUND</span></p>
-
-  <ul class="project-list">
-    {cards.map(p => <ProjectCard {...p} />)}
-  </ul>
-</RoleLayout>
-
-<style>
-  .role-header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.8rem;
-    margin-bottom: 0.3rem;
-    flex-wrap: wrap;
-  }
-
-  .role-title {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--sand);
-  }
-
-  .role-badge {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-  }
-
-  .role-sub {
-    padding-bottom: 0.8rem;
-    border-bottom: var(--border);
-    font-size: 0.6rem;
-    margin-bottom: 1rem;
-  }
-
-  .stats { margin-bottom: 1rem; }
-
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 0.35rem 0;
-    border-bottom: 1px dotted var(--ink);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-  }
-
-  .stat-label {
-    color: var(--sand-dim);
-    flex-shrink: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-  }
-
-  .accent-bright { color: var(--accent-bright); }
-
-  .archive-label {
-    font-size: 0.6rem;
-    margin-bottom: 0.6rem;
-  }
-
-  .project-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-</style>
+<RoleLayout
+  title="AI Engineer — Records"
+  lang="en"
+  role="ai"
+  description="Pablo Lerner — AI Engineer: LLM systems, multi-agent pipelines, RAG, FastAPI services."
+  heading="AI ENGINEER"
+  badge="SPECIALIZATION"
+  subline={`UNIT PROFILE · ACCESS LEVEL: OPEN · RECORDS: ${projects.length}`}
+  stats={stats}
+  projects={projects}
+/>

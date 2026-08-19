@@ -1,117 +1,109 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
+
+const stats = [
+  { label: 'ESPECIALIZACIÓN', value: 'ML Pipelines · NLP · Clasificación' },
+  { label: 'REGISTROS', value: 'SINCRONIZACIÓN EN PROGRESO' },
+  { label: 'HERRAMIENTAS', value: 'scikit-learn · HuggingFace · PyTorch' },
+  { label: 'ESTADO', value: 'ACTIVO · DISPONIBLE', bright: true },
+];
 ---
 
-<RoleLayout title="Data Scientist — Registros" lang="es" role="ds"
-  description="Pablo Lerner — Perfil Data Scientist: pipelines ML, NLP, clasificación de sentimientos en español.">
+<RoleLayout
+  title="Data Scientist — Registros"
+  lang="es"
+  role="ds"
+  description="Pablo Lerner — Perfil Data Scientist: pipelines ML, NLP, clasificación de sentimientos en español."
+  heading="DATA SCIENTIST"
+  badge="EN DESARROLLO"
+  subline="PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: CARGANDO"
+  stats={stats}
+>
+  <div class="ds-archive">
+    <p class="ds-label sys-text">ARCHIVO DE MEMORIA · <span class="ds-pending">SINCRONIZACIÓN PENDIENTE</span></p>
 
-  <h2 class="role-title">DATA SCIENTIST</h2>
-  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: CARGANDO</p>
+    <div class="ds-box">
+      <p class="ds-coming">PRÓXIMAMENTE</p>
+      <p class="ds-note sys-text">// REGISTROS CARGANDO — SINCRONIZACIÓN EN PROGRESO</p>
 
-  <div class="stats">
-    <div class="stat-row">
-      <span class="stat-label">ESPECIALIZACIÓN</span>
-      <span>ML pipelines · NLP · Clasificación</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">HERRAMIENTAS</span>
-      <span>scikit-learn · HuggingFace · PyTorch</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">ESTADO</span>
-      <span class="accent">ACTIVO · DISPONIBLE</span>
+      <ul class="ds-rows">
+        {[1, 2, 3].map(n => (
+          <li class="ds-row">
+            <span class="ds-cursor" aria-hidden="true">◇</span>
+            <span class="ds-num">{`0${n}`}</span>
+            <span class="ds-redact">████████████████████</span>
+            <span class="ds-badge">PENDIENTE</span>
+          </li>
+        ))}
+      </ul>
     </div>
   </div>
-
-  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="pending">SINCRONIZACIÓN PENDIENTE</span></p>
-
-  <ul class="project-list">
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
-    <li class="project-item locked">
-      <span>████████████████████████</span>
-      <div class="card-right"><span class="badge dim">PENDIENTE</span></div>
-    </li>
-  </ul>
-
-  <p class="sys-text note">// REGISTROS CARGANDO — SINCRONIZACIÓN EN PROGRESO</p>
 </RoleLayout>
 
 <style>
-  .role-title {
-    font-family: var(--font-display);
-    font-size: 1.3rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--sand);
-    margin-bottom: 0.2rem;
-  }
-
-  .role-sub {
-    padding-bottom: 0.8rem;
-    border-bottom: var(--border);
-    font-size: 0.6rem;
-    margin-bottom: 1rem;
-  }
-
-  .stats { margin-bottom: 1.2rem; }
-
-  .stat-row {
+  .ds-archive {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 0.3rem 0;
-    border-bottom: 1px dotted var(--ink);
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .ds-label { font-size: 0.56rem; }
+  .ds-pending { color: var(--sand-dim); }
+
+  .ds-box {
+    border: var(--border-mid);
+    background: var(--bg-panel);
+    padding: 1.4rem 1.25rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ds-coming {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
+    font-size: 1.15rem;
+    letter-spacing: 0.4em;
+    color: var(--sand-muted);
   }
 
-  .stat-label {
-    color: var(--sand-dim);
-    flex-shrink: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
+  .ds-note {
+    font-size: 0.56rem;
+    margin-bottom: 0.6rem;
   }
 
-  .accent  { color: var(--accent); }
-  .pending { color: var(--sand-dim); }
-
-  .archive-label { font-size: 0.6rem; margin-bottom: 0.4rem; }
-
-  .project-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
-
-  .project-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.7rem;
+  .ds-rows {
+    list-style: none;
     border: var(--border);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.07em;
-    color: var(--sand);
   }
 
-  .project-item.locked { color: var(--sand-dim); opacity: 0.5; cursor: default; }
+  .ds-row {
+    display: grid;
+    grid-template-columns: 0.8rem 1.4rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.52rem 0.55rem;
+    border-left: 2px solid transparent;
+    font-family: var(--font-mono);
+    color: var(--sand-dim);
+    opacity: 0.5;
+    cursor: default;
+  }
+  .ds-row + .ds-row { border-top: var(--border); }
 
-  .card-right { display: flex; align-items: center; gap: 0.5rem; }
+  .ds-cursor { color: var(--accent); font-size: 0.6rem; opacity: 0.5; }
+  .ds-num    { font-size: 0.6rem; letter-spacing: 0.08em; }
 
-  .badge.dim {
-    font-size: 0.57rem;
+  .ds-redact {
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .ds-badge {
+    font-size: 0.5rem;
     letter-spacing: 0.15em;
     padding: 0.1rem 0.4rem;
     border: 1px solid var(--sand-dim);
-    color: var(--sand-dim);
-    flex-shrink: 0;
   }
-
-  .note { font-size: 0.58rem; margin-top: 0.5rem; color: var(--sand-dim); }
 </style>

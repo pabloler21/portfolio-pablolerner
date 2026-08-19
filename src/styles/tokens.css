@@ -18,6 +18,12 @@
   --accent:       #3d7a64;   /* teal muted — decorative: ◆ cursor, DotRow, badge borders */
   --accent-bright: #5ee7aa;  /* mint — CTAs, active states, hover highlights */
 
+  /* Flagship accent (Deus Ex black&gold) — ONLY for flagship marking
+     (badge, list row, billboard frame, selector chip). NEVER interactive. */
+  --accent-flag:        #9a7b2d;
+  --accent-flag-bright: #c9a94f;
+  --accent-flag-bg:     #14110a;
+
   /* ── Typography ── */
   --font-display: 'IM Fell English', Georgia, serif;
   --font-mono:    'Share Tech Mono', 'Courier New', monospace;

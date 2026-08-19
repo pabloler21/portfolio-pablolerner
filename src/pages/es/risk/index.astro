@@ -1,12 +1,11 @@
 ---
 import RoleLayout from '../../../layouts/RoleLayout.astro';
-import ProjectCard from '../../../components/ui/ProjectCard.astro';
 import { riskProjects } from '../../../data/projects';
 
-const lang = 'es';
-const cards = riskProjects.map(p => ({
+const projects = riskProjects.map(p => ({
+  id:       p.id,
   name:     p.es.name,
-  desc:     p.es.problem,
+  problem:  p.es.problem,
   outcome:  p.es.outcome || undefined,
   stack:    p.stack,
   status:   p.statusEs ?? p.status,
@@ -14,108 +13,24 @@ const cards = riskProjects.map(p => ({
   github:   p.github,
   demo:     p.demo,
 }));
+
+const stats = [
+  { label: 'ESPECIALIZACIÓN', value: 'Riesgo Crediticio · Detección de Fraude · BI Dashboards · SQL' },
+  { label: 'PROYECTO ESTRELLA', value: 'FRAUDSENSE AI', sub: 'AUC-ROC 0.971 · precisión 0.943 · 1.85M filas' },
+  { label: 'HERRAMIENTAS', value: 'Python · SQL · Power BI · scikit-learn · FastAPI · Claude API' },
+  { label: 'ESTADO', value: 'ACTIVO · DISPONIBLE', bright: true },
+];
 ---
 
-<RoleLayout title="Data Analyst — Registros" lang="es" role="risk"
-  description="Pablo Lerner — Data Analyst: detección de fraude, credit scoring, SQL, dashboards Power BI.">
-
-  <div class="role-header">
-    <h2 class="role-title">DATA ANALYST</h2>
-    <span class="role-badge-primary">PERFIL PRINCIPAL</span>
-  </div>
-  <p class="role-sub sys-text">PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: {cards.length}</p>
-
-  <div class="stats">
-    <div class="stat-row">
-      <span class="stat-label">ESPECIALIZACIÓN</span>
-      <span>Riesgo Crediticio · Detección de Fraude · BI Dashboards · SQL</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">PROYECTO ESTRELLA</span>
-      <span class="accent-bright">FRAUDSENSE AI — AUC-ROC 0.971 · precisión 0.943 · 1.85M filas</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">HERRAMIENTAS</span>
-      <span>Python · SQL · Power BI · scikit-learn · FastAPI · Claude API</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">ESTADO</span>
-      <span class="accent-bright">ACTIVO · DISPONIBLE</span>
-    </div>
-  </div>
-
-  <p class="archive-label sys-text">ARCHIVO DE MEMORIA · <span class="accent-bright">{cards.length} ARCHIVOS ENCONTRADOS</span></p>
-
-  <ul class="project-list">
-    {cards.map(p => <ProjectCard {...p} />)}
-  </ul>
-</RoleLayout>
-
-<style>
-  .role-header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.8rem;
-    margin-bottom: 0.3rem;
-    flex-wrap: wrap;
-  }
-
-  .role-title {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--sand);
-  }
-
-  .role-badge-primary {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid var(--accent-bright);
-    color: var(--accent-bright);
-  }
-
-  .role-sub {
-    padding-bottom: 0.8rem;
-    border-bottom: var(--border);
-    font-size: 0.6rem;
-    margin-bottom: 1rem;
-  }
-
-  .stats { margin-bottom: 1rem; }
-
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 0.35rem 0;
-    border-bottom: 1px dotted var(--ink);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-  }
-
-  .stat-label {
-    color: var(--sand-dim);
-    flex-shrink: 0;
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-  }
-
-  .accent-bright { color: var(--accent-bright); }
-
-  .archive-label {
-    font-size: 0.6rem;
-    margin-bottom: 0.6rem;
-  }
-
-  .project-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-</style>
+<RoleLayout
+  title="Data Analyst — Registros"
+  lang="es"
+  role="risk"
+  description="Pablo Lerner — Data Analyst: detección de fraude, credit scoring, SQL, dashboards Power BI."
+  heading="DATA ANALYST"
+  badge="PERFIL PRINCIPAL"
+  badgeBright
+  subline={`PERFIL DE UNIDAD · ACCESO: ABIERTO · REGISTROS: ${projects.length}`}
+  stats={stats}
+  projects={projects}
+/>
