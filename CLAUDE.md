@@ -358,7 +358,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 - [ ] Data Scientist repos — none assigned yet (`src/data/projects.ts → dsProjects`)
 - [ ] CV PDF — place at `public/pablo-lerner-cv.pdf` (button already wired)
 - [x] LinkedIn URL — `https://www.linkedin.com/in/pablo-lerner-591180336`
-- [x] Domain — `site: 'https://pablolerner.duckdns.org'` set in `astro.config.mjs` (drives canonical + hreflang)
+- [x] Domain — `site: 'https://pablolerner.dev'` set in `astro.config.mjs` (drives canonical + hreflang). Served by Caddy on `pablolerner.dev`, `www.pablolerner.dev` and `pablolerner.duckdns.org`
 
 ---
 
