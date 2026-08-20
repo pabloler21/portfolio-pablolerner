@@ -27,7 +27,8 @@ body {
 }
 
 /* ── Scanlines ──────────────────────────────────────── */
-body::before {
+/* Sólo en la superficie jugable: la atmósfera vive donde se puede caminar. */
+html[data-surface="game"] body::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -43,7 +44,7 @@ body::before {
 }
 
 /* ── Grain / Noise ──────────────────────────────────── */
-body::after {
+html[data-surface="game"] body::after {
   content: '';
   position: fixed;
   inset: -50%;
@@ -179,8 +180,8 @@ a {
 
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  body::before,
-  body::after {
+  html[data-surface="game"] body::before,
+  html[data-surface="game"] body::after {
     display: none;
   }
 

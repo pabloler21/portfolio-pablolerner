@@ -10,6 +10,9 @@ interface Props {
   description?: string;
   lang?: 'en' | 'es';
   activeTab?: string;
+  /* La ÚNICA condición que decide si existe la atmósfera. Default 'doc':
+     una página nueva nace limpia y tiene que pedir atmósfera. */
+  surface?: 'game' | 'doc';
 }
 
 const {
@@ -17,6 +20,7 @@ const {
   description = 'Pablo Lerner — Data Analyst · AI Engineer · Data Scientist',
   lang = 'en',
   activeTab = 'projects',
+  surface = 'doc',
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
@@ -24,7 +28,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} data-surface={surface}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -45,26 +49,26 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   </head>
 
   <body>
-    <!-- Page-entry scanline sweep — one-shot mint line crossing top→bottom -->
-    <div class="page-sweep" aria-hidden="true"></div>
-
-    <!-- Ambient 3D background — lazy-loaded, non-blocking, behind all content -->
-    <AmbientCanvas />
-
-    <!-- Margin chrome — visible in browser margins outside the 1200px container -->
-    <!-- Left: Matrix character rain canvas -->
-    <canvas id="margin-rain-left" class="margin-chrome margin-chrome-left" aria-hidden="true"></canvas>
-
-    <!-- Right: Matrix character rain canvas -->
-    <canvas id="margin-rain-right" class="margin-chrome margin-chrome-right" aria-hidden="true"></canvas>
+    {/* Atmósfera: existe SÓLO donde el visitante puede caminar. Se excluye
+        del render (no se oculta con CSS) para no descargar ni ejecutar nada
+        de esto en la superficie documento. */}
+    {surface === 'game' && (
+      <>
+        <div class="page-sweep" aria-hidden="true"></div>
+        <AmbientCanvas />
+        <canvas id="margin-rain-left" class="margin-chrome margin-chrome-left" aria-hidden="true"></canvas>
+        <canvas id="margin-rain-right" class="margin-chrome margin-chrome-right" aria-hidden="true"></canvas>
+      </>
+    )}
 
     <div class="os-shell">
-      <!-- OS chrome row -->
-      <div class="os-title-row">
-        <span class="os-unit-id sys-text">UNIT::PL-7729</span>
-        <span class="os-page sys-text">{title}</span>
-        <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
-      </div>
+      {surface === 'game' && (
+        <div class="os-title-row">
+          <span class="os-unit-id sys-text">UNIT::PL-7729</span>
+          <span class="os-page sys-text">{title}</span>
+          <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
+        </div>
+      )}
 
       <!-- Identity strip — name, positioning, CTAs -->
       <div class="os-identity">
@@ -88,7 +92,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       <!-- Navigation -->
       <header class="os-header">
         <TabBar active={activeTab} lang={lang} />
-        <DotRow />
+        {surface === 'game' && <DotRow />}
       </header>
 
       <!-- Main content -->
@@ -97,9 +101,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       </main>
 
       <!-- Footer -->
-      <StatusBar lang={lang} />
+      <StatusBar lang={lang} surface={surface} />
     </div>
 
+    {surface === 'game' && (
     <script>
       (function () {
         const RAIN_CHARS = '0123456789ABCDEF◆◇▸▪░▒▓XZQV─═║';
@@ -151,6 +156,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
         makeRain('margin-rain-right');
       })();
     </script>
+    )}
 
     <script>
       // ── Hover scramble — nav tabs + header CTAs (opt-in via data-scramble) ──
@@ -210,6 +216,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 
 <style>
   .os-shell {
+    /* Opaco: sin esto, cualquier capa de fondo se lee A TRAVÉS del contenido. */
+    background-color: var(--bg-void);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -246,8 +254,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   .os-page {
-    font-size: 0.55rem;
-    opacity: 0.4;
+    font-size: 0.7rem;
   }
 
   /* ── Identity strip ── */
@@ -279,7 +286,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   .id-sep {
-    opacity: 0.3;
+    color: var(--sand-dim);
   }
 
   .id-role {
@@ -328,7 +335,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     position: fixed;
     top: 0;
     bottom: 0;
-    width: max(0px, calc((100vw - 1200px) / 2));
+    width: max(0px, calc((100vw - 1400px) / 2));
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -380,11 +387,13 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   /* ── Canvas rain panels ── */
+  /* Sólo `display`. NO declarar width/height acá: estos selectores de ID
+     apuntan al MISMO elemento que .margin-chrome y ganan por especificidad;
+     un `width: 100%` sobre un position:fixed resuelve contra el viewport y
+     convierte cada panel en una capa animada de 100vw sobre todo el sitio. */
   #margin-rain-left,
   #margin-rain-right {
     display: block;
-    width: 100%;
-    height: 100%;
   }
 
   /* ── Page-entry scanline sweep ─────────────────────── */
@@ -422,10 +431,5 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     .page-sweep {
       animation-duration: 0.01s; /* never animation:none — kills fill-mode */
     }
-  }
-
-  /* Plain mode: no scene FX overlays */
-  :global(html[data-plain]) .page-sweep {
-    display: none;
   }
 </style>

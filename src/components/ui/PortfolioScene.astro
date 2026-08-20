@@ -253,9 +253,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.6, 0.4, 0.4);
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
-        new MutationObserver(() => {
-          bloom.enabled = !document.documentElement.hasAttribute('data-plain');
-        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
       } catch (_) { /* bloom is enhancement only — scene works without it */ }
     }
 
@@ -398,12 +395,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.getElementById('ps-panel-close').addEventListener('click', returnToCenter);
     document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
-    new MutationObserver(() => {
-      const plain = document.documentElement.hasAttribute('data-plain');
-      canvas.style.opacity = plain ? '0' : '1';
-      const mm = document.getElementById('ps-minimap');
-      if (mm) mm.style.opacity = plain ? '0' : '1';
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
 
     /* WASD — scoped to movement keys only so we don't block browser shortcuts.
        Shift is tracked for sprint but NEVER preventDefault'd (Shift+Tab etc.) */

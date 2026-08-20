@@ -118,7 +118,7 @@ const termContent = {
 const term = termContent[role];
 ---
 
-<Base title={title} lang={lang} activeTab="projects" description={description}>
+<Base title={title} lang={lang} activeTab={role} description={description} surface="doc">
   <div class="role-grid">
     <RoleNav current={role} lang={lang} />
 
