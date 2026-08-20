@@ -31,7 +31,7 @@ Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent spe
 
 - **Astro 7** (static output, TypeScript strict)
 - **CSS custom properties** for all theming — no UI library
-- **Vanilla JS** for role selector, keyboard navigation, terminal animation, plain-mode toggle
+- **Vanilla JS** for role selector, keyboard navigation, terminal animation
 - **Three.js** (lazy-loaded via dynamic import) for ambient background and the 3D interactive home scene
 - **i18n:** Astro native, locales `en` (default) and `es`, both prefixed (`/en/…`, `/es/…`)
 - **Hosting:** Cloudflare Pages (target)
@@ -51,7 +51,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 /* Text scale */
 --sand:         #e8e6dd;   /* body text */
 --sand-muted:   #a0a8b8;   /* secondary prose, descriptions */
---sand-dim:     #6b7280;   /* labels, meta, inactive UI chrome */
+--sand-dim:     #838c9e;   /* labels, meta, inactive UI chrome — 5.67:1 on --bg-void */
 
 /* Borders */
 --ink:          #1c2030;   /* subtle borders */
@@ -87,7 +87,10 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - Prose: `--font-sans` ≥ 0.8rem; labels/badges/nav: `--font-mono`
 - **Button convention (site-wide)**: mono + brackets `[ LABEL ↗ ]` (external) / `[ LABEL → ]` (internal nav). States: hover → mint border+text, `translateY(-1px)` · active → mint fill, `--bg-void` text, `translateY(1px)` · focus-visible → mint outline offset 2px. `.cta-btn` = secondary, `.cta-btn.cta-primary` = mint border always. Tabs are navigation, NOT buttons — no brackets.
 - **os-shell border**: `1px solid rgba(94,231,170,0.18)` + `box-shadow` glow — not `var(--border)`
-- **Plain mode** (`[data-plain]` on `<html>`): scanlines/grain hidden, `--sand` raised. Toggle in StatusBar, persisted in `localStorage` key `iron-dust-plain`.
+- **Plain mode is GONE.** It existed because the default state failed AA; the default now passes. Never reintroduce `[data-plain]`, `iron-dust-plain` or a legibility toggle — legibility is the default, not a mode.
+- **Surface rule** (`surface: 'game' | 'doc'` prop on `Base.astro`, reflected as `<html data-surface>`): atmosphere exists ONLY where the visitor can walk. `doc` gets no AmbientCanvas, no margin rain, no scanlines/grain, no game footer. Default is `'doc'` — a new page is born clean and must ASK for atmosphere.
+- **Never use `opacity` to dim text.** It composited to 2.17:1 and is what broke the AA floor. Dim with colour (`--sand-dim`). Minimum rendered text size: **11px** (`0.7rem`).
+- **`--accent` teal (3.80:1) and `--accent-flag` (4.30:1 on `--bg-surface`) must NEVER carry text** — borders, rims, ◆ and DotRow only. Flagship text uses `--accent-flag-bright`.
 
 ---
 
@@ -96,7 +99,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 ```
 src/
   styles/
-    tokens.css          # all CSS custom properties + plain-mode overrides
+    tokens.css          # all CSS custom properties
     global.css          # reset, scanlines, grain, Google Fonts, base type, .cta-btn utility
   data/
     projects.ts         # SINGLE SOURCE OF TRUTH for all project content (EN+ES)
@@ -122,7 +125,6 @@ src/
       index.astro       # home EN: PortfolioScene + PersonaSelector
       ai/index.astro    # AI Engineer — 6 projects
       risk/index.astro  # Data Analyst — 7 projects
-      ds/index.astro    # Data Scientist — placeholder
       concept/          # INTERNAL decision pages (not in nav): index+city (phase 3),
                         # flagship.astro (accent direction comparison, option A shipped)
     es/                 # mirrors EN structure
@@ -190,7 +192,7 @@ Max-width: **1400px**. os-shell border: mint glow `rgba(94,231,170,0.18)` not `v
 `src/components/ui/PortfolioScene.astro` — Three.js city street, character walking.
 
 **Avenue layout** (no fixed zones anymore — ZONES dict was removed):
-Billboard k (walk order) sits at `x = ±6.5` (alternating, k even → left), `z = −10 − k*10`, `rotY = ±0.5` (angled toward the walking camera). Flagship (projIdx 0) is the LAST board of the avenue — larger (6.0×4.0 vs 4.2×2.8). `risk` → 4 boards (z −10…−40), `ai` → 3 (z −10…−30), `ds` → none (COMING SOON overlay).
+Billboard k (walk order) sits at `x = ±6.5` (alternating, k even → left), `z = −10 − k*10`, `rotY = ±0.5` (angled toward the walking camera). Flagship (projIdx 0) is the LAST board of the avenue — larger (6.0×4.0 vs 4.2×2.8). `risk` → 4 boards (z −10…−40), `ai` → 3 (z −10…−30).
 
 **Character**: `public/models/android.glb` (UAL2_Standard.glb) — fuzzy clip matching:
 - Walk: `clips.find(c => /walk/i.test(c.name) && !/zombie/i.test(c.name))`
@@ -203,7 +205,9 @@ _mat.name === 'M_Joints'
   : MeshStandardMaterial({ color: 0x181b22, roughness: 0.75 })   // bg-surface, blue-void
 ```
 
-**Character control** (G1): WASD/arrows · **Shift = sprint ×1.8** (walk clip timeScale 2.0 → 3.4) · **click on asphalt = walk there** (`groundMesh` raycast in `onCanvasClick`, after billboard hits miss) · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
+**Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8** (walk clip timeScale 2.0 → 3.4) · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
+
+**NO pointer-driven movement, ever** (PRODUCT.md brand commitment): no ground raycast, no minimap fast-travel, no auto-walk from dossier rows. Clicking a billboard SELECTS a record — selection is not displacement.
 
 **Project mapping** (frontmatter → JSON → JS via `ps-data` script tag):
 ```
@@ -211,7 +215,6 @@ zoneProjects.risk = [riskProjects[0], riskProjects[1], riskProjects[5], riskProj
   → FraudSense AI (hero/projIdx 0), Credit Scoring (projIdx 1), E-commerce Inventory (projIdx 2), SQL Fast Food (panel only)
 zoneProjects.ai   = [aiProjects[0], aiProjects[1], aiProjects[2]]
   → Iris (hero/projIdx 0), CV Evaluator (projIdx 1), Hermes (projIdx 2)
-zoneProjects.ds   = [] (COMING SOON overlay)
 ```
 
 **DYNAMIC BILLBOARD ARCHITECTURE — AVENUE (definitive):**
@@ -220,7 +223,7 @@ Billboards are built ON role selection and destroyed on role change. Exactly N b
 - `disposeRoleBillboards()` — removes group, disposes all geometries/materials/textures, clears `roleBillRefs` + `zoneMeshes`
 - **Proximity power-on** (tick, every 4th frame): board lights when radial dist² < 64 **OR `|bz − charZ| < 4.5`** (z-band trigger — CRITICAL: walking straight down the middle must discover BOTH sides; radial-only left the far side dark forever). On light: `flickerOn`, edges → borderColor, ground ring pulses on, `showPanel(activeRole, projIdx)`
 - **Chevrons**: pool of 8 ground arrows (`buildChevrons`, ShapeGeometry, additive blend) repositioned every tick from character toward the next UNLIT board; fade when none left or target behind
-- `nier:zone` handler: dedupe guard (`if (zone === activeRole) return`) → `ds` ? dispose+COMING SOON overlay : rebuild+`navigateTo` (walks to first board; panel opens via proximity, not onArrival)
+- `nier:zone` handler: dedupe guard (`if (zone === activeRole) return`) → rebuild+`navigateTo` (walks to first board; panel opens via proximity, not onArrival)
 - At init the scene has NO billboards — they appear only when PersonaSelector fires `nier:zone`
 - **Flagship board** (G7): frame/edges amber `FLAG 0x9a7b2d`, hover `FLAG_BRIGHT 0xc9a94f`, amber ground ring, warm amber PointLight, and `drawBillboardCanvas` uses `AMBER` for its bar/badge/metric/CTA when `isHero`
 - **End-cap** (G3): 10×5 terminal screen at `flagshipZ − 11`, drawn by `drawEndcapCanvas` ("ALL RECORDS ACCESSED" + `[ VIEW FULL ARCHIVE → ]`). Starts dark, powers on at `|bz − charZ| < 8`, hitbox `userData.zone = '__endcap'` → `onCanvasClick` navigates to `allUrl[activeRole]`. Tracked in `endcapRef`, cleared by `disposeRoleBillboards`
@@ -230,7 +233,7 @@ Billboards are built ON role selection and destroyed on role change. Exactly N b
 - WASD + arrow keys (no `prefers-reduced-motion` guard on input, only on visual effects)
 - Click billboard → `showPanel(hit.key, hit.projIdx)` — only active-role hitboxes exist, so any hit is valid
 - `scrambleIn(el, text)` — cancel-safe scramble-settle text reveal (replaces old typeOut; stores interval in `el._scrambleTimer`)
-- **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range [6,−56]). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), wide bar for the end-cap, expanding-square pulse on the next unlit board. **Click = fast-travel** (`onMinimapClick` → nearest marker within 12px → `walkToBoard`); canvas needs `pointer-events: auto`
+- **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range [6,−56]). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), wide bar for the end-cap, expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - Arrival banner: `#ps-banner` + `.sweep` CSS animation, fired in `onArrival()` via `showBanner(zone)`; text from `bannerFmt` ('ACCESSING :: % RECORDS')
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18
 - **Dossier panel 2.0**: `showPanel(zone, projIdx)` renders ONE project as a record — `#panel-count` REC nn/NN, `#dossier-status` badge (amber `.d-badge-flag` when featured), big `#panel-title` (scrambleIn), `.d-progress` DISCOVERED blocks (one per board, amber for flagship), MISSION section, `.d-metric` box (`.d-metric-flag` amber variant), `.d-chips` stack chips, `.d-cta-primary/.d-cta-ghost`, `.d-nav` PREV/NEXT (wraps, walks to board), `.d-row` numbered rows for other projects (click → `showPanel` + `walkToBoard`)
@@ -279,9 +282,8 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 |---|---|---|
 | Data Analyst | `/risk/` | **YES** |
 | AI Engineer | `/ai/` | specialization |
-| Data Scientist | `/ds/` | developing — DS COMING SOON overlay |
 
-`/risk/` slug kept for routing stability.
+`/risk/` slug kept for routing stability. **Data Scientist is retired** (PRODUCT.md): no pages, no selector option, no COMING SOON state.
 
 ---
 
@@ -305,6 +307,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 | 3.16 — Avenue + discovery gameplay | **DONE** | Boards spread along the street (flagship last, larger), proximity power-on (radial + z-band), ground chevrons guiding to next unlit board, ground rings, minimap per-board markers, billboard canvas content redistributed to fill height. Beacons removed. |
 | 3.17 — Visual overhaul (blue-void + dossier + intro) | **DONE** | 3D scene migrated from old olive-green palette to blue-void NieR Reforged (bg/fog 0x0d0f14, buildings 0x12151c, windows 0x4d8f75). Dossier panel (REC counter, MISSION section, metric box, big CTAs, numbered other-records rows → click walks to board). Cinematic intro (first visit: high camera pan + hero title, PersonaSelector waits 2.4s via `.wait` class). Role pages master-detail + global micro-interactions (hover scramble via `data-scramble`, page sweep, `:focus-visible` mint). |
 | 3.18 — Gameplay + flagship amber (G1–G11) | **DONE** | Sprint (Shift ×1.8), click-to-move (asphalt raycast), world bounds clamp, smooth heading lerp. City dressing (streetlamps+cones, neon signs, skyline, stars). Avenue end-cap screen (click → role page). Minimap 2.0 (heading arrow, click fast-travel, next-objective pulse, corner-cut frame). Dossier 2.0 (stack chips, PREV/NEXT, DISCOVERED blocks). RECORDS HUD counter with flash. Flagship amber treatment (Deus Ex, `--accent-flag: #9a7b2d` / bright `#c9a94f` / bg `#14110a`) across 3D board, dossier, selector preview, role pages — NEVER interactive. PersonaSelector boot-build sequence (~950ms, skippeable, `animationend`-gated). Unified button system: `[ LABEL ↗ ]` mono + identical hover/active/focus. All 10 goals E2E-verified PASS. |
+| 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **pending** | Custom domain, Cloudflare Pages deploy |
@@ -367,3 +370,9 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 - Spanish: Rioplatense register (*vos*, native phrasing — never literal translation)
 - Technical terms (FastAPI, LangChain, deploy, pipeline) stay in English in both locales
 - SEO: locale `es` (not `es-419`); reciprocal `hreflang` tags; canonical self-referencing
+
+24. **Un selector de ID y uno de clase sobre el MISMO elemento: el ID gana y puede reintroducir un valor que la clase estaba conteniendo.** `#margin-rain-left { width: 100% }` pisaba `.margin-chrome { width: max(0px, calc(…)) }`, y sobre `position: fixed` ese `100%` resuelve contra el viewport: dos canvas animados de 100vw sobre todo el sitio, leídos durante meses como "el diseño es ruidoso". Antes de rediseñar por sensación, medir.
+25. **Un `opacity` bajo sobre texto no es "atenuar", es romper el contraste.** `opacity: 0.6` sobre `--sand-dim` componía **2.17:1**. Atenuar es cambiar de color, nunca de opacidad.
+26. **Geometría aditiva + `DoubleSide` + bloom se suma tres veces.** Los conos de farola a `opacity: 0.045` igual leían como conos verdes sólidos. Si un efecto "de luz" parece un objeto, contá cuántas veces se está sumando antes de bajarle más la opacidad.
+27. **`animation-play-state` en computed style SIEMPRE dice `running`.** Para medir movimiento perpetuo hay que mirar `animation-iteration-count: infinite`; si no, las animaciones de entrada ya terminadas cuentan como ruido y el umbral se vuelve imposible.
+28. **`astro check` OOMea con el heap por defecto de Node en este proyecto.** Usar `npm run verify:check` (`--max-old-space-size=8192`). Baseline a 2026-08-20: 347 errores, 0 warnings, 118 hints.
