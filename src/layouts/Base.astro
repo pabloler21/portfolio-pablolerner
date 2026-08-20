@@ -107,15 +107,34 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     {surface === 'game' && (
     <script>
       (function () {
-        const RAIN_CHARS = '0123456789ABCDEF◆◇▸▪░▒▓XZQV─═║';
-        const CHAR_SIZE = 10;
+        /* Caída de datos de margen: POCAS y LENTAS. La versión anterior
+           dibujaba una columna cada 10px avanzando 10px por frame (~600px/s),
+           que es lo que hacía ruido. Ahora son ~1 hilo cada 70px cayendo a
+           8–18 px/s, con velocidad en píxeles por SEGUNDO (independiente de
+           los fps) y sin acumulación de estela. */
+        const GLYPHS = '0123456789ABCDEF◆◇▸▪XZQV─═║';
+        const CHAR_PX = 11;
+        const GAP_PX  = 30;     /* separación media entre hilos */
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const pick = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 
         function makeRain(id: string) {
           const canvas = document.getElementById(id) as HTMLCanvasElement | null;
           if (!canvas) return;
           const ctx = canvas.getContext('2d')!;
-          let drops: number[] = [];
-          let W = 0, H = 0, cols = 0;
+          let W = 0, H = 0;
+          let streams: { x: number; y: number; sp: number; g: string[] }[] = [];
+
+          function build() {
+            const n = Math.max(1, Math.round(W / GAP_PX));
+            streams = Array.from({ length: n }, (_, i) => ({
+              x: Math.round((i + 0.5) * (W / n) - CHAR_PX / 2),
+              y: Math.random() * (H * 1.4) - H * 0.2,
+              sp: 12 + Math.random() * 14,                     /* px por segundo */
+              g: Array.from({ length: 9 + ((Math.random() * 8) | 0) }, pick),
+            }));
+          }
 
           function resize() {
             W = canvas.offsetWidth;
@@ -123,33 +142,53 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
             if (W < 4 || H < 4) return;
             canvas.width = W;
             canvas.height = H;
-            cols = Math.max(1, Math.floor(W / CHAR_SIZE));
-            drops = Array.from({ length: cols }, () =>
-              Math.floor(Math.random() * (H / CHAR_SIZE))
-            );
+            build();
           }
 
-          function frame() {
-            if (canvas.offsetWidth < 4) { requestAnimationFrame(frame); return; }
-            ctx.fillStyle = 'rgba(27,26,26,0.18)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.font = `${CHAR_SIZE}px 'Share Tech Mono', monospace`;
-            for (let i = 0; i < cols; i++) {
-              const char = RAIN_CHARS[Math.floor(Math.random() * RAIN_CHARS.length)];
-              const x = i * CHAR_SIZE;
-              const y = drops[i] * CHAR_SIZE;
-              const isBright = Math.random() < 0.08;
-              ctx.fillStyle = isBright ? '#5ee7aa' : (Math.random() < 0.3 ? '#B0AC9C' : '#787668');
-              ctx.fillText(char, x, y);
-              if (drops[i] * CHAR_SIZE > H && Math.random() > 0.96) drops[i] = 0;
-              else drops[i]++;
+          function paint() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.font = `${CHAR_PX}px 'Share Tech Mono', monospace`;
+            for (const st of streams) {
+              for (let k = 0; k < st.g.length; k++) {
+                const y = st.y - k * CHAR_PX;
+                if (y < -CHAR_PX || y > H + CHAR_PX) continue;
+                /* La cabeza es la más brillante, pero la cola tiene PISO:
+                   una rampa lineal a cero deja los últimos glifos en ~0.04 y
+                   el hilo entero desaparece sobre un fondo casi negro. */
+                const a = 0.20 + 0.45 * (1 - k / st.g.length);
+                ctx.fillStyle = k === 0
+                  ? 'rgba(94,231,170,0.9)'
+                  : `rgba(160,168,184,${a.toFixed(3)})`;
+                ctx.fillText(st.g[k], st.x, y);
+              }
             }
+          }
+
+          let last = 0;
+          function frame(now: number) {
+            if (canvas.offsetWidth < 4) { requestAnimationFrame(frame); return; }
+            const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
+            last = now;
+            for (const st of streams) {
+              st.y += st.sp * dt;
+              if (st.y - st.g.length * CHAR_PX > H) {
+                st.y = -Math.random() * H * 0.4;
+                st.sp = 12 + Math.random() * 14;
+                st.g = st.g.map(pick);
+              } else if (Math.random() < dt * 0.9) {
+                /* una sola mutación ocasional: da vida sin parpadeo */
+                st.g[(Math.random() * st.g.length) | 0] = pick();
+              }
+            }
+            paint();
             requestAnimationFrame(frame);
           }
 
           new ResizeObserver(resize).observe(canvas);
           resize();
-          frame();
+          /* Con movimiento reducido queda el fondo oscuro y los glifos quietos. */
+          if (reduced) paint();
+          else requestAnimationFrame(frame);
         }
 
         makeRain('margin-rain-left');
@@ -390,13 +429,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   /* ── Canvas rain panels ── */
-  /* Sólo `display`. NO declarar width/height acá: estos selectores de ID
-     apuntan al MISMO elemento que .margin-chrome y ganan por especificidad;
-     un `width: 100%` sobre un position:fixed resuelve contra el viewport y
-     convierte cada panel en una capa animada de 100vw sobre todo el sitio. */
+  /* NUNCA declarar `width` acá: estos selectores de ID apuntan al MISMO
+     elemento que .margin-chrome y ganan por especificidad; un `width: 100%`
+     sobre un position:fixed resuelve contra el viewport y convierte cada
+     panel en una capa animada de 100vw sobre todo el sitio.
+
+     `height: 100%` en cambio es OBLIGATORIO: <canvas> es un elemento
+     reemplazado, así que con `top:0; bottom:0` y `height:auto` no se estira
+     — usa su alto intrínseco (150px) y la caída queda cortada arriba. */
   #margin-rain-left,
   #margin-rain-right {
     display: block;
+    height: 100%;
+    background: var(--bg-void);
   }
 
   /* ── Page-entry scanline sweep ─────────────────────── */
