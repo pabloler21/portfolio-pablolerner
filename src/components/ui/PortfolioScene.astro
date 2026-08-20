@@ -179,7 +179,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   const BOUND_X = 8.8, BOUND_Z_MIN = -46, BOUND_Z_MAX = 4.5;
   const clampX = (v) => Math.max(-BOUND_X, Math.min(BOUND_X, v));
   const clampZ = (v) => Math.max(BOUND_Z_MIN, Math.min(BOUND_Z_MAX, v));
-  let groundMesh = null;     // asphalt plane — raycast target for click-to-move
   let targetRotY = 0;        // character heading, lerped in tick (no snap turns)
   let arrivalPending = false;/* true only for navigateTo walks — gates the banner */
   /* Flagship accent (Deus Ex amber) — decorative marking only, never interactive */
@@ -212,8 +211,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     tagHudEl = document.getElementById('unit-tag-hud');
     const mmCv = document.getElementById('ps-minimap-canvas');
     if (mmCv) {
+      /* Display puro: el minimapa NO mueve al personaje (sólo WASD). */
       minimapCtx = mmCv.getContext('2d');
-      mmCv.addEventListener('click', onMinimapClick);   /* fast-travel (G4) */
     }
 
     /* Measure AFTER imports — layout is stable by now */
@@ -436,7 +435,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     asphalt.rotation.x = -Math.PI / 2;
     asphalt.position.set(0, 0, -28);
     scene.add(asphalt);
-    groundMesh = asphalt;   /* click-to-move raycast target */
 
     /* Sidewalks */
     const swMat = new THREE.MeshBasicMaterial({ color: 0x161a22 });
@@ -1074,23 +1072,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       showPanel(hit.key, hit.projIdx);
       return;
     }
-    /* 2) Click-to-move — raycast the asphalt and walk there (key for
-       visitors who never discover WASD) */
-    if (!groundMesh || !activeRole) return;
-    const canvas = document.getElementById('ps-canvas');
-    const rect = canvas.getBoundingClientRect();
-    if (!raycaster.r) raycaster.r = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width)  * 2 - 1,
-      -((e.clientY - rect.top)  / rect.height) * 2 + 1
-    );
-    raycaster.r.setFromCamera(mouse, camera);
-    const ground = raycaster.r.intersectObject(groundMesh);
-    if (ground.length) {
-      targetX = clampX(ground[0].point.x);
-      targetZ = clampZ(ground[0].point.z);
-      isMoving = true;
-    }
+    /* No hay click-to-move: el personaje se mueve SÓLO con WASD.
+       El click sobre la escena selecciona un registro, nunca desplaza. */
   }
 
   function onHover(THREE, e) {
@@ -1253,21 +1236,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     ctx.restore();
   }
 
-  /* Minimap fast-travel — click near a marker walks the character there */
-  function onMinimapClick(e) {
-    if (!roleBillRefs.length) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - rect.left) * (MM.W / rect.width);
-    const py = (e.clientY - rect.top) * (MM.H / rect.height);
-    let best = null, bestD = 12 * 12;   /* 12px hit radius */
-    roleBillRefs.forEach(ref => {
-      const dx = MM.mx(ref.bx) - px, dy = MM.mz(ref.bz) - py;
-      const d = dx * dx + dy * dy;
-      if (d < bestD) { bestD = d; best = ref; }
-    });
-    if (best) walkToBoard(best.projIdx);
-  }
-
   /* ────────────────── Panel ───────────────────────────── */
   /* Scramble-settle text reveal (NieR style). Cancel-safe: re-entering on the
      same element clears the previous interval, so concurrent calls never
@@ -1361,17 +1329,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     `;
     cards.appendChild(body);
 
-    /* PREV/NEXT record navigation — wraps around, walks to the board (G5) */
+    /* PREV/NEXT — cambia de registro; caminar es cosa del jugador (WASD) */
     body.querySelectorAll('.d-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const n = projects.length;
         const nextIdx = (heroIdx + parseInt(btn.dataset.nav, 10) + n) % n;
         showPanel(zone, nextIdx);
-        walkToBoard(nextIdx);
       });
     });
 
-    /* Other records — numbered rows; click walks the character to that board */
+    /* Otros registros — la fila cambia el registro mostrado, no desplaza */
     const others = document.createElement('div');
     others.className = 'd-others';
     others.innerHTML = `<div class="d-label">${dossier.other}</div>`;
@@ -1387,7 +1354,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       `;
       row.addEventListener('click', () => {
         showPanel(zone, i);
-        walkToBoard(i);
       });
       others.appendChild(row);
     });
@@ -1401,15 +1367,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     });
 
     document.getElementById('ps-panel').classList.add('open');
-  }
-
-  /* Walk the character to the billboard showing projects[projIdx] */
-  function walkToBoard(projIdx) {
-    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
-    if (!ref) return;
-    targetX = ref.bx * 0.5;
-    targetZ = ref.bz + 3.2;
-    isMoving = true;
   }
 
   function hidePanel() {
@@ -1757,19 +1714,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     border-color: var(--accent-bright);
   }
 
-  /* ── Minimap HUD — frame is drawn in-canvas (corner cut); clickable
-     for fast-travel to discovered/undiscovered boards ── */
+  /* ── Minimap HUD — display puro. El frame se dibuja in-canvas (corner
+     cut). No es clickeable: el personaje se mueve sólo con WASD. ── */
   .ps-minimap {
     position: absolute;
     top: 2.4rem;
     left: 1rem;
-    pointer-events: auto;
+    pointer-events: none;
     transition: opacity 0.3s ease;
   }
 
   .ps-minimap canvas {
     display: block;
-    cursor: pointer;
   }
 
   /* ── Arrival banner ── */
