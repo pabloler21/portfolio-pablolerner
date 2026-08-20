@@ -60,7 +60,7 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-mono);
-    font-size: 0.63rem;
+    font-size: 0.7rem;
     letter-spacing: 0.15em;
     color: var(--sand-dim);
   }
@@ -68,7 +68,7 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
   .key {
     border: var(--border);
     padding: 0.05rem 0.3rem;
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     color: var(--sand-dim);
   }
 
@@ -86,7 +86,7 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
 
   .lang-btn {
     font-family: var(--font-mono);
-    font-size: 0.63rem;
+    font-size: 0.7rem;
     letter-spacing: 0.18em;
     color: var(--sand-dim);
     transition: color 0.15s;
@@ -94,36 +94,11 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
 
   .lang-btn:hover,
   .lang-btn.active {
-    color: var(--accent);
-  }
-
-  /* Primary action button — follows the .cta-btn.cta-primary convention
-     (mint border always · hover lift · active mint fill+press) */
-  .lang-btn.cta-accent {
     color: var(--accent-bright);
-    border: 1px solid var(--accent-bright);
-    padding: 0.1rem 0.4rem;
-    transform: translateY(0);
-    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-  }
-
-  .lang-btn.cta-accent:hover {
-    color: var(--accent-bright);
-    transform: translateY(-1px);
-  }
-
-  .lang-btn.cta-accent:active {
-    background: var(--accent-bright);
-    color: var(--bg-void);
-    transform: translateY(1px);
-  }
-
-  .sep-v {
-    opacity: 0.3;
   }
 
   .coord {
-    font-size: 0.57rem;
+    font-size: 0.7rem;
   }
 
   @media (max-width: 640px) {
