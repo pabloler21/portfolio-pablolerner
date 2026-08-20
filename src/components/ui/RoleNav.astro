@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current: 'ai' | 'risk' | 'ds';
+  current: 'ai' | 'risk';
   lang: 'en' | 'es';
 }
 
@@ -10,7 +10,6 @@ const base = `/${lang}`;
 const roles = [
   { id: 'ai',   label: 'AI ENGINEER' },
   { id: 'risk', label: 'DATA ANALYST' },
-  { id: 'ds',   label: 'DATA SCIENTIST' },
 ] as const;
 
 const t = {

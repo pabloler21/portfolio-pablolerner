@@ -26,15 +26,11 @@ const t = {
     flagship: 'FLAGSHIP',
     stack:    'STACK ::',
     primary:  '◆ PRIMARY',
-    soon:     '[ COMING SOON ]',
-    dsTitle:  'COMING SOON',
-    dsText:   'Data science projects deploying...',
     hints:    '↑↓ NAVIGATE · ENTER CONFIRM',
     coords:   'LAT:-34.6037 · LON:-58.3816',
     opts: [
       { zone: 'risk', label: 'DATA ANALYST',       desc: 'primary role · risk & data pipelines' },
       { zone: 'ai',   label: 'AI ENGINEER',        desc: 'LLMs · RAG · multi-agent systems' },
-      { zone: 'ds',   label: 'DATA SCIENTIST',     desc: 'ML experimentation · modeling', dim: true },
     ],
   },
   es: {
@@ -44,15 +40,11 @@ const t = {
     flagship: 'DESTACADO',
     stack:    'STACK ::',
     primary:  '◆ PRIMARY',
-    soon:     '[ PRÓXIMAMENTE ]',
-    dsTitle:  'PRÓXIMAMENTE',
-    dsText:   'Proyectos de data science en camino...',
     hints:    '↑↓ NAVEGAR · ENTER CONFIRMAR',
     coords:   'LAT:-34.6037 · LON:-58.3816',
     opts: [
       { zone: 'risk', label: 'ANALISTA DE DATOS',   desc: 'rol primario · riesgo y pipelines de datos' },
       { zone: 'ai',   label: 'INGENIERO DE IA',     desc: 'LLMs · RAG · sistemas multi-agente' },
-      { zone: 'ds',   label: 'CIENTÍFICO DE DATOS', desc: 'ML · experimentación y modelado', dim: true },
     ],
   },
 }[lang];
@@ -82,7 +74,7 @@ const previews = [
       <nav class="persona-options" role="menu" aria-label={t.title}>
         {t.opts.map((opt, i) => (
           <button
-            class={'persona-opt' + (opt.dim ? ' opt-dim' : '')}
+            class="persona-opt"
             data-zone={opt.zone}
             role="menuitem"
             style={`animation-delay: ${520 + i * 70}ms`}
@@ -92,7 +84,6 @@ const previews = [
               <span class="opt-label-row">
                 <span class="opt-label">{opt.label}</span>
                 {opt.zone === 'risk' && <span class="opt-badge badge-primary">{t.primary}</span>}
-                {opt.dim && <span class="opt-badge badge-soon">{t.soon}</span>}
               </span>
               <span class="opt-desc">{opt.desc}</span>
             </span>
@@ -118,15 +109,6 @@ const previews = [
             </div>
           </div>
         ))}
-
-        <div class="preview-pane pane-ds" data-preview="ds">
-          <span class="pv-role pv-role-dim">{t.opts[2].label}</span>
-          <div class="pv-ds-body">
-            <span class="pv-ds-marks">◆ ◆ ◆</span>
-            <span class="pv-ds-title">{t.dsTitle}</span>
-            <span class="pv-ds-text">{t.dsText}</span>
-          </div>
-        </div>
       </aside>
 
     </div>
@@ -523,15 +505,6 @@ const previews = [
     border: 1px solid rgba(94, 231, 170, 0.45);
   }
 
-  .badge-soon {
-    color: var(--sand-dim);
-    border: 1px solid var(--ink-mid);
-  }
-
-  .opt-dim .opt-label { color: var(--sand-dim); }
-  .opt-dim .opt-desc  { opacity: 0.7; }
-  .opt-dim:hover .opt-label,
-  .opt-dim:focus-visible .opt-label { color: var(--sand-muted); }
 
   /* ── Right: preview panel ────────────────────────────────── */
   .persona-preview {
@@ -638,39 +611,6 @@ const previews = [
     border: 1px solid var(--accent);
     padding: 0.14rem 0.38rem;
     white-space: nowrap;
-  }
-
-  /* DS pane — coming soon */
-  .pane-ds .pv-ds-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.7rem;
-    text-align: center;
-  }
-
-  .pv-ds-marks {
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--accent);
-  }
-
-  .pv-ds-title {
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.24em;
-    color: var(--sand-muted);
-  }
-
-  .pv-ds-text {
-    font-family: var(--font-mono);
-    font-size: 0.52rem;
-    letter-spacing: 0.1em;
-    color: var(--sand-dim);
-    max-width: 16ch;
-    line-height: 1.7;
   }
 
   /* ── Footer ──────────────────────────────────────────────── */

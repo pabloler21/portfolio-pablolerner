@@ -4,7 +4,7 @@ import { aiProjects, riskProjects } from '../../data/projects.ts';
 interface Props { lang: 'en' | 'es' }
 const { lang = 'en' } = Astro.props;
 
-type ZoneKey = 'risk' | 'ai' | 'ds';
+type ZoneKey = 'risk' | 'ai';
 
 const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
   name:     p[l].name,
@@ -21,7 +21,7 @@ const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
    risk → FraudSense(0), Credit Scoring(1), E-commerce Inventory(5), SQL Fast Food(3)
            billboards show projIdx 0,1,2 — SQL Fast Food (projIdx 3) appears in panel only
    ai   → Iris(0), CV Evaluator(1), Hermes(2)
-   ds   → no projects (COMING SOON overlay) */
+   */
 const zoneProjects = {
   risk: [riskProjects[0], riskProjects[1], riskProjects[5], riskProjects[3]].map(p => mapProj(p, lang)),
   ai:   [aiProjects[0],   aiProjects[1],   aiProjects[2]].map(p => mapProj(p, lang)),
@@ -36,7 +36,6 @@ const zoneLabels = {
 const allUrl: Record<ZoneKey, string> = {
   risk: `/${lang}/risk/`,
   ai:   `/${lang}/ai/`,
-  ds:   `/${lang}/ds/`,
 };
 
 const allLabel        = lang === 'en' ? 'VIEW ALL RECORDS →' : 'VER TODOS →';
@@ -58,8 +57,6 @@ const endcap = {
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const hintLabel       = lang === 'en' ? 'WASD TO WALK · CLICK BILLBOARD' : 'WASD PARA CAMINAR · CLICK CARTEL';
-const comingSoonTitle = lang === 'en' ? 'COMING SOON' : 'PRÓXIMAMENTE';
-const comingSoonSub   = lang === 'en' ? 'Data science projects deploying...' : 'Proyectos de data science en camino...';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
 ---
 
@@ -123,19 +120,6 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
         <span class="fb-cursor"></span> DATA SCIENTIST
       </a>
     </nav>
-  </div>
-
-  <!-- COMING SOON overlay for DS zone -->
-  <div id="ps-coming-soon" class="ps-coming-soon">
-    <div class="cs-content">
-      <div class="cs-label">UNIT::DS-SECTOR</div>
-      <div class="cs-title">{comingSoonTitle}</div>
-      <div class="cs-dots">
-        <span>◆</span><span>◆</span><span>◆</span><span>◆</span><span>◆</span>
-      </div>
-      <p class="cs-sub">{comingSoonSub}</p>
-      <button id="cs-close" class="cs-close">[ {returnLabel} ]</button>
-    </div>
   </div>
 
 </div>
@@ -316,13 +300,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
 
       /* Rebuild billboards for the selected role only — everything from the
          previous role is destroyed. N projects → N billboards, nothing else. */
-      if (zone === 'ds') {
-        disposeRoleBillboards();
-        showComingSoon();
-      } else {
-        buildRoleBillboards(THREE, zone);
-        navigateTo(zone);
-      }
+      buildRoleBillboards(THREE, zone);
+      navigateTo(zone);
     });
 
     /* Fallback: if sessionStorage has a stored zone, re-dispatch after init completes */
@@ -436,11 +415,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.addEventListener('keyup', e => {
       keys[e.code] = false;
       if (e.key === 'Shift') keys.Shift = false;
-    });
-
-    /* COMING SOON close button */
-    document.getElementById('cs-close').addEventListener('click', () => {
-      document.getElementById('ps-coming-soon').classList.remove('open');
     });
 
     /* Cinematic intro — first visit only (no persona chosen yet). The camera
@@ -1451,10 +1425,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.getElementById('ps-panel').classList.remove('open');
   }
 
-  function showComingSoon() {
-    document.getElementById('ps-coming-soon').classList.add('open');
-  }
-
   /* ────────────────── Fallback ────────────────────────── */
   function showFallback() {
     document.getElementById('ps-fallback').classList.remove('hidden');
@@ -2059,87 +2029,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     color: var(--sand-dim);
   }
 
-  /* ── Coming Soon overlay (DS zone) ── */
-  .ps-coming-soon {
-    position: absolute;
-    inset: 0;
-    background: rgba(13, 15, 20, 0.97);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-  }
-
-  .ps-coming-soon.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .cs-content { text-align: center; }
-
-  .cs-label {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    color: var(--sand-dim);
-    margin-bottom: 1.5rem;
-  }
-
-  .cs-title {
-    font-family: var(--font-display);
-    font-size: 3.5rem;
-    color: var(--sand);
-    letter-spacing: 0.2em;
-    margin-bottom: 1.5rem;
-  }
-
-  .cs-dots { margin-bottom: 0.5rem; }
-
-  .cs-dots span {
-    color: var(--accent-bright);
-    font-size: 1.2rem;
-    animation: cs-blink 1.4s infinite;
-    margin: 0 0.15rem;
-  }
-
-  .cs-dots span:nth-child(1) { animation-delay: 0s; }
-  .cs-dots span:nth-child(2) { animation-delay: 0.28s; }
-  .cs-dots span:nth-child(3) { animation-delay: 0.56s; }
-  .cs-dots span:nth-child(4) { animation-delay: 0.84s; }
-  .cs-dots span:nth-child(5) { animation-delay: 1.12s; }
-
-  @keyframes cs-blink {
-    0%, 100% { opacity: 0.1; }
-    50%       { opacity: 1; }
-  }
-
-  .cs-sub {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--sand-muted);
-    margin: 1rem 0 2rem;
-    letter-spacing: 0.08em;
-  }
-
-  .cs-close {
-    background: none;
-    border: 1px solid var(--ink-mid);
-    color: var(--sand-dim);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    padding: 0.5rem 1.2rem;
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  .cs-close:hover {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
 
 </style>
 

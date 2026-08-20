@@ -264,4 +264,3 @@ export const riskProjects: ProjectData[] = [
 // DATA SCIENTIST projects
 // ────────────────────────────────────────────────────────────────
 // TODO: add repos once Pablo assigns them
-export const dsProjects: ProjectData[] = [];

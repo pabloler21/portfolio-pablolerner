@@ -26,7 +26,7 @@ export interface DossierProject {
 interface Props {
   title: string;
   lang: 'en' | 'es';
-  role: 'ai' | 'risk' | 'ds';
+  role: 'ai' | 'risk';
   description?: string;
   heading?: string;        // "DATA ANALYST"
   badge?: string;          // "PRIMARY ROLE"
@@ -111,24 +111,6 @@ const termContent = {
       ' synthetic_id  | 1109 | 2341.88',
       'Query OK · 12441 rows · 0.847s',
       'fraud_db=# _',
-    ],
-  },
-  ds: {
-    title: 'PROC::ML_PIPELINE',
-    lines: [
-      '$ python train.py --model gbm',
-      'from sklearn.pipeline import Pipeline',
-      'from sklearn.ensemble import GradientBoostingClassifier',
-      'pipe = Pipeline([',
-      '  ("scaler", StandardScaler()),',
-      '  ("clf", GradientBoostingClassifier())',
-      '])',
-      'pipe.fit(X_train, y_train)',
-      'Epoch  3/10  loss=0.0412  ▓▓▓░░░░░░░',
-      'Epoch  6/10  loss=0.0231  ▓▓▓▓▓▓░░░░',
-      'Epoch 10/10  loss=0.0091  ▓▓▓▓▓▓▓▓▓▓',
-      'accuracy: 0.942  auc: 0.961',
-      '$ _',
     ],
   },
 } as const;
