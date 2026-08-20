@@ -8,7 +8,9 @@
   /* ── Text scale ── */
   --sand:         #e8e6dd;   /* body text — high-contrast warm white */
   --sand-muted:   #a0a8b8;   /* secondary prose, descriptions */
-  --sand-dim:     #6b7280;   /* labels, meta, inactive UI chrome */
+  /* Contraste sobre bg-void 5.67:1 · bg-panel 5.40:1 · bg-surface 5.10:1 — AA ✓
+     No bajar de este valor: por debajo, los labels de 11px fallan AA. */
+  --sand-dim:     #838c9e;   /* labels, meta, inactive UI chrome */
 
   /* ── Borders ── */
   --ink:          #1c2030;   /* subtle borders */
@@ -37,17 +39,4 @@
   /* ── Effects ── */
   --scanline-opacity: 0.04;
   --grain-opacity:    0.045;
-}
-
-/* ── Plain / high-legibility mode ─────────────────────────────────────── */
-[data-plain] {
-  --sand:          #F2EFE2;
-  --sand-muted:    #C8C5B8;
-  --scanline-opacity: 0;
-  --grain-opacity:    0;
-}
-
-[data-plain] body::before,
-[data-plain] body::after {
-  display: none !important;
 }
