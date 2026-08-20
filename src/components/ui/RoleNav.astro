@@ -15,8 +15,6 @@ const roles = [
 const t = {
   panelLabel: lang === 'en' ? 'UNIT SELECTION'         : 'SELECCIÓN DE PERFIL',
   back:       lang === 'en' ? 'TERMINAL'               : 'TERMINAL',
-  unitId:     lang === 'en' ? 'UNIT ID: PL-7729'       : 'UNIDAD: PL-7729',
-  status:     lang === 'en' ? 'STATUS: ACTIVE'         : 'ESTADO: ACTIVO',
   available:  lang === 'en' ? 'OPEN TO WORK'           : 'DISPONIBLE',
 };
 ---
@@ -42,11 +40,9 @@ const t = {
     ))}
   </nav>
 
+  {/* LAT/LON/UNIT ID es atrezzo del juego, no información. En un documento
+      sólo queda el dato que un evaluador realmente usa. */}
   <div class="meta-block sys-text">
-    <p>{t.unitId}</p>
-    <p>LAT: -34.6037</p>
-    <p>LON: -58.3816</p>
-    <p>{t.status}</p>
     <p class="available">{t.available}</p>
   </div>
 </div>
