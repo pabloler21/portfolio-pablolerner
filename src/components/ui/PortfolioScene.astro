@@ -314,10 +314,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     animClock = new THREE.Clock();
     try {
       const gltf = await new Promise((res, rej) =>
-        new GLTFLoader().load('/models/android.glb', res, undefined, rej)
+        new GLTFLoader().load('/models/remy.glb', res, undefined, rej)
       );
       scene.remove(charGroup);
-      charGroup = gltf.scene;
+      /* El GLB trae su propia normalización (escala y centrado) en el nodo raíz,
+         y el tick pisa position/rotation del grupo en cada frame. Si se usara
+         gltf.scene directamente esa normalización se perdería, así que va
+         envuelto: el wrapper es lo que maneja la escena, el nodo interno
+         conserva su transform. */
+      charGroup = new THREE.Group();
+      charGroup.add(gltf.scene);
       charGroup.position.set(charX, 0, charZ);
       scene.add(charGroup);
 
