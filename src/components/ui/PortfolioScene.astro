@@ -321,12 +321,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       charGroup.position.set(charX, 0, charZ);
       scene.add(charGroup);
 
-      /* ── Paleta IRON DUST sobre el maniquí UAL2 ──────────────────
-         El cuerpo estaba en 0x181b22, casi el mismo valor que el fondo
-         (0x0d0f14), así que desaparecía; y los joints iban a emissive 1.5,
-         así que lo único visible eran las articulaciones y el personaje
-         leía como un esqueleto verde. El cuerpo sube de valor y los joints
-         pasan a ser TRIM, no fuente de luz. */
+      /* Apply IRON DUST palette over UAL2 mannequin materials */
       charGroup.traverse(obj => {
         if (!obj.isMesh) return;
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -334,34 +329,42 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
           const name = _mat.name ?? '';
           const replacement = name === 'M_Joints'
             ? new THREE.MeshStandardMaterial({
-                color: 0x5ee7aa,
+                color: 0x5ee7aa,      /* mint — accent-bright */
                 emissive: 0x5ee7aa,
-                emissiveIntensity: 0.32,   /* trim, no linterna */
+                emissiveIntensity: 1.5,
                 roughness: 0.4,
                 metalness: 0.1,
               })
             : new THREE.MeshStandardMaterial({
-                color: 0x39404f,      /* separado del fondo: la silueta existe */
-                roughness: 0.62,
-                metalness: 0.08,
+                color: 0x181b22,      /* bg-surface — blue-void */
+                roughness: 0.75,
+                metalness: 0.05,
               });
           if (Array.isArray(obj.material)) obj.material[i] = replacement;
           else obj.material = replacement;
         });
       });
 
-      buildCharacterOutfit(THREE, charGroup);
+      /* G_UNIT_2 — Visor band on head bone */
+      const headBone = charGroup.getObjectByName('head');
+      if (headBone) {
+        const visorMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(0.19, 0.028, 0.13),
+          new THREE.MeshStandardMaterial({
+            color: 0x0a0c0a,
+            emissive: 0x5ee7aa,
+            emissiveIntensity: 2.0,
+            roughness: 0.2,
+          })
+        );
+        visorMesh.position.set(0, 0.12, 0.07);
+        headBone.add(visorMesh);
+      }
 
-      /* Rim light — separa la silueta del fondo. Baja de 2.5 a 1.1: a 2.5
-         lavaba al personaje entero en vez de recortarlo. */
-      const rimLight = new THREE.PointLight(0x5ee7aa, 1.1, 4.5);
-      rimLight.position.set(0, 1.3, -0.75);
+      /* G_UNIT_2 — Rim light (follows character via parenting) */
+      const rimLight = new THREE.PointLight(0x5ee7aa, 2.5, 5);
+      rimLight.position.set(0, 1.2, -0.5);
       charGroup.add(rimLight);
-
-      /* Key light frontal tenue: sin esto el frente del personaje queda plano */
-      const keyLight = new THREE.PointLight(0xbfd9cc, 0.5, 3.5);
-      keyLight.position.set(0.5, 1.5, 0.9);
-      charGroup.add(keyLight);
 
       /* Unit tag is rendered as HTML overlay (see #unit-tag-hud) — no 3D sprite needed */
 
@@ -500,139 +503,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         }
       }
     }
-  }
-
-  /* ────────────────── Vestuario del personaje ──────────────
-     Geometría procedural atada a los huesos del rig UAL2. NO toca el GLB
-     ni el skinning: cada pieza es hija de un hueso, así que sigue la
-     animación sola. Cero MB extra de descarga y revertible borrando esto.
-
-     Inspirado en la silueta de androide de combate (casaca corta con
-     faldón, hombreras, visor): proporciones, paleta y despiece propios.
-
-     Los huesos UAL2 tienen su propio eje y su propia escala heredada, así
-     que cada pieza cuelga de un "holder" que (a) cancela la rotación del
-     hueso para quedar alineado al personaje y (b) cancela su escala para
-     poder medir todo en unidades de mundo. */
-  function buildCharacterOutfit(THREE, group) {
-    const bone = n => group.getObjectByName(n);
-    const pelvis = bone('pelvis'), head = bone('Head'), spine = bone('spine_02');
-    if (!pelvis || !head || !spine) return;   /* rig distinto: no romper la escena */
-
-    const prevRot = group.rotation.y;
-    group.rotation.y = 0;
-    group.updateMatrixWorld(true);
-
-    const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _s = new THREE.Vector3();
-    pelvis.getWorldPosition(_a); head.getWorldPosition(_b);
-    const H = _a.distanceTo(_b) || 0.7;        /* alto de torso en unidades de mundo */
-
-    const holderOn = (b, x, y, z) => {
-      const h = new THREE.Object3D();
-      b.add(h);
-      b.updateMatrixWorld(true);
-      const q = new THREE.Quaternion();
-      b.getWorldQuaternion(q);
-      h.quaternion.copy(q.invert());           /* alineado al personaje, no al hueso */
-      b.getWorldScale(_s);
-      const sc = (_s.x + _s.y + _s.z) / 3 || 1;
-      h.scale.setScalar(1 / sc);               /* a partir de acá, unidades de mundo */
-      h.position.set(x / sc, y / sc, z / sc);
-      return h;
-    };
-
-    /* La tela tiene que separarse de DOS cosas: del fondo (0x0d0f14) para que
-       exista silueta, y del cuerpo (0x39404f) para que se lea como ropa encima.
-       Queda en el medio, más oscura que el cuerpo pero por encima del fondo.
-       DoubleSide porque los cilindros van openEnded. */
-    const CLOTH = new THREE.MeshStandardMaterial({
-      color: 0x232936, roughness: 0.9, metalness: 0.04, side: THREE.DoubleSide,
-    });
-    const TRIM = new THREE.MeshStandardMaterial({
-      color: 0x1b2b26, emissive: 0x5ee7aa, emissiveIntensity: 0.6,
-      roughness: 0.5, side: THREE.DoubleSide,
-    });
-
-    const add = (holder, geo, mat, x, y, z, rx, ry, rz) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(x, y, z);
-      m.rotation.set(rx || 0, ry || 0, rz || 0);
-      holder.add(m);
-      return m;
-    };
-
-    /* Casaca: cilindro facetado apenas mayor que el torso */
-    const torso = holderOn(spine, 0, 0, 0);
-    add(torso, new THREE.CylinderGeometry(H * 0.20, H * 0.235, H * 0.52, 8, 1, true),
-        CLOTH, 0, H * 0.04, 0);
-    /* Cuello alto */
-    add(torso, new THREE.CylinderGeometry(H * 0.125, H * 0.145, H * 0.10, 8, 1, true),
-        TRIM, 0, H * 0.33, 0);
-
-    /* Faldón: cuatro paneles abiertos hacia afuera.
-       El orden de Euler DEBE ser YXZ: con el 'XYZ' por defecto la inclinación
-       se aplica ANTES del encaramiento, así que los paneles laterales se
-       abrían hacia adelante en vez de hacia afuera y el faldón no leía. */
-    const skirt = holderOn(pelvis, 0, 0, 0);
-    const panel = new THREE.BoxGeometry(H * 0.30, H * 0.46, H * 0.018);
-    const hem   = new THREE.BoxGeometry(H * 0.30, H * 0.022, H * 0.024);
-    [0, Math.PI, Math.PI / 2, -Math.PI / 2].forEach((ry, k) => {
-      const r = H * (k < 2 ? 0.16 : 0.14);
-      const tilt = k < 2 ? 0.30 : 0.26;
-      const m = add(skirt, panel, CLOTH,
-        Math.sin(ry) * r, -H * 0.25, Math.cos(ry) * r);
-      m.rotation.order = 'YXZ';
-      m.rotation.set(tilt, ry, 0);
-      /* Filo mint en el borde: dibuja la silueta del faldón a distancia */
-      const e = add(skirt, hem, TRIM, 0, 0, 0);
-      e.rotation.order = 'YXZ';
-      e.rotation.set(tilt, ry, 0);
-      e.position.set(
-        Math.sin(ry) * (r + Math.sin(tilt) * H * 0.23),
-        -H * 0.25 - Math.cos(tilt) * H * 0.23,
-        Math.cos(ry) * (r + Math.sin(tilt) * H * 0.23)
-      );
-    });
-    /* Cinturón */
-    add(skirt, new THREE.CylinderGeometry(H * 0.185, H * 0.185, H * 0.035, 8, 1, true),
-        TRIM, 0, H * 0.02, 0);
-
-    /* Hombreras */
-    [['clavicle_l', 1], ['clavicle_r', -1]].forEach(([bn, side]) => {
-      const b = bone(bn); if (!b) return;
-      const h = holderOn(b, 0, 0, 0);
-      add(h, new THREE.BoxGeometry(H * 0.13, H * 0.075, H * 0.155), CLOTH,
-          side * H * 0.135, H * 0.10, 0, 0, 0, side * -0.22);
-    });
-
-    /* Puños */
-    [['lowerarm_l', 1], ['lowerarm_r', -1]].forEach(([bn, side]) => {
-      const b = bone(bn); if (!b) return;
-      const h = holderOn(b, 0, 0, 0);
-      add(h, new THREE.CylinderGeometry(H * 0.045, H * 0.052, H * 0.10, 6, 1, true),
-          CLOTH, side * H * 0.09, -H * 0.06, 0, 0, 0, side * Math.PI / 2.6);
-    });
-
-    /* Botas */
-    [['calf_l', 1], ['calf_r', -1]].forEach(([bn, side]) => {
-      const b = bone(bn); if (!b) return;
-      const h = holderOn(b, 0, 0, 0);
-      add(h, new THREE.CylinderGeometry(H * 0.062, H * 0.075, H * 0.30, 6, 1, true),
-          CLOTH, side * H * 0.055, -H * 0.14, 0);
-    });
-
-    /* Visor: el rasgo que lo identifica de lejos.
-       BUG PREEXISTENTE: buscaba getObjectByName('head') en minúscula y el
-       hueso se llama 'Head', así que el visor nunca llegó a adjuntarse. */
-    const hv = holderOn(head, 0, 0, 0);
-    add(hv, new THREE.BoxGeometry(H * 0.155, H * 0.032, H * 0.10),
-        new THREE.MeshStandardMaterial({
-          color: 0x0b0e14, emissive: 0x5ee7aa, emissiveIntensity: 0.85, roughness: 0.25,
-        }), 0, H * 0.145, H * 0.055);
-
-    group.rotation.y = prevRot;
-    group.updateMatrixWorld(true);
-
   }
 
   /* ────────────────── City dressing ───────────────────── */
