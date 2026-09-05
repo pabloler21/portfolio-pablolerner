@@ -160,10 +160,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let walkAction = null;
   let runAction = null;
   let idleAction = null;
+  let moveAction = null;          /* la acción de locomoción en curso, o null */
   let prevMoving = false;
   let animClock = null;
   const keys = {};
   const WALK_SPEED = 0.042;
+  /* Los clips de Mixamo vienen "in place", así que su cadencia hay que atarla a
+     WALK_SPEED o los pies patinan. A 60 fps son ~2.5 u/s caminando y ~4.5
+     esprintando; estos factores emparejan el ciclo con esa velocidad. */
+  const WALK_TIMESCALE = 1.8;
+  const RUN_TIMESCALE  = 1.3;
   let unitTag = null;
   let composer = null;
   let activeRole = null;
@@ -1407,17 +1413,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const delta = animClock ? Math.min(animClock.getDelta(), 0.05) : 0;
     if (mixer) {
       mixer.update(delta);
-      if (nowMoving && walkAction) {
-        /* sync feet to movement speed — faster cycle while sprinting */
-        walkAction.setEffectiveTimeScale(sprinting ? 3.4 : 2.0);
-      }
-      if (nowMoving && !prevMoving && walkAction) {
-        idleAction?.fadeOut(0.25);
-        walkAction.reset().fadeIn(0.25).play();
-      } else if (!nowMoving && prevMoving && idleAction) {
-        walkAction?.fadeOut(0.25);
-        walkAction?.setEffectiveTimeScale(1.0);
-        idleAction.reset().fadeIn(0.25).play();
+      /* Dos clips reales en vez de uno acelerado: Walking al moverse y Running
+         con Shift, con crossfade entre ellos. */
+      const wanted = nowMoving ? ((sprinting && runAction) ? runAction : walkAction) : null;
+      if (wanted && wanted !== moveAction) {
+        moveAction?.fadeOut(0.22);
+        idleAction?.fadeOut(0.22);
+        wanted.reset()
+              .setEffectiveTimeScale(wanted === runAction ? RUN_TIMESCALE : WALK_TIMESCALE)
+              .fadeIn(0.22).play();
+        moveAction = wanted;
+      } else if (!wanted && moveAction) {
+        moveAction.fadeOut(0.25);
+        moveAction = null;
+        idleAction?.reset().fadeIn(0.25).play();
       }
     } else if (charGroup) {
       charGroup.position.y = nowMoving
