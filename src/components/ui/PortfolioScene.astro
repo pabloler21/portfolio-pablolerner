@@ -158,6 +158,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let t = 0;
   let mixer = null;
   let walkAction = null;
+  let runAction = null;
   let idleAction = null;
   let prevMoving = false;
   let animClock = null;
@@ -345,19 +346,23 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       animClock.start();
       mixer = new THREE.AnimationMixer(charGroup);
       const clips = gltf.animations;
-      /* UAL2 clips: Walk_Carry_Loop (walk), Idle_FoldArms_Loop (idle, loops nicely) */
-      const walkClip = clips.find(c => /walk/i.test(c.name) && !/zombie/i.test(c.name)) ?? null;
-      const idleClip = clips.find(c => /idle.*loop/i.test(c.name))
-                    ?? clips.find(c => /idle/i.test(c.name))
-                    ?? null;
-      if (walkClip) {
-        walkAction = mixer.clipAction(walkClip);
-        walkAction.setLoop(THREE.LoopRepeat, Infinity);
-        walkAction.clampWhenFinished = false;
-      }
+      /* Clips de Mixamo empaquetados en el GLB: Running, Walking, Idle.
+         Nombre exacto primero: el matcheo difuso solo es lo que hacía que el
+         personaje anterior caminara con Walk_Carry_Loop. */
+      const pick = re => clips.find(c => re.test(c.name)) ?? null;
+      const walkClip = pick(/^walking$/i) ?? pick(/walk/i);
+      const runClip  = pick(/^running$/i) ?? pick(/run|sprint|jog/i);
+      const idleClip = pick(/^idle$/i) ?? pick(/idle/i);
+      const loopIt = clip => {
+        const a = mixer.clipAction(clip);
+        a.setLoop(THREE.LoopRepeat, Infinity);
+        a.clampWhenFinished = false;
+        return a;
+      };
+      if (walkClip) walkAction = loopIt(walkClip);
+      if (runClip)  runAction  = loopIt(runClip);
       if (idleClip) {
-        idleAction = mixer.clipAction(idleClip);
-        idleAction.setLoop(THREE.LoopRepeat, Infinity);
+        idleAction = loopIt(idleClip);
         idleAction.play();
       }
     } catch (_) { /* placeholder stays on load failure */ }
