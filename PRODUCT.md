@@ -54,7 +54,7 @@ first-glance pass from a phone.
   pipeline, stack) stay in English in both locales.
 - Three.js is already a dependency and an interactive 3D surface is a binding requirement
   (see Brand Commitments).
-- Character model asset: `public/models/android.glb` (7.8MB) — a large, load-bearing
+- Character model asset: `public/models/remy.glb` (7.2MB) — a large, load-bearing
   download that constrains the first-viewport budget.
 - **Data Scientist is retired as a role.** No DS projects exist and none are planned; the
   third role and its COMING SOON state come out rather than being designed around.

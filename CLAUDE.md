@@ -130,7 +130,8 @@ src/
     es/                 # mirrors EN structure
 public/
   models/
-    android.glb              # CURRENT: UAL2_Standard.glb (7.8MB, 65 joints, 43 animations)
+    remy.glb                 # CURRENT: Remy de Mixamo (7.2MB, 114 huesos, Running/Walking/Idle)
+    android.glb              # PREVIO: UAL2_Standard.glb (7.7MB, 65 joints, 43 animations sin correr)
     android_backup.glb       # PERMANENT BACKUP: original 9S Sketchfab model — never overwrite
   hdri/
     cobblestone_street_night_1k.hdr
@@ -194,18 +195,24 @@ Max-width: **1400px**. os-shell border: mint glow `rgba(94,231,170,0.18)` not `v
 **Avenue layout** (no fixed zones anymore — ZONES dict was removed):
 Billboard k (walk order) sits at `x = ±6.5` (alternating, k even → left), `z = −10 − k*10`, `rotY = ±0.5` (angled toward the walking camera). Flagship (projIdx 0) is the LAST board of the avenue — larger (6.0×4.0 vs 4.2×2.8). `risk` → 4 boards (z −10…−40), `ai` → 3 (z −10…−30).
 
-**Character**: `public/models/android.glb` (UAL2_Standard.glb) — fuzzy clip matching:
-- Walk: `clips.find(c => /walk/i.test(c.name) && !/zombie/i.test(c.name))`
-- Idle: first looping idle found (`Idle_FoldArms_Loop`)
+**Character**: `public/models/remy.glb` — Remy de Mixamo, 114 huesos, tres clips propios:
+`Running`, `Walking`, `Idle`. Se eligen por nombre exacto con respaldo difuso
+(`/^walking$/i` → `/walk/i`).
 
-**Material override** (runtime, IRON DUST theme):
-```js
-_mat.name === 'M_Joints'
-  ? MeshStandardMaterial({ color: 0x5ee7aa, emissive: 0x5ee7aa, emissiveIntensity: 1.5 })
-  : MeshStandardMaterial({ color: 0x181b22, roughness: 0.75 })   // bg-surface, blue-void
-```
+**El personaje conserva SUS materiales.** No hay override de paleta: el que había
+(`M_Joints` en mint, el resto en `0x181b22`) pintaba el cuerpo casi del color del fondo
+`0x0d0f14` y era la causa de que el personaje desapareciera — la forma quedaba a cargo de
+la luz y sólo se veían las articulaciones. Nunca reintroducirlo. Lo único que se le suma es
+un `PointLight(0xcfd8e6, 0.85, 8)` colgado del grupo: el renderer no tiene tone mapping, así
+que a más intensidad los altos recortan y el personaje lee naranja fluorescente.
 
-**Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8** (walk clip timeScale 2.0 → 3.4) · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
+**El GLB viene normalizado** (escala y centrado en su nodo raíz) y el tick pisa
+`position`/`rotation` del grupo en cada frame, así que va **envuelto en un `THREE.Group`**:
+el wrapper es lo que maneja la escena, el nodo interno conserva su transform.
+
+**Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8**, con crossfade
+entre `Walking` (timeScale 1.8) y `Running` (timeScale 1.3) — los clips de Mixamo son *in
+place*, así que su cadencia va atada a `WALK_SPEED` o los pies patinan · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
 
 **NO pointer-driven movement, ever** (PRODUCT.md brand commitment): no ground raycast, no minimap fast-travel, no auto-walk from dossier rows. Clicking a billboard SELECTS a record — selection is not displacement.
 
@@ -349,7 +356,8 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 - **Blender 5.x animation API** (different from 4.x): `action.slots[0]` → `action.layers[0].strips[0]` → `strip.channelbags.new(slot)` → `.fcurves`
 
 **Assets:**
-- `public/models/android.glb` (7.8MB) — **CURRENT**: UAL2_Standard.glb, 65 joints, 43 animations
+- `public/models/remy.glb` (7.2MB) — **CURRENT**: Remy de Mixamo, 114 huesos, `Running` / `Walking` / `Idle`
+- `public/models/android.glb` (7.7MB) — PREVIO: UAL2_Standard.glb, 65 joints, 43 animations (ninguna de correr)
 - `public/models/android_backup.glb` (6.2MB) — **PERMANENT BACKUP**: original 9S Sketchfab, no animations — never overwrite
 - `Universal Animation Library 2[Standard].zip` (project root) — CC0, 43 animations, UAL2 rig
 
@@ -375,4 +383,8 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 25. **Un `opacity` bajo sobre texto no es "atenuar", es romper el contraste.** `opacity: 0.6` sobre `--sand-dim` componía **2.17:1**. Atenuar es cambiar de color, nunca de opacidad.
 26. **Geometría aditiva + `DoubleSide` + bloom se suma tres veces.** Los conos de farola a `opacity: 0.045` igual leían como conos verdes sólidos. Si un efecto "de luz" parece un objeto, contá cuántas veces se está sumando antes de bajarle más la opacidad.
 27. **`animation-play-state` en computed style SIEMPRE dice `running`.** Para medir movimiento perpetuo hay que mirar `animation-iteration-count: infinite`; si no, las animaciones de entrada ya terminadas cuentan como ruido y el umbral se vuelve imposible.
-28. **`astro check` OOMea con el heap por defecto de Node en este proyecto.** Usar `npm run verify:check` (`--max-old-space-size=8192`). Baseline a 2026-08-20: 347 errores, 0 warnings, 118 hints.
+29. **Un clip puede tener el nombre correcto y ser la animación equivocada.** El personaje anterior caminaba con `Walk_Carry_Loop` —una caminata *llevando algo en brazos*— porque el matcheo era `/walk/i && !/zombie/i` y en sus 43 clips (granja, espada, zombie, escudo) ése era el único que daba. Ninguna animación de correr. Buscar por nombre exacto primero y dejar el difuso como respaldo.
+30. **Entre dos rigs Mixamo alcanza con renombrar pistas; entre Mixamo y Unreal no.** Prestarle clips a otro esqueleto de la misma familia es sólo reescribir `mixamorigHips.quaternion` → `Hips.quaternion`. Cruzar a nomenclatura Unreal (UAL2: `pelvis`, `upperarm_l`) colapsa la pose aunque se corrija por delta de reposo, en cualquiera de los dos órdenes de multiplicación: las orientaciones de reposo y los ejes de hueso son incompatibles y hace falta un solver de remapeo por hueso. Es la misma pared de la lección 7 por otro camino.
+31. **Mixamo entrega FBX y le pone `mixamo.com` de nombre a TODOS los clips.** Bajar tres animaciones y cargarlas juntas hace que se pisen entre sí: hay que renombrarlas por archivo. Además, sin tildar *In Place* el clip trae su propio desplazamiento (`Running` traía 739 unidades) y el personaje se va caminando solo peleando contra WASD — se anula la pista de posición horizontal de la cadera conservando el rebote vertical.
+32. **Convertir FBX → GLB sin Blender**: cargar los FBX con `FBXLoader` en una página headless, juntar los clips y exportar con `GLTFExporter({ binary: true, animations })`. Dos trampas: exportar con un override de materiales activo lo hornea dentro del GLB, y `GLTFExporter` embebe las texturas sin comprimir — las de Mixamo vienen en 2048 y el archivo pasaba de 7 a 41 MB. Reescalarlas a 256 antes de exportar lo deja en 7.2 MB.
+33. **`astro check` OOMea con el heap por defecto de Node en este proyecto.** Usar `npm run verify:check` (`--max-old-space-size=8192`). Baseline a 2026-08-20: 347 errores, 0 warnings, 118 hints.
