@@ -26,7 +26,7 @@ export interface DossierProject {
 interface Props {
   title: string;
   lang: 'en' | 'es';
-  role: 'ai' | 'risk' | 'ds';
+  role: 'ai' | 'risk';
   description?: string;
   heading?: string;        // "DATA ANALYST"
   badge?: string;          // "PRIMARY ROLE"
@@ -113,30 +113,12 @@ const termContent = {
       'fraud_db=# _',
     ],
   },
-  ds: {
-    title: 'PROC::ML_PIPELINE',
-    lines: [
-      '$ python train.py --model gbm',
-      'from sklearn.pipeline import Pipeline',
-      'from sklearn.ensemble import GradientBoostingClassifier',
-      'pipe = Pipeline([',
-      '  ("scaler", StandardScaler()),',
-      '  ("clf", GradientBoostingClassifier())',
-      '])',
-      'pipe.fit(X_train, y_train)',
-      'Epoch  3/10  loss=0.0412  ▓▓▓░░░░░░░',
-      'Epoch  6/10  loss=0.0231  ▓▓▓▓▓▓░░░░',
-      'Epoch 10/10  loss=0.0091  ▓▓▓▓▓▓▓▓▓▓',
-      'accuracy: 0.942  auc: 0.961',
-      '$ _',
-    ],
-  },
 } as const;
 
 const term = termContent[role];
 ---
 
-<Base title={title} lang={lang} activeTab="projects" description={description}>
+<Base title={title} lang={lang} activeTab={role} description={description} surface="doc">
   <div class="role-grid">
     <RoleNav current={role} lang={lang} />
 
@@ -386,18 +368,19 @@ const term = termContent[role];
 
   .role-badge {
     font-family: var(--font-mono);
-    font-size: 0.55rem;
+    font-size: 0.7rem;
     letter-spacing: 0.18em;
     padding: 0.15rem 0.5rem;
     border: 1px solid var(--accent);
-    color: var(--accent);
+    /* El teal da 3.8:1 y no puede llevar texto; el borde sí lo conserva. */
+    color: var(--sand-muted);
   }
   .role-badge.bright {
     border-color: var(--accent-bright);
     color: var(--accent-bright);
   }
 
-  .role-sub { font-size: 0.6rem; }
+  .role-sub { font-size: 0.7rem; }
 
   /* ── HUD stat grid ────────────────────────────────── */
   .stat-grid {
@@ -417,7 +400,7 @@ const term = termContent[role];
     min-width: 0;
   }
 
-  .stat-label { font-size: 0.55rem; }
+  .stat-label { font-size: 0.7rem; }
 
   .stat-value {
     font-family: var(--font-mono);
@@ -435,7 +418,7 @@ const term = termContent[role];
 
   .stat-sub {
     font-family: var(--font-mono);
-    font-size: 0.62rem;
+    font-size: 0.7rem;
     letter-spacing: 0.05em;
     color: var(--sand-dim);
     line-height: 1.5;
@@ -459,7 +442,7 @@ const term = termContent[role];
     gap: 0.4rem;
   }
 
-  .master-label { font-size: 0.56rem; }
+  .master-label { font-size: 0.7rem; }
 
   .dossier-list {
     border: var(--border-mid);
@@ -498,7 +481,7 @@ const term = termContent[role];
 
   .row-cursor {
     color: var(--accent);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     opacity: 0;
     transition: opacity 0.12s;
   }
@@ -510,7 +493,7 @@ const term = termContent[role];
 
   .row-num {
     color: var(--sand-dim);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     letter-spacing: 0.08em;
   }
 
@@ -525,7 +508,7 @@ const term = termContent[role];
   .dossier-row.is-active .row-name { color: var(--sand); }
 
   .row-badge {
-    font-size: 0.5rem;
+    font-size: 0.7rem;
     letter-spacing: 0.14em;
     color: var(--sand-dim);
   }
@@ -536,7 +519,7 @@ const term = termContent[role];
     padding: 0.08rem 0.35rem;
   }
 
-  .list-hint { font-size: 0.52rem; }
+  .list-hint { font-size: 0.7rem; }
 
   /* ── Detail pane ──────────────────────────────────── */
   .dossier-detail {
@@ -570,11 +553,11 @@ const term = termContent[role];
 
   .detail-badge {
     font-family: var(--font-mono);
-    font-size: 0.56rem;
+    font-size: 0.7rem;
     letter-spacing: 0.18em;
     padding: 0.12rem 0.45rem;
     border: 1px solid var(--accent);
-    color: var(--accent);
+    color: var(--sand-muted);
     flex-shrink: 0;
   }
   .detail-badge.flag {
@@ -583,7 +566,7 @@ const term = termContent[role];
     background: var(--accent-flag-bg);
   }
 
-  .detail-file { font-size: 0.54rem; }
+  .detail-file { font-size: 0.7rem; }
 
   .detail-title {
     font-family: var(--font-display);
@@ -600,7 +583,7 @@ const term = termContent[role];
     gap: 0.35rem;
   }
 
-  .detail-label { font-size: 0.56rem; }
+  .detail-label { font-size: 0.7rem; }
 
   .detail-problem {
     font-family: var(--font-sans);
@@ -621,7 +604,7 @@ const term = termContent[role];
 
   .outcome-pip {
     color: var(--accent-bright);
-    font-size: 0.55rem;
+    font-size: 0.7rem;
     flex-shrink: 0;
   }
 
@@ -632,7 +615,7 @@ const term = termContent[role];
     min-width: 0;
   }
 
-  .outcome-label { font-size: 0.5rem; }
+  .outcome-label { font-size: 0.7rem; }
 
   .outcome-value {
     font-family: var(--font-mono);
@@ -661,7 +644,7 @@ const term = termContent[role];
 
   .chip {
     font-family: var(--font-mono);
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     letter-spacing: 0.1em;
     padding: 0.12rem 0.45rem;
     border: 1px solid var(--accent);

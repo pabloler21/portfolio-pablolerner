@@ -11,7 +11,6 @@
  *  - viewport < 768px         → skip, canvas hidden
  *  - WebGL unavailable        → silent return, canvas hidden
  *  - Three.js load failure    → silent return, canvas hidden
- *  - data-plain mode          → MutationObserver hides canvas in real-time
  *  - tab hidden / offscreen   → visibilitychange + IntersectionObserver pause tick
  *
  * ────────────────────────────────────────────────────────────────────────────
@@ -30,7 +29,7 @@
  *  2. Import into Base.astro, place <Hero3D /> inside .os-identity
  *     (right side, after .id-ctas — absolute-positioned within the strip)
  *
- *  3. Apply same guardrails: reduced-motion, touch, plain-mode observer,
+ *  3. Apply same guardrails: reduced-motion, touch,
  *     IntersectionObserver pause, WebGL null check, dynamic import
  *
  *  4. Keep the object under 5KB geometry. No textures. Cap pixelRatio at 2.
@@ -46,7 +45,6 @@
   const canvas = document.getElementById('ambient-canvas') as HTMLCanvasElement | null;
 
   const shouldSkip = (): boolean =>
-    html.hasAttribute('data-plain') ||
     window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
     window.matchMedia('(hover: none)').matches ||
     window.innerWidth < 768;
@@ -139,23 +137,13 @@
     visObserver.observe(canvas);
     document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; });
 
-    // ── Plain-mode toggle (real-time) ─────────────────────────────────────────
-    let isPlain = html.hasAttribute('data-plain');
-    canvas.hidden = isPlain;
-
-    const plainObserver = new MutationObserver(() => {
-      isPlain = html.hasAttribute('data-plain');
-      canvas.hidden = isPlain;
-    });
-    plainObserver.observe(html, { attributes: true, attributeFilter: ['data-plain'] });
-
     // ── Render loop ───────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
     let rafId = 0;
 
     function tick() {
       rafId = requestAnimationFrame(tick);
-      if (!isVisible || isPlain) return;
+      if (!isVisible) return;
 
       const t = clock.getElapsedTime();
 
@@ -178,7 +166,6 @@
     document.addEventListener('astro:before-swap', () => {
       cancelAnimationFrame(rafId);
       visObserver.disconnect();
-      plainObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('resize', onResize);
       renderer.dispose();

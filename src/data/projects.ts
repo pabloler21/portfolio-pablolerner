@@ -49,19 +49,19 @@ export const aiProjects: ProjectData[] = [
   {
     id: 'bot-curriculum',
     github: 'https://github.com/pabloler21/bot_curriculum',
-    demo: 'https://bot-curriculum-1.onrender.com',
-    stack: ['FastAPI', 'LangChain', 'Claude AI', 'Python', 'Pydantic', 'SlowAPI', 'Render'],
+    demo: 'https://aurea.pablolerner.dev',
+    stack: ['FastAPI', 'LangChain', 'Claude AI', 'Python', 'Pydantic', 'SlowAPI', 'Caddy'],
     status: 'DEPLOYED',
     statusEs: 'DEPLOYED',
     en: {
       name: 'CV Evaluator',
       problem: 'Web app that analyzes resumes for ATS compatibility using Claude AI — returns a structured score with keywords, formatting issues, and actionable recommendations.',
-      outcome: 'REST API with clean architecture (routes / handlers / business logic) · live on Render',
+      outcome: 'REST API with clean architecture (routes / handlers / business logic) · self-hosted, wakes on demand',
     },
     es: {
       name: 'CV Evaluator',
       problem: 'App web que analiza CVs para compatibilidad ATS con Claude AI — devuelve un score estructurado con palabras clave, problemas de formato y recomendaciones accionables.',
-      outcome: 'API REST con arquitectura limpia (routes / handlers / lógica) · en vivo en Render',
+      outcome: 'API REST con arquitectura limpia (routes / handlers / lógica) · self-hosted, arranca bajo demanda',
     },
   },
   {
@@ -264,4 +264,3 @@ export const riskProjects: ProjectData[] = [
 // DATA SCIENTIST projects
 // ────────────────────────────────────────────────────────────────
 // TODO: add repos once Pablo assigns them
-export const dsProjects: ProjectData[] = [];

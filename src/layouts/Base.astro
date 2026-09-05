@@ -10,6 +10,9 @@ interface Props {
   description?: string;
   lang?: 'en' | 'es';
   activeTab?: string;
+  /* La ÚNICA condición que decide si existe la atmósfera. Default 'doc':
+     una página nueva nace limpia y tiene que pedir atmósfera. */
+  surface?: 'game' | 'doc';
 }
 
 const {
@@ -17,6 +20,7 @@ const {
   description = 'Pablo Lerner — Data Analyst · AI Engineer · Data Scientist',
   lang = 'en',
   activeTab = 'projects',
+  surface = 'doc',
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
@@ -24,7 +28,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} data-surface={surface}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -45,26 +49,26 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   </head>
 
   <body>
-    <!-- Page-entry scanline sweep — one-shot mint line crossing top→bottom -->
-    <div class="page-sweep" aria-hidden="true"></div>
-
-    <!-- Ambient 3D background — lazy-loaded, non-blocking, behind all content -->
-    <AmbientCanvas />
-
-    <!-- Margin chrome — visible in browser margins outside the 1200px container -->
-    <!-- Left: Matrix character rain canvas -->
-    <canvas id="margin-rain-left" class="margin-chrome margin-chrome-left" aria-hidden="true"></canvas>
-
-    <!-- Right: Matrix character rain canvas -->
-    <canvas id="margin-rain-right" class="margin-chrome margin-chrome-right" aria-hidden="true"></canvas>
+    {/* Atmósfera: existe SÓLO donde el visitante puede caminar. Se excluye
+        del render (no se oculta con CSS) para no descargar ni ejecutar nada
+        de esto en la superficie documento. */}
+    {surface === 'game' && (
+      <>
+        <div class="page-sweep" aria-hidden="true"></div>
+        <AmbientCanvas />
+        <canvas id="margin-rain-left" class="margin-chrome margin-chrome-left" aria-hidden="true"></canvas>
+        <canvas id="margin-rain-right" class="margin-chrome margin-chrome-right" aria-hidden="true"></canvas>
+      </>
+    )}
 
     <div class="os-shell">
-      <!-- OS chrome row -->
-      <div class="os-title-row">
-        <span class="os-unit-id sys-text">UNIT::PL-7729</span>
-        <span class="os-page sys-text">{title}</span>
-        <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
-      </div>
+      {surface === 'game' && (
+        <div class="os-title-row">
+          <span class="os-unit-id sys-text">UNIT::PL-7729</span>
+          <span class="os-page sys-text">{title}</span>
+          <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
+        </div>
+      )}
 
       <!-- Identity strip — name, positioning, CTAs -->
       <div class="os-identity">
@@ -88,7 +92,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       <!-- Navigation -->
       <header class="os-header">
         <TabBar active={activeTab} lang={lang} />
-        <DotRow />
+        {surface === 'game' && <DotRow />}
       </header>
 
       <!-- Main content -->
@@ -97,20 +101,40 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       </main>
 
       <!-- Footer -->
-      <StatusBar lang={lang} />
+      <StatusBar lang={lang} surface={surface} />
     </div>
 
+    {surface === 'game' && (
     <script>
       (function () {
-        const RAIN_CHARS = '0123456789ABCDEF◆◇▸▪░▒▓XZQV─═║';
-        const CHAR_SIZE = 10;
+        /* Caída de datos de margen: POCAS y LENTAS. La versión anterior
+           dibujaba una columna cada 10px avanzando 10px por frame (~600px/s),
+           que es lo que hacía ruido. Ahora son ~1 hilo cada 70px cayendo a
+           8–18 px/s, con velocidad en píxeles por SEGUNDO (independiente de
+           los fps) y sin acumulación de estela. */
+        const GLYPHS = '0123456789ABCDEF◆◇▸▪XZQV─═║';
+        const CHAR_PX = 11;
+        const GAP_PX  = 30;     /* separación media entre hilos */
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const pick = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 
         function makeRain(id: string) {
           const canvas = document.getElementById(id) as HTMLCanvasElement | null;
           if (!canvas) return;
           const ctx = canvas.getContext('2d')!;
-          let drops: number[] = [];
-          let W = 0, H = 0, cols = 0;
+          let W = 0, H = 0;
+          let streams: { x: number; y: number; sp: number; g: string[] }[] = [];
+
+          function build() {
+            const n = Math.max(1, Math.round(W / GAP_PX));
+            streams = Array.from({ length: n }, (_, i) => ({
+              x: Math.round((i + 0.5) * (W / n) - CHAR_PX / 2),
+              y: Math.random() * (H * 1.4) - H * 0.2,
+              sp: 12 + Math.random() * 14,                     /* px por segundo */
+              g: Array.from({ length: 9 + ((Math.random() * 8) | 0) }, pick),
+            }));
+          }
 
           function resize() {
             W = canvas.offsetWidth;
@@ -118,39 +142,60 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
             if (W < 4 || H < 4) return;
             canvas.width = W;
             canvas.height = H;
-            cols = Math.max(1, Math.floor(W / CHAR_SIZE));
-            drops = Array.from({ length: cols }, () =>
-              Math.floor(Math.random() * (H / CHAR_SIZE))
-            );
+            build();
           }
 
-          function frame() {
-            if (canvas.offsetWidth < 4) { requestAnimationFrame(frame); return; }
-            ctx.fillStyle = 'rgba(27,26,26,0.18)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.font = `${CHAR_SIZE}px 'Share Tech Mono', monospace`;
-            for (let i = 0; i < cols; i++) {
-              const char = RAIN_CHARS[Math.floor(Math.random() * RAIN_CHARS.length)];
-              const x = i * CHAR_SIZE;
-              const y = drops[i] * CHAR_SIZE;
-              const isBright = Math.random() < 0.08;
-              ctx.fillStyle = isBright ? '#5ee7aa' : (Math.random() < 0.3 ? '#B0AC9C' : '#787668');
-              ctx.fillText(char, x, y);
-              if (drops[i] * CHAR_SIZE > H && Math.random() > 0.96) drops[i] = 0;
-              else drops[i]++;
+          function paint() {
+            ctx.clearRect(0, 0, W, H);
+            ctx.font = `${CHAR_PX}px 'Share Tech Mono', monospace`;
+            for (const st of streams) {
+              for (let k = 0; k < st.g.length; k++) {
+                const y = st.y - k * CHAR_PX;
+                if (y < -CHAR_PX || y > H + CHAR_PX) continue;
+                /* La cabeza es la más brillante, pero la cola tiene PISO:
+                   una rampa lineal a cero deja los últimos glifos en ~0.04 y
+                   el hilo entero desaparece sobre un fondo casi negro. */
+                const a = 0.20 + 0.45 * (1 - k / st.g.length);
+                ctx.fillStyle = k === 0
+                  ? 'rgba(94,231,170,0.9)'
+                  : `rgba(160,168,184,${a.toFixed(3)})`;
+                ctx.fillText(st.g[k], st.x, y);
+              }
             }
+          }
+
+          let last = 0;
+          function frame(now: number) {
+            if (canvas.offsetWidth < 4) { requestAnimationFrame(frame); return; }
+            const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
+            last = now;
+            for (const st of streams) {
+              st.y += st.sp * dt;
+              if (st.y - st.g.length * CHAR_PX > H) {
+                st.y = -Math.random() * H * 0.4;
+                st.sp = 12 + Math.random() * 14;
+                st.g = st.g.map(pick);
+              } else if (Math.random() < dt * 0.9) {
+                /* una sola mutación ocasional: da vida sin parpadeo */
+                st.g[(Math.random() * st.g.length) | 0] = pick();
+              }
+            }
+            paint();
             requestAnimationFrame(frame);
           }
 
           new ResizeObserver(resize).observe(canvas);
           resize();
-          frame();
+          /* Con movimiento reducido queda el fondo oscuro y los glifos quietos. */
+          if (reduced) paint();
+          else requestAnimationFrame(frame);
         }
 
         makeRain('margin-rain-left');
         makeRain('margin-rain-right');
       })();
     </script>
+    )}
 
     <script>
       // ── Hover scramble — nav tabs + header CTAs (opt-in via data-scramble) ──
@@ -210,6 +255,8 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 
 <style>
   .os-shell {
+    /* Opaco: sin esto, cualquier capa de fondo se lee A TRAVÉS del contenido. */
+    background-color: var(--bg-void);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -246,8 +293,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   .os-page {
-    font-size: 0.55rem;
-    opacity: 0.4;
+    font-size: 0.7rem;
   }
 
   /* ── Identity strip ── */
@@ -279,7 +325,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   .id-sep {
-    opacity: 0.3;
+    color: var(--sand-dim);
   }
 
   .id-role {
@@ -320,6 +366,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       gap: 0.6rem;
     }
 
+    /* En columna el separador queda colgando después del nombre. */
+    .id-sep { display: none; }
+
     .id-ctas { gap: 0.3rem; }
   }
 
@@ -328,7 +377,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     position: fixed;
     top: 0;
     bottom: 0;
-    width: max(0px, calc((100vw - 1200px) / 2));
+    width: max(0px, calc((100vw - 1400px) / 2));
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
@@ -337,7 +386,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     justify-content: center;
     writing-mode: vertical-rl;
     font-family: var(--font-mono);
-    font-size: 0.38rem;
+    font-size: 0.7rem;
     letter-spacing: 0.2em;
     color: var(--sand-dim);
     white-space: nowrap;
@@ -380,11 +429,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   }
 
   /* ── Canvas rain panels ── */
+  /* NUNCA declarar `width` acá: estos selectores de ID apuntan al MISMO
+     elemento que .margin-chrome y ganan por especificidad; un `width: 100%`
+     sobre un position:fixed resuelve contra el viewport y convierte cada
+     panel en una capa animada de 100vw sobre todo el sitio.
+
+     `height: 100%` en cambio es OBLIGATORIO: <canvas> es un elemento
+     reemplazado, así que con `top:0; bottom:0` y `height:auto` no se estira
+     — usa su alto intrínseco (150px) y la caída queda cortada arriba. */
   #margin-rain-left,
   #margin-rain-right {
     display: block;
-    width: 100%;
     height: 100%;
+    background: var(--bg-void);
   }
 
   /* ── Page-entry scanline sweep ─────────────────────── */
@@ -422,10 +479,5 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     .page-sweep {
       animation-duration: 0.01s; /* never animation:none — kills fill-mode */
     }
-  }
-
-  /* Plain mode: no scene FX overlays */
-  :global(html[data-plain]) .page-sweep {
-    display: none;
   }
 </style>

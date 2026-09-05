@@ -45,11 +45,13 @@ const { title, lines } = Astro.props;
       charIdx++;
       if (charIdx >= line.length) {
         charIdx = 0;
-        lineIdx = (lineIdx + 1) % lines.length;
-        // Longer pause after $ commands (like pressing Enter), short pause after output
+        lineIdx++;
+        // Escribe la sesión UNA vez y se queda quieta. La superficie documento
+        // no tiene movimiento perpetuo: el bucle anterior volvía a lineIdx 0
+        // y retecleaba para siempre.
+        if (lineIdx >= lines.length) return;
         const isCommand = line.startsWith('$') || line.endsWith('_');
-        const pause = lineIdx === 0 ? 2200 : isCommand ? 520 : 80;
-        setTimeout(tick, pause);
+        setTimeout(tick, isCommand ? 520 : 80);
         return;
       }
       // Commands type at human speed; output lines print fast
@@ -95,7 +97,7 @@ const { title, lines } = Astro.props;
 
   .term-label {
     font-family: var(--font-mono);
-    font-size: 0.57rem;
+    font-size: 0.7rem;
     letter-spacing: 0.12em;
     color: var(--sand-dim);
     text-transform: uppercase;
@@ -111,7 +113,7 @@ const { title, lines } = Astro.props;
 
   .term-output {
     font-family: var(--font-mono);
-    font-size: 0.59rem;
+    font-size: 0.7rem;
     line-height: 1.65;
     color: var(--sand-dim);
     white-space: pre-wrap;
@@ -121,21 +123,13 @@ const { title, lines } = Astro.props;
     overflow: hidden;
   }
 
+  /* Cursor fijo: el parpadeo era la única animación infinite que quedaba
+     en la superficie documento. */
   .term-cursor {
     font-family: var(--font-mono);
-    font-size: 0.59rem;
+    font-size: 0.7rem;
     color: var(--accent);
-    animation: term-blink 1s step-end infinite;
     display: block;
     flex-shrink: 0;
-  }
-
-  @keyframes term-blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .term-cursor { animation-duration: 0.01s !important; }
   }
 </style>

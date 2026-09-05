@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current: 'ai' | 'risk' | 'ds';
+  current: 'ai' | 'risk';
   lang: 'en' | 'es';
 }
 
@@ -10,14 +10,11 @@ const base = `/${lang}`;
 const roles = [
   { id: 'ai',   label: 'AI ENGINEER' },
   { id: 'risk', label: 'DATA ANALYST' },
-  { id: 'ds',   label: 'DATA SCIENTIST' },
 ] as const;
 
 const t = {
   panelLabel: lang === 'en' ? 'UNIT SELECTION'         : 'SELECCIÓN DE PERFIL',
   back:       lang === 'en' ? 'TERMINAL'               : 'TERMINAL',
-  unitId:     lang === 'en' ? 'UNIT ID: PL-7729'       : 'UNIDAD: PL-7729',
-  status:     lang === 'en' ? 'STATUS: ACTIVE'         : 'ESTADO: ACTIVO',
   available:  lang === 'en' ? 'OPEN TO WORK'           : 'DISPONIBLE',
 };
 ---
@@ -43,11 +40,9 @@ const t = {
     ))}
   </nav>
 
+  {/* LAT/LON/UNIT ID es atrezzo del juego, no información. En un documento
+      sólo queda el dato que un evaluador realmente usa. */}
   <div class="meta-block sys-text">
-    <p>{t.unitId}</p>
-    <p>LAT: -34.6037</p>
-    <p>LON: -58.3816</p>
-    <p>{t.status}</p>
     <p class="available">{t.available}</p>
   </div>
 </div>
@@ -63,7 +58,7 @@ const t = {
   .panel-label {
     padding: 0.6rem 1rem;
     border-bottom: var(--border);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
   }
 
   .back-link {
@@ -73,7 +68,7 @@ const t = {
     padding: 0.55rem 1rem;
     border-bottom: var(--border);
     font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     letter-spacing: 0.12em;
     color: var(--sand-dim);
     text-decoration: none;
@@ -101,14 +96,14 @@ const t = {
   .role-item.active        { background: var(--bg-panel); color: var(--sand); border-left-color: var(--accent-bright); }
   .role-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 
-  .cursor { font-size: 0.68rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
+  .cursor { font-size: 0.7rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
 
   .meta-block {
     margin-top: auto;
     padding: 1rem;
     border-top: var(--border);
     line-height: 2;
-    font-size: 0.63rem;
+    font-size: 0.7rem;
   }
 
   .meta-block .available { color: var(--accent-bright); opacity: 1; }

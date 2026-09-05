@@ -22,3 +22,8 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+.superpowers/
+
+# Librerias de sistema extraidas a mano para Playwright en WSL2 (ver CLAUDE.md).
+# Son binarios de la maquina, no del proyecto.
+.cache/

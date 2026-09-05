@@ -2,7 +2,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://pablolerner.duckdns.org',
+  site: 'https://pablolerner.dev',
   server: { host: '0.0.0.0' },
   i18n: {
     defaultLocale: 'en',

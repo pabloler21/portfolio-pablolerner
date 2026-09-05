@@ -4,7 +4,7 @@ import { aiProjects, riskProjects } from '../../data/projects.ts';
 interface Props { lang: 'en' | 'es' }
 const { lang = 'en' } = Astro.props;
 
-type ZoneKey = 'risk' | 'ai' | 'ds';
+type ZoneKey = 'risk' | 'ai';
 
 const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
   name:     p[l].name,
@@ -21,7 +21,7 @@ const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
    risk → FraudSense(0), Credit Scoring(1), E-commerce Inventory(5), SQL Fast Food(3)
            billboards show projIdx 0,1,2 — SQL Fast Food (projIdx 3) appears in panel only
    ai   → Iris(0), CV Evaluator(1), Hermes(2)
-   ds   → no projects (COMING SOON overlay) */
+   */
 const zoneProjects = {
   risk: [riskProjects[0], riskProjects[1], riskProjects[5], riskProjects[3]].map(p => mapProj(p, lang)),
   ai:   [aiProjects[0],   aiProjects[1],   aiProjects[2]].map(p => mapProj(p, lang)),
@@ -36,7 +36,6 @@ const zoneLabels = {
 const allUrl: Record<ZoneKey, string> = {
   risk: `/${lang}/risk/`,
   ai:   `/${lang}/ai/`,
-  ds:   `/${lang}/ds/`,
 };
 
 const allLabel        = lang === 'en' ? 'VIEW ALL RECORDS →' : 'VER TODOS →';
@@ -58,8 +57,6 @@ const endcap = {
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const hintLabel       = lang === 'en' ? 'WASD TO WALK · CLICK BILLBOARD' : 'WASD PARA CAMINAR · CLICK CARTEL';
-const comingSoonTitle = lang === 'en' ? 'COMING SOON' : 'PRÓXIMAMENTE';
-const comingSoonSub   = lang === 'en' ? 'Data science projects deploying...' : 'Proyectos de data science en camino...';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
 ---
 
@@ -125,19 +122,6 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
     </nav>
   </div>
 
-  <!-- COMING SOON overlay for DS zone -->
-  <div id="ps-coming-soon" class="ps-coming-soon">
-    <div class="cs-content">
-      <div class="cs-label">UNIT::DS-SECTOR</div>
-      <div class="cs-title">{comingSoonTitle}</div>
-      <div class="cs-dots">
-        <span>◆</span><span>◆</span><span>◆</span><span>◆</span><span>◆</span>
-      </div>
-      <p class="cs-sub">{comingSoonSub}</p>
-      <button id="cs-close" class="cs-close">[ {returnLabel} ]</button>
-    </div>
-  </div>
-
 </div>
 
 <script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap })}></script>
@@ -174,11 +158,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let t = 0;
   let mixer = null;
   let walkAction = null;
+  let runAction = null;
   let idleAction = null;
+  let moveAction = null;          /* la acción de locomoción en curso, o null */
   let prevMoving = false;
   let animClock = null;
   const keys = {};
   const WALK_SPEED = 0.042;
+  /* Los clips de Mixamo vienen "in place", así que su cadencia hay que atarla a
+     WALK_SPEED o los pies patinan. A 60 fps son ~2.5 u/s caminando y ~4.5
+     esprintando; estos factores emparejan el ciclo con esa velocidad. */
+  const WALK_TIMESCALE = 1.8;
+  const RUN_TIMESCALE  = 1.3;
   let unitTag = null;
   let composer = null;
   let activeRole = null;
@@ -195,7 +186,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   const BOUND_X = 8.8, BOUND_Z_MIN = -46, BOUND_Z_MAX = 4.5;
   const clampX = (v) => Math.max(-BOUND_X, Math.min(BOUND_X, v));
   const clampZ = (v) => Math.max(BOUND_Z_MIN, Math.min(BOUND_Z_MAX, v));
-  let groundMesh = null;     // asphalt plane — raycast target for click-to-move
   let targetRotY = 0;        // character heading, lerped in tick (no snap turns)
   let arrivalPending = false;/* true only for navigateTo walks — gates the banner */
   /* Flagship accent (Deus Ex amber) — decorative marking only, never interactive */
@@ -206,7 +196,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let introActive = false;   // cinematic camera pan on first visit
   let introT = 0;
   let particles = null; let particleVelocities = null;
-  let tagHudEl = null; let _tagPos = null;
+  let tagHudEl = null; let _tagPos = null; let heroEl = null;
 
   async function init() {
     const canvas = document.getElementById('ps-canvas');
@@ -226,10 +216,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
 
     _tagPos = new THREE.Vector3();
     tagHudEl = document.getElementById('unit-tag-hud');
+    heroEl = document.getElementById('ps-hero');
     const mmCv = document.getElementById('ps-minimap-canvas');
     if (mmCv) {
+      /* Display puro: el minimapa NO mueve al personaje (sólo WASD). */
       minimapCtx = mmCv.getContext('2d');
-      mmCv.addEventListener('click', onMinimapClick);   /* fast-travel (G4) */
     }
 
     /* Measure AFTER imports — layout is stable by now */
@@ -269,9 +260,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.6, 0.4, 0.4);
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
-        new MutationObserver(() => {
-          bloom.enabled = !document.documentElement.hasAttribute('data-plain');
-        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
       } catch (_) { /* bloom is enhancement only — scene works without it */ }
     }
 
@@ -316,13 +304,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
 
       /* Rebuild billboards for the selected role only — everything from the
          previous role is destroyed. N projects → N billboards, nothing else. */
-      if (zone === 'ds') {
-        disposeRoleBillboards();
-        showComingSoon();
-      } else {
-        buildRoleBillboards(THREE, zone);
-        navigateTo(zone);
-      }
+      buildRoleBillboards(THREE, zone);
+      navigateTo(zone);
     });
 
     /* Fallback: if sessionStorage has a stored zone, re-dispatch after init completes */
@@ -338,76 +321,54 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     animClock = new THREE.Clock();
     try {
       const gltf = await new Promise((res, rej) =>
-        new GLTFLoader().load('/models/android.glb', res, undefined, rej)
+        new GLTFLoader().load('/models/remy.glb', res, undefined, rej)
       );
       scene.remove(charGroup);
-      charGroup = gltf.scene;
+      /* El GLB trae su propia normalización (escala y centrado) en el nodo raíz,
+         y el tick pisa position/rotation del grupo en cada frame. Si se usara
+         gltf.scene directamente esa normalización se perdería, así que va
+         envuelto: el wrapper es lo que maneja la escena, el nodo interno
+         conserva su transform. */
+      charGroup = new THREE.Group();
+      charGroup.add(gltf.scene);
       charGroup.position.set(charX, 0, charZ);
       scene.add(charGroup);
 
-      /* Apply IRON DUST palette over UAL2 mannequin materials */
-      charGroup.traverse(obj => {
-        if (!obj.isMesh) return;
-        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-        mats.forEach((_mat, i) => {
-          const name = _mat.name ?? '';
-          const replacement = name === 'M_Joints'
-            ? new THREE.MeshStandardMaterial({
-                color: 0x5ee7aa,      /* mint — accent-bright */
-                emissive: 0x5ee7aa,
-                emissiveIntensity: 1.5,
-                roughness: 0.4,
-                metalness: 0.1,
-              })
-            : new THREE.MeshStandardMaterial({
-                color: 0x181b22,      /* bg-surface — blue-void */
-                roughness: 0.75,
-                metalness: 0.05,
-              });
-          if (Array.isArray(obj.material)) obj.material[i] = replacement;
-          else obj.material = replacement;
-        });
-      });
+      /* El personaje conserva SUS materiales. El override que había acá pisaba
+         todo con 0x181b22 sobre un fondo 0x0d0f14 y era lo que lo hacía
+         desaparecer: la forma quedaba a cargo de la luz, y cuando la luz fallaba
+         sólo se veían los joints. */
 
-      /* G_UNIT_2 — Visor band on head bone */
-      const headBone = charGroup.getObjectByName('head');
-      if (headBone) {
-        const visorMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(0.19, 0.028, 0.13),
-          new THREE.MeshStandardMaterial({
-            color: 0x0a0c0a,
-            emissive: 0x5ee7aa,
-            emissiveIntensity: 2.0,
-            roughness: 0.2,
-          })
-        );
-        visorMesh.position.set(0, 0.12, 0.07);
-        headBone.add(visorMesh);
-      }
-
-      /* G_UNIT_2 — Rim light (follows character via parenting) */
-      const rimLight = new THREE.PointLight(0x5ee7aa, 2.5, 5);
-      rimLight.position.set(0, 1.2, -0.5);
-      charGroup.add(rimLight);
+      /* Luz de acompañamiento, neutra y tenue: lo despega del fondo sin teñirlo.
+         Antes era un PointLight mint a 2.5 — con materiales reales le pintaba de
+         verde la piel y la ropa. Y sin tone mapping los altos recortan duro, así
+         que a más intensidad el personaje lee naranja fluorescente. */
+      const fillLight = new THREE.PointLight(0xcfd8e6, 0.85, 8);
+      fillLight.position.set(0.5, 1.6, 1.3);
+      charGroup.add(fillLight);
 
       /* Unit tag is rendered as HTML overlay (see #unit-tag-hud) — no 3D sprite needed */
 
       animClock.start();
       mixer = new THREE.AnimationMixer(charGroup);
       const clips = gltf.animations;
-      /* UAL2 clips: Walk_Carry_Loop (walk), Idle_FoldArms_Loop (idle, loops nicely) */
-      const walkClip = clips.find(c => /walk/i.test(c.name) && !/zombie/i.test(c.name)) ?? null;
-      const idleClip = clips.find(c => /idle.*loop/i.test(c.name))
-                    ?? clips.find(c => /idle/i.test(c.name))
-                    ?? null;
-      if (walkClip) {
-        walkAction = mixer.clipAction(walkClip);
-        walkAction.setLoop(THREE.LoopRepeat, Infinity);
-        walkAction.clampWhenFinished = false;
-      }
+      /* Clips de Mixamo empaquetados en el GLB: Running, Walking, Idle.
+         Nombre exacto primero: el matcheo difuso solo es lo que hacía que el
+         personaje anterior caminara con Walk_Carry_Loop. */
+      const pick = re => clips.find(c => re.test(c.name)) ?? null;
+      const walkClip = pick(/^walking$/i) ?? pick(/walk/i);
+      const runClip  = pick(/^running$/i) ?? pick(/run|sprint|jog/i);
+      const idleClip = pick(/^idle$/i) ?? pick(/idle/i);
+      const loopIt = clip => {
+        const a = mixer.clipAction(clip);
+        a.setLoop(THREE.LoopRepeat, Infinity);
+        a.clampWhenFinished = false;
+        return a;
+      };
+      if (walkClip) walkAction = loopIt(walkClip);
+      if (runClip)  runAction  = loopIt(runClip);
       if (idleClip) {
-        idleAction = mixer.clipAction(idleClip);
-        idleAction.setLoop(THREE.LoopRepeat, Infinity);
+        idleAction = loopIt(idleClip);
         idleAction.play();
       }
     } catch (_) { /* placeholder stays on load failure */ }
@@ -419,12 +380,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.getElementById('ps-panel-close').addEventListener('click', returnToCenter);
     document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
-    new MutationObserver(() => {
-      const plain = document.documentElement.hasAttribute('data-plain');
-      canvas.style.opacity = plain ? '0' : '1';
-      const mm = document.getElementById('ps-minimap');
-      if (mm) mm.style.opacity = plain ? '0' : '1';
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-plain'] });
 
     /* WASD — scoped to movement keys only so we don't block browser shortcuts.
        Shift is tracked for sprint but NEVER preventDefault'd (Shift+Tab etc.) */
@@ -436,11 +391,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.addEventListener('keyup', e => {
       keys[e.code] = false;
       if (e.key === 'Shift') keys.Shift = false;
-    });
-
-    /* COMING SOON close button */
-    document.getElementById('cs-close').addEventListener('click', () => {
-      document.getElementById('ps-coming-soon').classList.remove('open');
     });
 
     /* Cinematic intro — first visit only (no persona chosen yet). The camera
@@ -471,7 +421,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     asphalt.rotation.x = -Math.PI / 2;
     asphalt.position.set(0, 0, -28);
     scene.add(asphalt);
-    groundMesh = asphalt;   /* click-to-move raycast target */
 
     /* Sidewalks */
     const swMat = new THREE.MeshBasicMaterial({ color: 0x161a22 });
@@ -547,10 +496,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   function buildCityDressing(THREE) {
     /* Streetlamps: both sidewalk edges, offset from billboard z-rows */
     const lampHeadMat = new THREE.MeshBasicMaterial({ color: 0xbfd9cc });
-    const lampConeMat = new THREE.MeshBasicMaterial({
-      color: 0x5ee7aa, transparent: true, opacity: 0.045,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
     const lampGlowMat = new THREE.MeshBasicMaterial({
       color: 0x5ee7aa, transparent: true, opacity: 0.05,
       blending: THREE.AdditiveBlending, depthWrite: false,
@@ -566,9 +511,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.14), lampHeadMat);
         head.position.set(lx * 0.96, 4.32, lz);
         scene.add(head);
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(0.95, 3.6, 10, 1, true), lampConeMat);
-        cone.position.set(lx * 0.96, 2.5, lz);
-        scene.add(cone);
+        /* Sin cono volumétrico: incluso a opacity 0.045 el DoubleSide sumaba
+           dos caras por cono y el bloom aditivo lo amplificaba, así que se leía
+           como un cono verde sólido en vez de como luz. La luz la dan el head
+           y el glow del piso. */
         const glow = new THREE.Mesh(new THREE.CircleGeometry(1.05, 14), lampGlowMat);
         glow.rotation.x = -Math.PI / 2;
         glow.position.set(lx * 0.96, 0.015, lz);
@@ -596,7 +542,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       const sign = new THREE.Mesh(
         new THREE.PlaneGeometry(2.4, 0.6),
         new THREE.MeshBasicMaterial({
-          map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.75,
+          map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.45,
           blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
         })
       );
@@ -643,7 +589,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
-      color: 0xa8c4d8, size: 0.06, transparent: true, opacity: 0.4, sizeAttenuation: true,
+      color: 0xa8c4d8, size: 0.045, transparent: true, opacity: 0.28, sizeAttenuation: true,
     })));
   }
 
@@ -663,7 +609,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const mat = new THREE.PointsMaterial({
-      color: 0x6b7280, size: 0.055, transparent: true, opacity: 0.45, sizeAttenuation: true
+      color: 0x6b7280, size: 0.05, transparent: true, opacity: 0.3, sizeAttenuation: true
     });
     particles = new THREE.Points(geo, mat);
     scene.add(particles);
@@ -1109,23 +1055,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       showPanel(hit.key, hit.projIdx);
       return;
     }
-    /* 2) Click-to-move — raycast the asphalt and walk there (key for
-       visitors who never discover WASD) */
-    if (!groundMesh || !activeRole) return;
-    const canvas = document.getElementById('ps-canvas');
-    const rect = canvas.getBoundingClientRect();
-    if (!raycaster.r) raycaster.r = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width)  * 2 - 1,
-      -((e.clientY - rect.top)  / rect.height) * 2 + 1
-    );
-    raycaster.r.setFromCamera(mouse, camera);
-    const ground = raycaster.r.intersectObject(groundMesh);
-    if (ground.length) {
-      targetX = clampX(ground[0].point.x);
-      targetZ = clampZ(ground[0].point.z);
-      isMoving = true;
-    }
+    /* No hay click-to-move: el personaje se mueve SÓLO con WASD.
+       El click sobre la escena selecciona un registro, nunca desplaza. */
   }
 
   function onHover(THREE, e) {
@@ -1288,21 +1219,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     ctx.restore();
   }
 
-  /* Minimap fast-travel — click near a marker walks the character there */
-  function onMinimapClick(e) {
-    if (!roleBillRefs.length) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - rect.left) * (MM.W / rect.width);
-    const py = (e.clientY - rect.top) * (MM.H / rect.height);
-    let best = null, bestD = 12 * 12;   /* 12px hit radius */
-    roleBillRefs.forEach(ref => {
-      const dx = MM.mx(ref.bx) - px, dy = MM.mz(ref.bz) - py;
-      const d = dx * dx + dy * dy;
-      if (d < bestD) { bestD = d; best = ref; }
-    });
-    if (best) walkToBoard(best.projIdx);
-  }
-
   /* ────────────────── Panel ───────────────────────────── */
   /* Scramble-settle text reveal (NieR style). Cancel-safe: re-entering on the
      same element clears the previous interval, so concurrent calls never
@@ -1396,17 +1312,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     `;
     cards.appendChild(body);
 
-    /* PREV/NEXT record navigation — wraps around, walks to the board (G5) */
+    /* PREV/NEXT — cambia de registro; caminar es cosa del jugador (WASD) */
     body.querySelectorAll('.d-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const n = projects.length;
         const nextIdx = (heroIdx + parseInt(btn.dataset.nav, 10) + n) % n;
         showPanel(zone, nextIdx);
-        walkToBoard(nextIdx);
       });
     });
 
-    /* Other records — numbered rows; click walks the character to that board */
+    /* Otros registros — la fila cambia el registro mostrado, no desplaza */
     const others = document.createElement('div');
     others.className = 'd-others';
     others.innerHTML = `<div class="d-label">${dossier.other}</div>`;
@@ -1422,7 +1337,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       `;
       row.addEventListener('click', () => {
         showPanel(zone, i);
-        walkToBoard(i);
       });
       others.appendChild(row);
     });
@@ -1438,21 +1352,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.getElementById('ps-panel').classList.add('open');
   }
 
-  /* Walk the character to the billboard showing projects[projIdx] */
-  function walkToBoard(projIdx) {
-    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
-    if (!ref) return;
-    targetX = ref.bx * 0.5;
-    targetZ = ref.bz + 3.2;
-    isMoving = true;
-  }
-
   function hidePanel() {
     document.getElementById('ps-panel').classList.remove('open');
-  }
-
-  function showComingSoon() {
-    document.getElementById('ps-coming-soon').classList.add('open');
   }
 
   /* ────────────────── Fallback ────────────────────────── */
@@ -1512,17 +1413,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const delta = animClock ? Math.min(animClock.getDelta(), 0.05) : 0;
     if (mixer) {
       mixer.update(delta);
-      if (nowMoving && walkAction) {
-        /* sync feet to movement speed — faster cycle while sprinting */
-        walkAction.setEffectiveTimeScale(sprinting ? 3.4 : 2.0);
-      }
-      if (nowMoving && !prevMoving && walkAction) {
-        idleAction?.fadeOut(0.25);
-        walkAction.reset().fadeIn(0.25).play();
-      } else if (!nowMoving && prevMoving && idleAction) {
-        walkAction?.fadeOut(0.25);
-        walkAction?.setEffectiveTimeScale(1.0);
-        idleAction.reset().fadeIn(0.25).play();
+      /* Dos clips reales en vez de uno acelerado: Walking al moverse y Running
+         con Shift, con crossfade entre ellos. */
+      const wanted = nowMoving ? ((sprinting && runAction) ? runAction : walkAction) : null;
+      if (wanted && wanted !== moveAction) {
+        moveAction?.fadeOut(0.22);
+        idleAction?.fadeOut(0.22);
+        wanted.reset()
+              .setEffectiveTimeScale(wanted === runAction ? RUN_TIMESCALE : WALK_TIMESCALE)
+              .fadeIn(0.22).play();
+        moveAction = wanted;
+      } else if (!wanted && moveAction) {
+        moveAction.fadeOut(0.25);
+        moveAction = null;
+        idleAction?.reset().fadeIn(0.25).play();
       }
     } else if (charGroup) {
       charGroup.position.y = nowMoving
@@ -1556,7 +1460,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       const sx = (_tagPos.x * 0.5 + 0.5) * sceneW;
       const sy = (-_tagPos.y * 0.5 + 0.5) * sceneH;
       tagHudEl.style.transform = `translate(-50%, -100%) translate(${sx}px,${sy}px)`;
-      tagHudEl.style.display = _tagPos.z < 1 ? '' : 'none';
+      /* El chip no comparte espacio con el título del intro: se superponían
+         literalmente sobre el mismo punto de la pantalla. */
+      const heroUp = heroEl && heroEl.classList.contains('show');
+      tagHudEl.style.display = (!heroUp && _tagPos.z < 1) ? '' : 'none';
     }
 
     /* Proximity power-on — a dark board lights up (CRT flicker) when the
@@ -1606,7 +1513,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       /* Drift toward the board's side of the street near the end of the path */
       const f = (charZ - cz) / Math.max(1, charZ - (nxt.bz + 2));
       c.position.set(nxt.bx * 0.35 * f, 0.03, cz);
-      const targetOp = reduced ? 0.22 : 0.08 + 0.3 * Math.max(0, Math.sin(t * 2.6 - j * 0.8));
+      /* Subordinado al encendido de board, que es el evento principal. */
+      const targetOp = reduced ? 0.16 : 0.05 + 0.19 * Math.max(0, Math.sin(t * 2.6 - j * 0.8));
       c.material.opacity += (targetOp - c.material.opacity) * 0.15;
     });
 
@@ -1796,19 +1704,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     border-color: var(--accent-bright);
   }
 
-  /* ── Minimap HUD — frame is drawn in-canvas (corner cut); clickable
-     for fast-travel to discovered/undiscovered boards ── */
+  /* ── Minimap HUD — display puro. El frame se dibuja in-canvas (corner
+     cut). No es clickeable: el personaje se mueve sólo con WASD. ── */
   .ps-minimap {
     position: absolute;
     top: 2.4rem;
     left: 1rem;
-    pointer-events: auto;
+    pointer-events: none;
     transition: opacity 0.3s ease;
   }
 
   .ps-minimap canvas {
     display: block;
-    cursor: pointer;
   }
 
   /* ── Arrival banner ── */
@@ -2059,87 +1966,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     color: var(--sand-dim);
   }
 
-  /* ── Coming Soon overlay (DS zone) ── */
-  .ps-coming-soon {
-    position: absolute;
-    inset: 0;
-    background: rgba(13, 15, 20, 0.97);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-  }
-
-  .ps-coming-soon.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .cs-content { text-align: center; }
-
-  .cs-label {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    color: var(--sand-dim);
-    margin-bottom: 1.5rem;
-  }
-
-  .cs-title {
-    font-family: var(--font-display);
-    font-size: 3.5rem;
-    color: var(--sand);
-    letter-spacing: 0.2em;
-    margin-bottom: 1.5rem;
-  }
-
-  .cs-dots { margin-bottom: 0.5rem; }
-
-  .cs-dots span {
-    color: var(--accent-bright);
-    font-size: 1.2rem;
-    animation: cs-blink 1.4s infinite;
-    margin: 0 0.15rem;
-  }
-
-  .cs-dots span:nth-child(1) { animation-delay: 0s; }
-  .cs-dots span:nth-child(2) { animation-delay: 0.28s; }
-  .cs-dots span:nth-child(3) { animation-delay: 0.56s; }
-  .cs-dots span:nth-child(4) { animation-delay: 0.84s; }
-  .cs-dots span:nth-child(5) { animation-delay: 1.12s; }
-
-  @keyframes cs-blink {
-    0%, 100% { opacity: 0.1; }
-    50%       { opacity: 1; }
-  }
-
-  .cs-sub {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--sand-muted);
-    margin: 1rem 0 2rem;
-    letter-spacing: 0.08em;
-  }
-
-  .cs-close {
-    background: none;
-    border: 1px solid var(--ink-mid);
-    color: var(--sand-dim);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    padding: 0.5rem 1.2rem;
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  .cs-close:hover {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
 
 </style>
 

@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-08-20T14:38:55.755Z",
+        "reason": "Inter es el neutro de lectura del sistema; el caracter tipografico lo cargan IM Fell English (display) y Share Tech Mono (mono). Presentado como supuesto explicito en el diseno de 2026-08-20 y aprobado por Pablo."
+      }
+    ]
+  }
+}

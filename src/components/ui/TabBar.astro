@@ -4,14 +4,17 @@ interface Props {
   lang?: 'en' | 'es';
 }
 
-const { active = 'projects', lang = 'en' } = Astro.props;
+const { active = 'terminal', lang = 'en' } = Astro.props;
 
+/* Sólo rutas que existen. PROFILE/SKILLS/ABOUT/CONTACT estaban en 404 y
+   PROFILE y ABOUT apuntaban a la MISMA url muerta; vuelven cuando las
+   páginas existan (Fase 4), no como items deshabilitados.
+   Los nombres de rol quedan en inglés en ambos locales: son títulos de
+   puesto, y la regla de i18n del proyecto deja los técnicos en inglés. */
 const tabs = [
-  { id: 'profile',  label: 'PROFILE',  href: `/${lang}/about` },
-  { id: 'projects', label: 'PROJECTS', href: `/${lang}/` },
-  { id: 'skills',   label: 'SKILLS',   href: `/${lang}/skills` },
-  { id: 'about',    label: 'ABOUT',    href: `/${lang}/about` },
-  { id: 'contact',  label: 'CONTACT',  href: `/${lang}/contact` },
+  { id: 'terminal', label: 'TERMINAL',     href: `/${lang}/` },
+  { id: 'risk',     label: 'DATA ANALYST', href: `/${lang}/risk/` },
+  { id: 'ai',       label: 'AI ENGINEER',  href: `/${lang}/ai/` },
 ];
 ---
 

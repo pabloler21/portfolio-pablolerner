@@ -1,86 +1,42 @@
 ---
 interface Props {
   lang?: 'en' | 'es';
+  surface?: 'game' | 'doc';
 }
 
-const { lang = 'en' } = Astro.props;
+const { lang = 'en', surface = 'doc' } = Astro.props;
 
 const now = new Date();
 const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
 
-const t = {
-  plain: lang === 'en' ? 'CLEAR MODE' : 'MODO CLARO',
-  normal: lang === 'en' ? 'OS MODE' : 'MODO OS',
-};
 ---
 
 <footer class="status-bar">
-  <div class="controls">
-    <span class="control"><span class="key">◆</span>SELECT</span>
-    <span class="control"><span class="key">↵</span>CONFIRM</span>
-    <span class="control"><span class="key">ESC</span>BACK</span>
-  </div>
+  {/* Los controles de juego sólo donde hay juego. */}
+  {surface === 'game' ? (
+    <div class="controls">
+      <span class="control"><span class="key">◆</span>SELECT</span>
+      <span class="control"><span class="key">↵</span>CONFIRM</span>
+      <span class="control"><span class="key">ESC</span>BACK</span>
+    </div>
+  ) : <span />}
 
   <div class="bar-center">
-    <!-- Plain mode toggle -->
-    <button
-      class="plain-toggle"
-      id="plain-toggle"
-      aria-label="Toggle plain / high-legibility mode"
-      data-label-plain={`[ ${t.normal} ]`}
-      data-label-normal={`[ ${t.plain} ]`}
-    >
-      <span class="toggle-label" id="plain-label">[ {t.plain} ]</span>
-    </button>
-
-    <span class="sys-text sep-v">·</span>
-
+    {/* El CV vive en la banda de identidad: acá estaba duplicado. */}
     <div class="lang-toggle">
       <a href="/en/" class:list={['lang-btn', { active: lang === 'en' }]} aria-label="English">EN</a>
       <span class="sys-text">|</span>
       <a href="/es/" class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
-      <span class="sys-text sep-v">·</span>
-      <a href="/pablo-lerner-cv.pdf" class="lang-btn cta-accent" download aria-label="Download CV">[ CV ↓ ]</a>
     </div>
   </div>
 
-  <span class="coord sys-text">
-    LAT:-34.6037 LON:-58.3816 · {sysDate} · NODE:ACTIVE
-  </span>
+  {/* LAT/LON/NODE es telemetría inventada: es atrezzo del juego, no
+      información, y no tiene lugar en un documento. */}
+  {surface === 'game'
+    ? <span class="coord sys-text">LAT:-34.6037 LON:-58.3816 · {sysDate} · NODE:ACTIVE</span>
+    : <span class="coord sys-text">{sysDate}</span>}
 </footer>
 
-<script>
-  const btn = document.getElementById('plain-toggle');
-  const label = document.getElementById('plain-label');
-  const html = document.documentElement;
-  const STORAGE_KEY = 'iron-dust-plain';
-
-  const labelPlain = btn?.dataset.labelPlain ?? '[ OS MODE ]';
-  const labelNormal = btn?.dataset.labelNormal ?? '[ CLEAR MODE ]';
-
-  function updateLabel() {
-    if (label) {
-      label.textContent = html.hasAttribute('data-plain') ? labelPlain : labelNormal;
-    }
-  }
-
-  // Restore preference on load (before paint, no flash)
-  if (localStorage.getItem(STORAGE_KEY)) {
-    html.setAttribute('data-plain', '');
-  }
-  updateLabel();
-
-  btn?.addEventListener('click', () => {
-    if (html.hasAttribute('data-plain')) {
-      html.removeAttribute('data-plain');
-      localStorage.removeItem(STORAGE_KEY);
-    } else {
-      html.setAttribute('data-plain', '');
-      localStorage.setItem(STORAGE_KEY, '1');
-    }
-    updateLabel();
-  });
-</script>
 
 <style>
   .status-bar {
@@ -104,7 +60,7 @@ const t = {
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-mono);
-    font-size: 0.63rem;
+    font-size: 0.7rem;
     letter-spacing: 0.15em;
     color: var(--sand-dim);
   }
@@ -112,7 +68,7 @@ const t = {
   .key {
     border: var(--border);
     padding: 0.05rem 0.3rem;
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     color: var(--sand-dim);
   }
 
@@ -120,34 +76,6 @@ const t = {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-  }
-
-  /* Action button — follows the site-wide .cta-btn convention
-     (secondary: --ink-mid border · hover mint+lift · active mint fill+press) */
-  .plain-toggle {
-    background: transparent;
-    border: var(--border-mid);
-    padding: 0.15rem 0.55rem;
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: 0.58rem;
-    letter-spacing: 0.15em;
-    color: var(--sand-dim);
-    transform: translateY(0);
-    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-  }
-
-  .plain-toggle:hover {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-    transform: translateY(-1px);
-  }
-
-  .plain-toggle:active {
-    background: var(--accent-bright);
-    border-color: var(--accent-bright);
-    color: var(--bg-void);
-    transform: translateY(1px);
   }
 
   .lang-toggle {
@@ -158,7 +86,7 @@ const t = {
 
   .lang-btn {
     font-family: var(--font-mono);
-    font-size: 0.63rem;
+    font-size: 0.7rem;
     letter-spacing: 0.18em;
     color: var(--sand-dim);
     transition: color 0.15s;
@@ -166,36 +94,11 @@ const t = {
 
   .lang-btn:hover,
   .lang-btn.active {
-    color: var(--accent);
-  }
-
-  /* Primary action button — follows the .cta-btn.cta-primary convention
-     (mint border always · hover lift · active mint fill+press) */
-  .lang-btn.cta-accent {
     color: var(--accent-bright);
-    border: 1px solid var(--accent-bright);
-    padding: 0.1rem 0.4rem;
-    transform: translateY(0);
-    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
-  }
-
-  .lang-btn.cta-accent:hover {
-    color: var(--accent-bright);
-    transform: translateY(-1px);
-  }
-
-  .lang-btn.cta-accent:active {
-    background: var(--accent-bright);
-    color: var(--bg-void);
-    transform: translateY(1px);
-  }
-
-  .sep-v {
-    opacity: 0.3;
   }
 
   .coord {
-    font-size: 0.57rem;
+    font-size: 0.7rem;
   }
 
   @media (max-width: 640px) {

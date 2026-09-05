@@ -27,7 +27,8 @@ body {
 }
 
 /* ── Scanlines ──────────────────────────────────────── */
-body::before {
+/* Sólo en la superficie jugable: la atmósfera vive donde se puede caminar. */
+html[data-surface="game"] body::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -43,7 +44,7 @@ body::before {
 }
 
 /* ── Grain / Noise ──────────────────────────────────── */
-body::after {
+html[data-surface="game"] body::after {
   content: '';
   position: fixed;
   inset: -50%;
@@ -93,13 +94,16 @@ a {
 }
 
 /* ── Utility: system micro-text ─────────────────────── */
+/* Micro-texto de sistema.
+   NUNCA usar `opacity` para atenuar texto: componía 2.17:1 sobre --bg-void
+   y es lo que rompía el piso AA. La atenuación es por color (--sand-dim).
+   0.7rem = 11.2px, el mínimo del sistema. */
 .sys-text {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   letter-spacing: 0.18em;
   color: var(--sand-dim);
   text-transform: uppercase;
-  opacity: 0.6;
   user-select: none;
 }
 
@@ -128,7 +132,7 @@ a {
   gap: 0.3rem;
   padding: 0.3rem 0.75rem;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   letter-spacing: 0.15em;
   text-decoration: none;
   border: 1px solid var(--ink-mid);
@@ -176,8 +180,8 @@ a {
 
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  body::before,
-  body::after {
+  html[data-surface="game"] body::before,
+  html[data-surface="game"] body::after {
     display: none;
   }
 
