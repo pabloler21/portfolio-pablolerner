@@ -327,29 +327,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       charGroup.position.set(charX, 0, charZ);
       scene.add(charGroup);
 
-      /* Apply IRON DUST palette over UAL2 mannequin materials */
-      charGroup.traverse(obj => {
-        if (!obj.isMesh) return;
-        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-        mats.forEach((_mat, i) => {
-          const name = _mat.name ?? '';
-          const replacement = name === 'M_Joints'
-            ? new THREE.MeshStandardMaterial({
-                color: 0x5ee7aa,      /* mint — accent-bright */
-                emissive: 0x5ee7aa,
-                emissiveIntensity: 1.5,
-                roughness: 0.4,
-                metalness: 0.1,
-              })
-            : new THREE.MeshStandardMaterial({
-                color: 0x181b22,      /* bg-surface — blue-void */
-                roughness: 0.75,
-                metalness: 0.05,
-              });
-          if (Array.isArray(obj.material)) obj.material[i] = replacement;
-          else obj.material = replacement;
-        });
-      });
+      /* El personaje conserva SUS materiales. El override que había acá pisaba
+         todo con 0x181b22 sobre un fondo 0x0d0f14 y era lo que lo hacía
+         desaparecer: la forma quedaba a cargo de la luz, y cuando la luz fallaba
+         sólo se veían los joints. */
 
       /* G_UNIT_2 — Visor band on head bone */
       const headBone = charGroup.getObjectByName('head');
