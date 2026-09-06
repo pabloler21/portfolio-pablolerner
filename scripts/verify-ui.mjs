@@ -255,6 +255,14 @@ const lightCasters = await grepSrc(/keyLight\.castShadow\s*=\s*true/);
 record('A7', 'Exactamente una luz proyecta sombra', lightCasters.length === 1,
   lightCasters.length ? lightCasters.join(', ') : 'ninguna luz con castShadow');
 
+// Cambiar la cantidad de luces en runtime recompila el shader de todos los
+// materiales iluminados. El pool se crea en init y sólo se reposiciona.
+const poolCreate = await grepSrc(/lampPool\.push\(/);
+const poolInTick = await grepSrc(/new THREE\.PointLight[\s\S]{0,80}frameCount/);
+record('A4', 'Pool de luces de tamaño fijo', poolCreate.length === 1 && poolInTick.length === 0,
+  poolCreate.length !== 1 ? `lampPool.push en ${poolCreate.length} lugares (debe ser 1)` :
+  poolInTick.length ? 'se crean luces dentro del tick' : 'pool fijo, sólo se reposiciona');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');

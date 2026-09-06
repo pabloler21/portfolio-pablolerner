@@ -173,6 +173,12 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let unitTag = null;
   let composer = null;
   let keyLight = null;
+  /* Presupuesto rotativo de farolas. En Three.js cambiar la CANTIDAD de luces
+     de la escena recompila el shader de todos los materiales iluminados, así
+     que el pool es de tamaño fijo y sólo se reposiciona. */
+  const LAMP_POOL_SIZE = 8;
+  let lampPool  = [];
+  let lampPosts = [];
   let activeRole = null;
   /* Dynamic billboards: built on role selection, destroyed on role change.
      Exactly N billboards exist for N projects of the active role — nothing else.
@@ -271,8 +277,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     }
 
     /* ── Atmospheric lighting ── */
-    scene.add(new THREE.HemisphereLight(0x2a3040, 0x0d0f14, 0.9));
-    keyLight = new THREE.DirectionalLight(0xa0a8b8, 0.7);
+    /* Calibración A2 de la spec: suficiente para leer al personaje, no tanta
+       como para que las fachadas se lean como geometría de juego. */
+    scene.add(new THREE.HemisphereLight(0x2a3040, 0x0d0f14, 2.0));
+    keyLight = new THREE.DirectionalLight(0xa0a8b8, 1.7);
     keyLight.position.set(8, 20, 5);
     /* Única luz que proyecta. Ocho farolas con sombra serían 48 renders de
        cara de cubo por frame. La caja de 28u sigue al personaje en vez de
@@ -289,7 +297,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     keyLight.shadow.camera.updateProjectionMatrix();
     scene.add(keyLight);
     scene.add(keyLight.target);
-    scene.add(new THREE.AmbientLight(0x1c2030, 0.55));
+    scene.add(new THREE.AmbientLight(0x1c2030, 0.85));
 
     /* ── City geometry ── */
     buildStreet(THREE);
@@ -546,6 +554,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         pole.position.set(lx, 2.15, lz);
         pole.castShadow = true;
         scene.add(pole);
+        lampPosts.push(new THREE.Vector3(lx * 0.96, 4.32, lz));
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.14), lampHeadMat);
         head.position.set(lx * 0.96, 4.32, lz);
         scene.add(head);
@@ -629,6 +638,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
       color: 0xa8c4d8, size: 0.045, transparent: true, opacity: 0.28, sizeAttenuation: true,
     })));
+
+    /* Pool fijo: 8 luces creadas acá y nunca más. Se reposicionan en tick(). */
+    for (let i = 0; i < LAMP_POOL_SIZE; i++) {
+      const pl = new THREE.PointLight(0xcfe3d8, 24, 16, 2);
+      pl.position.set(0, -100, 0);   /* fuera de vista hasta el primer tick */
+      scene.add(pl);
+      lampPool.push(pl);
+    }
   }
 
   /* ────────────────── Particles ───────────────────────── */
@@ -1549,6 +1566,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       keyLight.position.set(charX + 8, 20, charZ + 6);
       keyLight.target.position.set(charX, 0, charZ);
       keyLight.target.updateMatrixWorld();
+
+      /* Las 8 farolas más cercanas al personaje. Se ordena por |z| porque la
+         avenida corre sobre z: la distancia radial dejaría la vereda opuesta
+         sin luz, que es el mismo error de la lección 21. */
+      const near = lampPosts
+        .slice()
+        .sort((a, b) => Math.abs(a.z - charZ) - Math.abs(b.z - charZ))
+        .slice(0, LAMP_POOL_SIZE);
+      for (let i = 0; i < lampPool.length; i++) {
+        if (near[i]) lampPool[i].position.copy(near[i]);
+      }
     }
 
     frameCount++;
