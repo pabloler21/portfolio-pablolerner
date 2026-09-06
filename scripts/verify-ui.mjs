@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
@@ -266,6 +266,15 @@ record('A4', 'Pool de luces de tamaño fijo', poolCreate.length === 1 && poolInT
 const charLight = await grepSrc(/charGroup\.add\(\s*fillLight|new THREE\.PointLight\(0xcfd8e6/);
 record('A3', 'El personaje no tiene luz propia', charLight.length === 0,
   charLight.length ? charLight.join(', ') : 'sin PointLight colgado del personaje');
+
+const modelsDir = path.join(DIST, 'models');
+let modelsMB = 0;
+if (existsSync(modelsDir)) {
+  for (const f of readdirSync(modelsDir)) {
+    modelsMB += statSync(path.join(modelsDir, f)).size / 1048576;
+  }
+}
+record('A8', 'dist/models ≤ 8 MB', modelsMB <= 8, `${modelsMB.toFixed(1)} MB`);
 
 const pad = s => String(s).padEnd(40);
 let failed = 0;
