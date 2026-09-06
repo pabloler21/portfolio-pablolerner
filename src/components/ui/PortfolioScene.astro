@@ -415,27 +415,41 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   }
 
   /* ────────────────── Street Geometry ──────────────────── */
+  /* ────────────────── Materiales de atmósfera ──────────── */
+  /* La luz es del mundo, la interfaz no se ilumina (spec §2). Todo lo que el
+     visitante pisa o rodea recibe luz; todo lo que informa —carteles, anillos,
+     chevrons, glows, ventanas— sigue self-lit con MeshBasic.
+     Se construyen así desde el origen: convertir por traverse después sería el
+     antipatrón de la lección 17. */
+  function atmosphereMaterial(THREE, hex) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: 0.93, metalness: 0.04,
+    });
+  }
+
   function buildStreet(THREE) {
     /* Asphalt */
     const asphalt = new THREE.Mesh(
       new THREE.PlaneGeometry(22, 80),
-      new THREE.MeshBasicMaterial({ color: 0x10131a })
+      atmosphereMaterial(THREE, 0x10131a)
     );
     asphalt.rotation.x = -Math.PI / 2;
     asphalt.position.set(0, 0, -28);
+    asphalt.receiveShadow = true;
     scene.add(asphalt);
 
     /* Sidewalks */
-    const swMat = new THREE.MeshBasicMaterial({ color: 0x161a22 });
+    const swMat = atmosphereMaterial(THREE, 0x161a22);
     [-11, 11].forEach(sx => {
       const sw = new THREE.Mesh(new THREE.PlaneGeometry(6, 80), swMat);
       sw.rotation.x = -Math.PI / 2;
       sw.position.set(sx, 0.01, -28);
+      sw.receiveShadow = true;
       scene.add(sw);
     });
 
     /* Lane dashes */
-    const dashMat = new THREE.MeshBasicMaterial({ color: 0x232a38 });
+    const dashMat = atmosphereMaterial(THREE, 0x232a38);
     for (let dz = -4; dz > -64; dz -= 9) {
       const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4.5), dashMat);
       dash.rotation.x = -Math.PI / 2;
@@ -461,8 +475,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     /* Deterministic width so scene is stable across re-renders */
     const w = 5.5 + ((Math.abs(bx) * 7 + Math.abs(bz) * 13) % 3);
     const bGeo = new THREE.BoxGeometry(w, h, 3.5);
-    const b = new THREE.Mesh(bGeo, new THREE.MeshBasicMaterial({ color: 0x12151c }));
+    const b = new THREE.Mesh(bGeo, atmosphereMaterial(THREE, 0x12151c));
     b.position.set(bx, h / 2, bz);
+    b.castShadow = true;
     scene.add(b);
 
     /* Edge lines */
@@ -498,7 +513,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
      MeshBasic/additive (no real lights), placed clear of billboard slots. */
   function buildCityDressing(THREE) {
     /* Streetlamps: both sidewalk edges, offset from billboard z-rows */
-    const lampHeadMat = new THREE.MeshBasicMaterial({ color: 0xbfd9cc });
+    const lampHeadMat = atmosphereMaterial(THREE, 0xbfd9cc);
     const lampGlowMat = new THREE.MeshBasicMaterial({
       color: 0x5ee7aa, transparent: true, opacity: 0.05,
       blending: THREE.AdditiveBlending, depthWrite: false,
@@ -507,9 +522,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       [-5.4, 5.4].forEach(lx => {
         const pole = new THREE.Mesh(
           new THREE.CylinderGeometry(0.04, 0.05, 4.3, 6),
-          new THREE.MeshBasicMaterial({ color: 0x232a38 })
+          atmosphereMaterial(THREE, 0x232a38)
         );
         pole.position.set(lx, 2.15, lz);
+        pole.castShadow = true;
         scene.add(pole);
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.14), lampHeadMat);
         head.position.set(lx * 0.96, 4.32, lz);

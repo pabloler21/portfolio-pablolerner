@@ -240,6 +240,17 @@ record('A2', 'HDRI eliminado', hdri.length === 0 && !hdriDir,
   hdri.length ? `${hdri.length} refs: ${hdri.slice(0, 3).join(', ')}` :
   hdriDir ? 'public/hdri/ todavía existe' : 'sin refs ni carpeta');
 
+const pbr = await grepSrc(/function atmosphereMaterial/);
+record('A5', 'Atmósfera con MeshStandardMaterial', pbr.length > 0,
+  pbr.length ? pbr.join(', ') : 'no existe atmosphereMaterial()');
+
+// La información NO se ilumina: carteles, anillos, chevrons y glows siguen
+// self-lit. Si alguno pasara a Standard, se apagaría.
+const infoBasic = await grepSrc(/drawBillboardCanvas|RingGeometry|ShapeGeometry/);
+const infoStandard = await grepSrc(/MeshStandardMaterial[^)]*map:/);
+record('A6', 'La información sigue plana', infoBasic.length > 0 && infoStandard.length === 0,
+  infoStandard.length ? `pantalla convertida a PBR: ${infoStandard.join(', ')}` : 'información intacta');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');
