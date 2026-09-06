@@ -270,7 +270,13 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         ]);
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.6, 0.4, 0.4);
+        /* threshold 0.4 existía porque no había nada emisivo legítimo: lo único
+           que lo superaba era el personaje. Con pantallas y farolas self-lit
+           sube a 0.62 para que el bloom agarre pantallas, no piel.
+           RenderPass entrega lineal y el tone mapping lo aplica OutputPass, así
+           que el umbral se calibra contra la luz de escena, no contra la
+           exposición. */
+        const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.35, 0.62);
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
       } catch (_) { /* bloom is enhancement only — scene works without it */ }
