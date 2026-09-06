@@ -207,6 +207,15 @@ Punto de llegada: 1 shadow map 2048², ~25 materiales Standard, 8 point lights.
 iluminado. Palancas si no da, en orden: bajar a 4 farolas → shadow map a 1024² →
 `BasicShadowMap` en lugar de `PCFSoftShadowMap`.
 
+> **Resultado medido (2026-09-06) — el orden de palancas de arriba está mal para esta
+> escena.** Medición relativa en SwiftShader, mismo equipo: main 5.44 fps · PBR completo
+> 2.69 (2.02× más lento) · con 4 farolas 3.05 · sin shadow map 2.45. Que "sin sombras"
+> mida *más lento* que "con sombras" acota el ruido en ~10%, así que ninguna de las dos
+> primeras palancas mueve la aguja. **El costo dominante son los materiales PBR**, que es
+> justo lo que un rasterizador por software exagera y una GPU absorbe: el número headless
+> sobreestima el impacto real. Verificar en GPU antes de degradar la calibración; si hubiera
+> que degradar, la palanca efectiva sería reducir la superficie con PBR, no las luces.
+
 **Se mide y se reporta frame time; no se pone un gate.** Headless SwiftShader corre ~10×
 más lento que una GPU real (lecciones 3 y 20), así que cualquier umbral absoluto en
 `verify:ui` mentiría. La comparación válida es relativa: mismo equipo, antes contra
@@ -242,7 +251,7 @@ no es sobrescribir: el archivo se conserva, sólo deja de desplegarse. Los cinco
 siguen recuperables del historial de git.
 
 Resultado esperado: `dist/models/` de 55 MB → **7.3 MB**. Sumado al HDRI de §4, el
-deploy baja **49.7 MB** en total.
+deploy baja **49.3 MB** en total.
 
 > **Pendiente de confirmación de Pablo.** Si prefiere que `android_backup.glb` siga en
 > `public/`, el paso se reduce a borrar los otros cinco y `dist/models/` queda en 13.5 MB.
