@@ -63,14 +63,26 @@ try {
   page.on('pageerror', e => errs.push(String(e).slice(0, 160)));
 
   await page.goto(BASE + '/en/', { waitUntil: 'load' });
-  /* SwiftShader corre ~10x más lento que una GPU real (lección 3): estas
-     esperas son largas a propósito. La caminata al primer cartel es
-     automática, la dispara navigateTo() al elegir rol. */
-  await page.waitForTimeout(9000);
-  const opt = await page.$('.persona-opt[data-zone="risk"]');
-  if (!opt) throw new Error('no apareció el PersonaSelector');
-  await opt.click();
-  await page.waitForTimeout(26000);
+  await page.waitForSelector('.persona-opt[data-zone="risk"]', { timeout: 60000 });
+  /* La intro cinematográfica bloquea el selector ~2.4s */
+  await page.waitForTimeout(4000);
+  await page.click('.persona-opt[data-zone="risk"]');
+
+  /* NO esperar un tiempo fijo. La caminata al primer cartel avanza POR FRAME
+     (charX += dx * 0.035), así que cuánto tarda depende de cuántos frames
+     entren en el intervalo — y SwiftShader se vuelve más lento con cada
+     material que recibe luz. Un timeout fijo que alcanzaba antes de los
+     materiales PBR dejó de alcanzar después, y las capturas salían con el
+     personaje parado en el origen y ningún cartel encendido.
+     La condición real es que el dossier se haya abierto por proximidad. */
+  const t0 = Date.now();
+  await page.waitForFunction(
+    () => document.getElementById('ps-panel')?.classList.contains('open'),
+    null, { timeout: 180000, polling: 500 },
+  );
+  console.log(`  cartel encendido a los ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  /* Dejar asentar el flicker de power-on y el scramble del título */
+  await page.waitForTimeout(3000);
   /* El overlay del título tapa al personaje en el encuadre de detalle */
   await page.evaluate(() => {
     const h = document.getElementById('ps-hero');

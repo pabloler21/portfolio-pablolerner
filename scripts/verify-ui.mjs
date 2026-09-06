@@ -251,6 +251,10 @@ const infoStandard = await grepSrc(/MeshStandardMaterial[^)]*map:/);
 record('A6', 'La información sigue plana', infoBasic.length > 0 && infoStandard.length === 0,
   infoStandard.length ? `pantalla convertida a PBR: ${infoStandard.join(', ')}` : 'información intacta');
 
+const lightCasters = await grepSrc(/keyLight\.castShadow\s*=\s*true/);
+record('A7', 'Exactamente una luz proyecta sombra', lightCasters.length === 1,
+  lightCasters.length ? lightCasters.join(', ') : 'ninguna luz con castShadow');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');
