@@ -263,6 +263,10 @@ record('A4', 'Pool de luces de tamaño fijo', poolCreate.length === 1 && poolInT
   poolCreate.length !== 1 ? `lampPool.push en ${poolCreate.length} lugares (debe ser 1)` :
   poolInTick.length ? 'se crean luces dentro del tick' : 'pool fijo, sólo se reposiciona');
 
+const charLight = await grepSrc(/charGroup\.add\(\s*fillLight|new THREE\.PointLight\(0xcfd8e6/);
+record('A3', 'El personaje no tiene luz propia', charLight.length === 0,
+  charLight.length ? charLight.join(', ') : 'sin PointLight colgado del personaje');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');

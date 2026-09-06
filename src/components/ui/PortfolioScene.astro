@@ -369,15 +369,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       /* El personaje conserva SUS materiales. El override que había acá pisaba
          todo con 0x181b22 sobre un fondo 0x0d0f14 y era lo que lo hacía
          desaparecer: la forma quedaba a cargo de la luz, y cuando la luz fallaba
-         sólo se veían los joints. */
+         sólo se veían los joints. Ahora conserva sus materiales porque hay una
+         escena que los ilumina. */
 
-      /* Luz de acompañamiento, neutra y tenue: lo despega del fondo sin teñirlo.
-         Antes era un PointLight mint a 2.5 — con materiales reales le pintaba de
-         verde la piel y la ropa. Y sin tone mapping los altos recortan duro, así
-         que a más intensidad el personaje lee naranja fluorescente. */
-      const fillLight = new THREE.PointLight(0xcfd8e6, 0.85, 8);
-      fillLight.position.set(0.5, 1.6, 1.3);
-      charGroup.add(fillLight);
+      /* Ya no lleva luz propia. El PointLight que colgaba de acá era una
+         prótesis para un personaje que vivía en una ciudad de MeshBasic: sin
+         nada más que lo iluminara, había que traerle su propia lámpara. Con la
+         atmósfera en PBR lo iluminan la hemisférica, la luna y las farolas
+         reales, como a todo lo demás. */
 
       /* Unit tag is rendered as HTML overlay (see #unit-tag-hud) — no 3D sprite needed */
 
