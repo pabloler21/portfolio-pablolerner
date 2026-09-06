@@ -225,6 +225,21 @@ const plain = await grepSrc(/data-plain|iron-dust-plain|plain-toggle/);
 record('C9', 'Sin restos de plain mode', plain.length === 0,
   plain.length ? `${plain.length} refs: ${plain.slice(0, 4).join(', ')}…` : 'limpio');
 
+/* ── spec 2026-09-06 mundo PBR §13 ─────────────────────────────── */
+
+// Ojo: concept/city.astro YA usa ACESFilmicToneMapping con exposición 1.1,
+// así que grepear el tone mapping solo daría verde antes de implementar nada.
+// Lo que identifica a la escena real es la exposición 1.25 de la calibración A2.
+const tone = await grepSrc(/toneMappingExposure\s*=\s*1\.25/);
+record('A1', 'Tone mapping ACES @ exposición A2', tone.length === 1,
+  tone.length ? tone.join(', ') : 'no se encontró toneMappingExposure = 1.25');
+
+const hdri = await grepSrc(/RGBELoader|scene\.environment|loadHDRI/);
+const hdriDir = existsSync(path.join(ROOT, 'public/hdri'));
+record('A2', 'HDRI eliminado', hdri.length === 0 && !hdriDir,
+  hdri.length ? `${hdri.length} refs: ${hdri.slice(0, 3).join(', ')}` :
+  hdriDir ? 'public/hdri/ todavía existe' : 'sin refs ni carpeta');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');

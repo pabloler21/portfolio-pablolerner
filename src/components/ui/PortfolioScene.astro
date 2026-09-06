@@ -235,6 +235,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setClearColor(0x0d0f14, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    /* Sin tone mapping los altos recortan y el bloom los agarra: era la causa
+       de que el personaje leyera naranja fluorescente. Exposición 1.25 =
+       calibración A2 de la spec. */
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
     renderer.shadowMap.enabled = false;
 
     /* ── Scene + Fog ── */
@@ -407,8 +412,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     tick(THREE);
     window.addEventListener('resize', onResize);
 
-    /* HDRI lazy — after first frame, non-blocking */
-    requestIdleCallback(() => loadHDRI(THREE), { timeout: 3000 });
   }
 
   /* ────────────────── Street Geometry ──────────────────── */
@@ -986,20 +989,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const sprite = new THREE.Sprite(mat);
     sprite.scale.set(3.2, 0.72, 1);
     return sprite;
-  }
-
-  /* ────────────────── HDRI Environment ────────────────── */
-  async function loadHDRI(THREE) {
-    try {
-      const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
-      new RGBELoader().load('/hdri/cobblestone_street_night_1k.hdr', (texture) => {
-        const pmrem = new THREE.PMREMGenerator(renderer);
-        pmrem.compileEquirectangularShader();
-        scene.environment = pmrem.fromEquirectangular(texture).texture;
-        texture.dispose();
-        pmrem.dispose();
-      });
-    } catch (_) { /* HDRI is visual enhancement only — scene works without it */ }
   }
 
   /* ────────────────── Character Placeholder ────────────── */

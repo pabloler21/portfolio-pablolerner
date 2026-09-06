@@ -10,6 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "shot": "node scripts/shot-scene.mjs",
     "verify:ui": "astro build && node scripts/verify-ui.mjs",
     "verify": "npm run verify:ui",
     "verify:check": "node --max-old-space-size=8192 ./node_modules/.bin/astro check"
