@@ -118,11 +118,17 @@ try {
     const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
     await page.mouse.move(cx, cy);
     await page.mouse.down();
-    await page.mouse.move(cx, cy - box.height * 0.45, { steps: 8 });
-    await page.waitForTimeout(250);
+    /* El componente throttlea a 60ms y bajo carga el primer move puede caer
+       dentro de esa ventana. Se espera POR LA TECLA, no por reloj: con un
+       timeout fijo el test fallaba una de cada tres corridas, que es peor que
+       no tenerlo — enseña a ignorar el rojo. */
+    await page.mouse.move(cx, cy - box.height * 0.45, { steps: 12 });
+    await page.waitForFunction(() => window.__k.some(k => k === 'down:KeyW'), null, { timeout: 5000 })
+      .catch(() => {});
     const held = await page.evaluate(() => window.__k.slice());
     await page.mouse.up();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(() => window.__k.some(k => k === 'up:KeyW'), null, { timeout: 5000 })
+      .catch(() => {});
     const after = await page.evaluate(() => window.__k.slice());
 
     record('M4', 'Arrastrar adelante mantiene KeyW', held.includes('down:KeyW'),
@@ -198,6 +204,31 @@ try {
   const label = await page.locator('.tc-jump').textContent();
   record('M10', 'El boton de salto habla el idioma de la pagina', /JUMP/i.test(label ?? ''),
     `/en/ dice ${JSON.stringify(label)}`);
+
+  /* M12 — geometria de la camara, leida del fuente. El `fov` de Three.js es
+     VERTICAL: con 52 fijos y el aspecto de un telefono en vertical (0.46) el
+     horizontal cae a 25° y los carteles, parados en x = ±6.5, quedaban
+     literalmente afuera del cuadro. Esto no mide pixeles, mide la decision
+     geometrica: si alguien vuelve a fijar el fov, falla. */
+  const src = await readFile(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
+  const hFovDeg = parseFloat(src.match(/const H_FOV = ([\d.]+) \* Math\.PI/)[1]);
+  /* Ojo con el orden: en `Math.min(85, Math.max(52, v))` el PRIMERO es el
+     techo y el segundo el piso. Tenerlos al reves dejaba el fov clavado en 52
+     y el test fallaba culpando al producto. */
+  const clamp = src.match(/Math\.min\((\d+), Math\.max\((\d+),/);
+  const fovCap = +clamp[1], fovFloor = +clamp[2];
+  const bx = parseFloat(src.match(/const bx\s*=\s*side \* ([\d.]+)/)[1]);
+  const camZoff = parseFloat(src.match(/camera\.position\.set\(camX, 4\.0, camTgtZ \+ (\d+)\)/)[1]);
+  const boardZ = parseFloat(src.match(/const bz\s*=\s*-(\d+) - k \* /)[1]);
+
+  const aspect = 390 / 844;
+  const vFov = Math.min(fovCap, Math.max(fovFloor,
+    2 * Math.atan(Math.tan((hFovDeg * Math.PI / 180) / 2) / aspect) * 180 / Math.PI));
+  const hFovReal = 2 * Math.atan(Math.tan(vFov * Math.PI / 360) * aspect);
+  const dist = boardZ + camZoff;                       // camara a z=+9, cartel a z=-10
+  const media = Math.tan(hFovReal / 2) * dist;         // medio ancho visible ahi
+  record('M12', 'Los carteles entran en cuadro (vertical)', media >= bx,
+    `ve x = ±${media.toFixed(1)} · carteles en ±${bx} · fov ${vFov.toFixed(0)}° vert / ${(hFovReal * 180 / Math.PI).toFixed(0)}° horiz`);
 
   await phone.close();
 

@@ -311,7 +311,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     scene.fog = new THREE.FogExp2(0x0d0f14, 0.011);
 
     /* ── Camera — street perspective ── */
-    camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 80);
+    /* El `fov` de Three.js es VERTICAL, y eso en una pantalla vertical es una
+       trampa: con 52° fijos y un aspecto de 0.46 (un telefono de 390x844) el
+       FOV HORIZONTAL cae a 25°, y a la distancia del primer cartel la camara
+       ve hasta x = ±4.3 — con los carteles parados en x = ±6.5. O sea que no
+       era que se vieran mal: estaban afuera del cuadro.
+       Se fija el horizontal y se deriva el vertical, con techo para que en
+       vertical no se deforme. A 16:10 devuelve 52 exactos, asi que el
+       encuadre de escritorio no cambia. */
+    const H_FOV = 76 * Math.PI / 180;
+    const fovFor = (aspect) => Math.min(85, Math.max(52,
+      2 * Math.atan(Math.tan(H_FOV / 2) / aspect) * 180 / Math.PI));
+    camera = new THREE.PerspectiveCamera(fovFor(W / H), W / H, 0.1, 80);
     camera.position.set(0, 4.5, 12);
     camera.lookAt(0, 2, -5);
 
@@ -671,8 +682,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     /* Foreground frame buildings — close to camera, fill viewport side edges.
        Heights are multiples of CHAR_HEIGHT so they read as proportionally
        tall next to the character (roughly a 12- and 10-story building). */
+    /* Los dos edificios de la ENTRADA se meten en la calle: ocupan
+       x ∈ [5.75, 12.25] en z ∈ [−0.75, 2.75], y el limite del personaje es
+       ±8.8, asi que se podia caminar ADENTRO de ellos. Nadie lo habia notado
+       porque la camara seguia el eje X solo al 30% y nunca se acercaba lo
+       suficiente para que se viera; ahora que va pegada al personaje, quedaba
+       la pantalla tapada por una pared negra.
+       Se los suma al mismo sistema de colisiones que los autos —circulo con
+       empuje— que ya existe y alcanza para no atravesarlos. */
     addBuilding(THREE, -9, 1, CHAR_HEIGHT * 12);
     addBuilding(THREE, 9, 1, CHAR_HEIGHT * 10);
+    carColliders.push({ x: -9, z: 1, r: 3.4 }, { x: 9, z: 1, r: 3.4 });
 
     /* Buildings — alternating left/right, 6-12 stories tall relative to the character */
     const leftH  = [8, 11, 6, 9, 7, 10, 6, 9].map(n => n * CHAR_HEIGHT);
@@ -2011,17 +2031,31 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     const lag = reduced ? 1 : 0.055;
     camTgtX += (charX - camTgtX) * lag;
     camTgtZ += (charZ - camTgtZ) * lag;
+    /* La camara sigue al personaje en X a fondo —queda centrado— pero con
+       tope. Hay dos edificios en x = ±9, z = 1 justo en la entrada de la
+       avenida (`addBuilding(THREE, ±9, 1, ...)`, 6.5 de ancho, o sea que
+       ocupan x ∈ [5.75, 12.25]); pegando la camara al personaje contra el
+       borde (BOUND_X = 8.8) uno de ellos queda EN la linea de vision y tapa
+       la pantalla entera. Medido: desde x=4.5 la vista pasa limpia.
+       Dentro de ±4.5 —que cubre toda la avenida util, con los carteles en
+       ±6.5— el personaje va exactamente en el centro. */
+    const CAM_X_LIMIT = 4.5;
+    const camX = Math.max(-CAM_X_LIMIT, Math.min(CAM_X_LIMIT, camTgtX));
     if (introActive) {
       /* Cinematic intro: high wide shot of the avenue easing down to street level */
       introT = Math.min(1, introT + 0.0045);
       const e = 1 - Math.pow(1 - introT, 3);   /* easeOutCubic */
-      const nx = camTgtX * 0.3, ny = 4.0, nz = camTgtZ + 9;
+      const nx = camX, ny = 4.0, nz = camTgtZ + 9;
       camera.position.set(nx * e, 17 + (ny - 17) * e, 34 + (nz - 34) * e);
-      camera.lookAt(camTgtX * 0.2 * e, 1.8 + 1.2 * (1 - e), camTgtZ - 6);
+      camera.lookAt(camX * e, 1.8 + 1.2 * (1 - e), camTgtZ - 6);
       if (introT > 0.72) document.getElementById('ps-hero').classList.remove('show');
       if (introT >= 1) introActive = false;
     } else {
-      camera.position.set(camTgtX * 0.3, 4.0, camTgtZ + 9);
+      /* La camara sigue al personaje en X a fondo, asi queda SIEMPRE centrado.
+         Antes seguia solo el 30% (y el lookAt el 20%), lo que dejaba ver mas
+         avenida en escritorio pero corria al personaje al borde del cuadro en
+         una pantalla angosta, justo cuando menos lugar sobra. */
+      camera.position.set(camX, 4.0, camTgtZ + 9);
       /* Camera shake on death — decaying random jitter, skipped under
          reduced-motion (this is a reactive jolt from user-caused state, not
          ambient motion, but a violent shake is exactly the kind of thing
@@ -2032,7 +2066,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
         camera.position.y += (Math.random() - 0.5) * mag;
         shakeT = Math.max(0, shakeT - (delta || 0.016));
       }
-      camera.lookAt(camTgtX * 0.2, 1.8, camTgtZ - 6);
+      camera.lookAt(camX, 1.8, camTgtZ - 6);
     }
 
     /* Zone lights pulse */
@@ -2057,6 +2091,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     const H = Math.max(rect.height, 400);
     sceneW = W; sceneH = H;
     camera.aspect = W / H;
+    /* Rotar el telefono cambia el aspecto de 0.46 a 2.16: sin recalcular, el
+       fov quedaria pegado al de la orientacion anterior. */
+    camera.fov = Math.min(85, Math.max(52,
+      2 * Math.atan(Math.tan((76 * Math.PI / 180) / 2) / (W / H)) * 180 / Math.PI));
     camera.updateProjectionMatrix();
     renderer.setSize(W, H, false);
     if (composer) composer.setSize(W, H);
