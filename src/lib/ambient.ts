@@ -121,7 +121,8 @@ function lfo(ctx: BaseAudioContext, rate: number, depth: number, param: AudioPar
 const NOTE: Record<string, number> = {
   F1: 43.65, G1: 49.0, A1: 55.0, C2: 65.41, E2: 82.41, F2: 87.31,
   G2: 98.0, A2: 110.0, C3: 130.81, E3: 164.81, F3: 174.61, G3: 196.0,
-  A3: 220.0, B3: 246.94, C4: 261.63, E4: 329.63, F4: 349.23, G4: 392.0,
+  A3: 220.0, B3: 246.94, C4: 261.63, D3: 146.83, D4: 293.66, E4: 329.63,
+  F4: 349.23, G4: 392.0,
   A4: 440.0, B4: 493.88, C5: 523.25, E5: 659.26,
 };
 
@@ -305,13 +306,22 @@ export function createAmbient(
      Sin batería: un acorde con novena desgranado lento sobre una cama de
      drone, con delay largo. Movimiento sin percusión. */
   if (variant === 'terminal') {
+    const BED_BASE = 420;
     const bed = ctx.createBiquadFilter();
     bed.type = 'lowpass';
     bed.Q.value = 1.2;
     bed.connect(tone);
-    track(lfo(ctx, 0.02, 180, bed.frequency, 420));
-    track(drone(ctx, 'sawtooth', NOTE.A2, -6, bed, 0.13).osc);
-    track(drone(ctx, 'sawtooth', NOTE.E3, +4, bed, 0.09).osc);
+    track(lfo(ctx, 0.02, 180, bed.frequency, BED_BASE));
+    /* La cama se guarda en variables porque AHORA SE MUEVE con el acorde.
+       Antes eran dos osciladores fijos en A2+E3 para siempre: cuando el
+       arpegio pasaba a Fmaj9, la fundamental seguía diciendo A y el cambio
+       quedaba flotando sobre un bajo que no acompañaba. Por eso "no se
+       notaba" — no era que fuera poco frecuente, era que abajo no pasaba
+       nada. */
+    const bedRoot = drone(ctx, 'sawtooth', NOTE.A2, -6, bed, 0.13).osc;
+    const bedFifth = drone(ctx, 'sawtooth', NOTE.E3, +4, bed, 0.09).osc;
+    track(bedRoot);
+    track(bedFifth);
 
     const air = ctx.createBiquadFilter();
     air.type = 'lowpass';
@@ -333,32 +343,75 @@ export function createAmbient(
     delay.connect(tone);
     delay.connect(space);
 
-    const AM9 = [NOTE.A3, NOTE.C4, NOTE.E4, NOTE.G4, NOTE.B4];
-    const FMAJ9 = [NOTE.F3, NOTE.A3, NOTE.C4, NOTE.E4, NOTE.G4];
+    /* Cuatro acordes, no dos. Rotando cada 15s, un péndulo Am⇄Fm se vuelve
+       MÁS repetitivo que antes, no menos: se oye el vaivén. Con cuatro, la
+       vuelta completa tarda un minuto y cada cambio parece ir a algún lado.
+       Todo diatónico a la menor de A — i · VI · III · VII. */
+    const CHORDS = [
+      { bed: [NOTE.A2, NOTE.E3], arp: [NOTE.A3, NOTE.C4, NOTE.E4, NOTE.G4, NOTE.B4] },  /* Am9   */
+      { bed: [NOTE.F2, NOTE.C3], arp: [NOTE.F3, NOTE.A3, NOTE.C4, NOTE.E4, NOTE.G4] },  /* Fmaj9 */
+      { bed: [NOTE.C3, NOTE.G3], arp: [NOTE.C4, NOTE.E4, NOTE.G4, NOTE.B4, NOTE.D4] },  /* Cmaj9 */
+      { bed: [NOTE.G2, NOTE.D3], arp: [NOTE.G3, NOTE.B3, NOTE.D4, NOTE.E4, NOTE.A4] },  /* G6/9  */
+    ];
     const STEP = 1.2;
+    const CHORD_DUR = 15;   /* pedido explícito: cada 15s */
+
+    /* Dos contadores independientes sobre la misma ventana: uno para las
+       notas del arpegio y otro para los cambios de acorde. No coinciden a
+       propósito — 15 no es múltiplo de 1.2, así que el arpegio cae en un
+       lugar distinto de cada acorde y no se oye como un molde. */
     let n = -1;
+    let chordN = -1;
     schedule = (from, to) => {
+      /* ── Cambios de acorde: la cama baja y el filtro se abre ── */
+      if (chordN < 0) chordN = Math.floor(from / CHORD_DUR);
+      while (chordN * CHORD_DUR < to) {
+        const t0 = chordN * CHORD_DUR;
+        if (t0 >= from) {
+          const c = CHORDS[chordN % CHORDS.length];
+          /* Glissando de 1.4s en vez de salto: un cambio seco en un drone
+             continuo se oye como un corte de cinta, no como una armonía. */
+          for (const [osc, f] of [[bedRoot, c.bed[0]], [bedFifth, c.bed[1]]] as [OscillatorNode, number][]) {
+            osc.frequency.setValueAtTime(osc.frequency.value, t0);
+            osc.frequency.exponentialRampToValueAtTime(f, t0 + 1.4);
+          }
+          /* Golpe de brillo: el filtro se abre y vuelve. Es lo que convierte
+             el cambio en un ACONTECIMIENTO en vez de en una modulación que
+             pasa desapercibida. La automación del param y el LFO conectado se
+             suman, así que esto no pelea con la respiración de fondo. */
+          bed.frequency.cancelScheduledValues(t0);
+          bed.frequency.setValueAtTime(BED_BASE, t0);
+          bed.frequency.exponentialRampToValueAtTime(BED_BASE * 2.4, t0 + 0.5);
+          bed.frequency.exponentialRampToValueAtTime(BED_BASE, t0 + 5);
+        }
+        chordN++;
+      }
+
+      /* ── Notas del arpegio ── */
       if (n < 0) n = Math.floor(from / STEP);
       while (n * STEP < to) {
         const t = n * STEP;
         if (t >= from) {
-          const chord = Math.floor(t / 33.6) % 2 === 0 ? AM9 : FMAJ9;
-          /* No sube y baja en escalera: el orden se saltea grados, que es lo
-             que hace que no se oiga como un ejercicio de piano. */
-          const f = chord[(n * 2 + Math.floor(n / 5)) % chord.length];
+          const chord = CHORDS[Math.floor(t / CHORD_DUR) % CHORDS.length];
+          /* La primera nota de cada acorde es la FUNDAMENTAL, y suena más
+             fuerte: es el anuncio. El resto se saltea grados en vez de subir
+             y bajar en escalera, que es lo que evita que se oiga como un
+             ejercicio de piano. */
+          const first = t % CHORD_DUR < STEP;
+          const f = first ? chord.arp[0] : chord.arp[(n * 2 + Math.floor(n / 5)) % chord.arp.length];
           const o = ctx.createOscillator();
           const g = ctx.createGain();
           o.type = 'triangle';
           o.frequency.value = f;
           o.detune.value = (rand() * 2 - 1) * 5;
           g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.075, t + 0.03);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + 1.9);
+          g.gain.exponentialRampToValueAtTime(first ? 0.105 : 0.075, t + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + (first ? 2.4 : 1.9));
           o.connect(g);
           g.connect(delay);
           g.connect(tone);
           o.start(t);
-          o.stop(t + 2.0);
+          o.stop(t + (first ? 2.5 : 2.0));
         }
         n++;
       }

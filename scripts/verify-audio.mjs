@@ -133,6 +133,18 @@ try {
         for (let i = s; i < s + S; i++) { const v = (L[i] + R[i]) / 2; e += v * v; }
         short.push(Math.sqrt(e / S));
       }
+      /* Brillo en ventanas de 1s: sirve para ver el cambio de acorde de C,
+         que abre el filtro de la cama justo en el borde. */
+      const B = SR, bright1s = [];
+      for (let s = 0; s + B <= L.length; s += B) {
+        let e = 0, d = 0;
+        for (let i = s + 1; i < s + B; i++) {
+          const v = (L[i] + R[i]) / 2, p = (L[i - 1] + R[i - 1]) / 2;
+          e += v * v; d += (v - p) * (v - p);
+        }
+        bright1s.push(e > 0 ? Math.sqrt(d / e) : 0);
+      }
+
       const sorted = [...short].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
       const p99 = sorted[Math.floor(sorted.length * 0.99)];
@@ -153,6 +165,29 @@ try {
       };
       const pulse = autocorr(Math.round(2 / 0.05));   /* 2s = el compas del kick */
 
+      /* Goertzel: energia en UNA frecuencia, sin FFT. Con esto se puede leer
+         cual es la fundamental de la cama en cada tramo y comprobar que
+         realmente se mueve con el acorde. */
+      const goertzel = (from, len, freq) => {
+        const k = Math.round((freq * len) / SR);
+        const w = (2 * Math.PI * k) / len;
+        const coeff = 2 * Math.cos(w);
+        let s1 = 0, s2 = 0;
+        for (let i = from; i < from + len; i++) {
+          const x = (L[i] + R[i]) / 2;
+          const s0 = x + coeff * s1 - s2;
+          s2 = s1; s1 = s0;
+        }
+        return s2 * s2 + s1 * s1 - coeff * s1 * s2;
+      };
+      /* Un tramo de 4s en el MEDIO de cada acorde (del segundo 8 al 12),
+         lejos del glissando de 1.4s del borde. */
+      const roots = [];
+      for (let seg = 0; (seg * 15 + 12) * SR < L.length; seg++) {
+        const from = Math.floor((seg * 15 + 8) * SR), len = SR * 4;
+        roots.push([110.0, 87.31, 130.81, 98.0].map(f => goertzel(from, len, f)));
+      }
+
       let wavData = null;
       if (wantWav) {
         /* Preview mono, submuestreada a la mitad y recortada a 48s: el render
@@ -169,6 +204,8 @@ try {
         winBright: win.map(w => +w.bright.toFixed(4)),
         crest: median > 0 ? p99 / median : 0,
         pulse,
+        bright1s: bright1s.map(b => +b.toFixed(4)),
+        roots,
         wavData,
       };
     }, { variant, DUR, SR, SEED, wantWav: WANT_WAV });
@@ -220,6 +257,62 @@ for (const v of VARIANTS) {
 record('X1', 'B tiene pulso, A y C no',
   stats.lofi.pulse > 0.25 && stats.engine.pulse < 0.15 && stats.terminal.pulse < 0.15,
   `periodicidad @2s — A ${stats.engine.pulse.toFixed(3)} · B ${stats.lofi.pulse.toFixed(3)} · C ${stats.terminal.pulse.toFixed(3)}`);
+
+/* X3 — C rota de acorde cada 15s y el cambio SE TIENE QUE NOTAR. Antes la
+   cama de drone quedaba fija en A2+E3 para siempre: el arpegio cambiaba de
+   acorde arriba de una fundamental que no acompañaba, y el cambio pasaba
+   desapercibido. Esto mide UNA de las dos correcciones: el golpe de brillo del
+   filtro en el borde (los 2s siguientes al cambio contra el medio del acorde).
+   Que la cama se mueva de verdad lo mide X4 — son cosas distintas y este test
+   solo pasaria igual con la cama quieta. */
+{
+  const CHORD_DUR = 15;
+  const b = stats.terminal.bright1s;
+  const borde = [], medio = [];
+  for (let i = 0; i < b.length; i++) {
+    const fase = i % CHORD_DUR;
+    if (fase < 2) borde.push(b[i]);
+    else if (fase >= 7 && fase <= 12) medio.push(b[i]);
+  }
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const ratio = avg(borde) / avg(medio);
+  record('X3', 'C: el cambio de acorde se nota', ratio > 1.15,
+    `brillo borde/medio ${ratio.toFixed(2)}× · cada ${CHORD_DUR}s`);
+}
+
+/* X4 — la cama SIGUE al acorde. Es la correccion de fondo: antes los dos
+   osciladores graves quedaban clavados en A2+E3 para siempre y el arpegio
+   cambiaba de armonia sobre una fundamental que no acompañaba.
+
+   Ojo con como se mide. La primera version tomaba el argmax entre las cuatro
+   fundamentales y fallaba en los tramos de Fa — no por el audio, sino porque
+   C3 (130.81) es la FUNDAMENTAL del acorde de Do y a la vez la QUINTA del de
+   Fa: las candidatas no son mutuamente excluyentes y el argmax no discrimina.
+   Lo que si discrimina es comparar contra las notas AJENAS al acorde: en el
+   tramo de Fa, La (110) no deberia estar. Con la cama clavada en A2, La gana
+   siempre y esto falla, que es justo la regresion que hay que atrapar. */
+{
+  const F = { A: 0, F: 1, C: 2, G: 3 };
+  const NOMBRE = ['A(110)', 'F(87)', 'C(131)', 'G(98)'];
+  /* raiz de cada acorde + las candidatas que NO estan en su cama */
+  const SEG = [
+    { raiz: F.A, ajenas: [F.F, F.C, F.G] },   /* Am9   — cama A2 + E3 */
+    { raiz: F.F, ajenas: [F.A, F.G] },        /* Fmaj9 — cama F2 + C3 */
+    { raiz: F.C, ajenas: [F.A, F.F, F.G] },   /* Cmaj9 — cama C3 + G3 */
+    { raiz: F.G, ajenas: [F.A, F.F, F.C] },   /* G6/9  — cama G2 + D3 */
+  ];
+  const detalle = [];
+  let ok = 0;
+  stats.terminal.roots.forEach((e, i) => {
+    const { raiz, ajenas } = SEG[i % 4];
+    const peorAjena = Math.max(...ajenas.map(a => e[a]));
+    const margen = peorAjena > 0 ? e[raiz] / peorAjena : Infinity;
+    if (margen > 1.5) ok++;
+    detalle.push(`${NOMBRE[raiz]}×${margen.toFixed(1)}`);
+  });
+  record('X4', 'C: la cama sigue al acorde', ok === stats.terminal.roots.length,
+    `${ok}/${stats.terminal.roots.length} tramos · raiz sobre notas ajenas: ${detalle.join(' ')}`);
+}
 
 record('X2', 'Las tres son distintas entre si',
   new Set(VARIANTS.map(v => stats[v].rms.toFixed(3))).size === 3,
