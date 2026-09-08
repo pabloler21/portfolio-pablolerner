@@ -512,9 +512,12 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   }
 
   /* Dos letras, sin corchetes: es un ajuste, no una accion de navegacion.
-     Lleva borde igual —tiene que leerse clickeable— pero en tono apagado para
-     no pelearle al nombre, que es lo primero que tiene que leerse de la
-     franja. Al hover pasa a mint como todo lo interactivo del sistema. */
+     Va con el MISMO peso que los otros botones de la franja (borde y texto en
+     --sand): lo tenia en --sand-dim con borde --ink-mid "para no pelearle al
+     nombre", y el resultado fue que no se encontraba — al lado de
+     [ STREET ] no leia como un boton. El pedido era que se vea. El nombre
+     domina igual: es serif, mucho mas grande. Al hover pasa a mint como todo
+     lo interactivo del sistema. */
   .os-lang-btn {
     display: inline-flex;
     align-items: center;
@@ -524,9 +527,9 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
        nombre y el rol se comen la linea entera— baja alineado a la derecha en
        vez de quedar huerfano debajo del nombre. */
     margin-left: auto;
-    padding: 0.15rem 0.38rem;
-    border: 1px solid var(--ink-mid);
-    color: var(--sand-dim);
+    padding: 0.22rem 0.42rem;
+    border: 1px solid var(--sand);
+    color: var(--sand);
     font-family: var(--font-mono);
     /* 0.7rem = 11.2px. El piso del sistema son 11px y lo tenia en 0.58rem
        (9.3px): lo marco C6, que es exactamente para lo que esta. */
