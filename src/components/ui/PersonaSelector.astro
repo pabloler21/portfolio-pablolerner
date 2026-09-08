@@ -79,7 +79,7 @@ const previews = t.opts.map(o => ({ zone: o.zone, label: o.label, stats: statsBy
       <nav class="persona-options" role="menu" aria-label={t.title}>
         {t.opts.map((opt, i) => (
           <button
-            class="persona-opt"
+            class={'persona-opt ' + (opt.zone === PRIMARY_ZONE ? 'is-primary' : 'is-alt')}
             data-zone={opt.zone}
             role="menuitem"
             style={`animation-delay: ${520 + i * 70}ms`}
@@ -448,18 +448,6 @@ const previews = t.opts.map(o => ({ zone: o.zone, label: o.label, stats: statsBy
 
   .persona-opt:last-child { border-bottom: none; }
 
-  .persona-opt:hover,
-  .persona-opt:focus-visible {
-    outline: none;
-    border-left-color: var(--accent-bright);
-    background: var(--bg-surface);
-  }
-
-  .persona-opt:hover .opt-label,
-  .persona-opt:focus-visible .opt-label {
-    color: var(--accent-bright);
-  }
-
   .opt-main {
     display: flex;
     flex-direction: column;
@@ -500,6 +488,62 @@ const previews = t.opts.map(o => ({ zone: o.zone, label: o.label, stats: statsBy
   .badge-primary {
     color: var(--accent-bright);
     border: 1px solid rgba(94, 231, 170, 0.45);
+  }
+
+  /* ── Jerarquía: uno domina, el otro es la segunda puerta ──────
+     Las dos filas tenían exactamente la misma forma, el mismo cuerpo y el
+     mismo color; la única diferencia era la chapa ◆ PRIMARY, de 0.48rem.
+     Leído de corrido —y en un teléfono, donde el panel de preview ni
+     siquiera se muestra— eso son dos opciones idénticas, o sea una decisión
+     que el visitante no tiene con qué tomar. Ahora el primario ES la
+     respuesta por defecto (más grande, con fondo propio y el riel mint
+     encendido de entrada) y el otro se lee como lo que es: disponible,
+     secundario, un click igual de fácil. */
+  .persona-opt.is-primary {
+    background: var(--bg-panel);
+    border-left-color: var(--accent-bright);
+    padding-top: 1.15rem;
+    padding-bottom: 1.15rem;
+  }
+
+  .persona-opt.is-primary .opt-label {
+    font-size: 1.05rem;
+    color: var(--sand);
+  }
+
+  .persona-opt.is-primary .opt-desc { color: var(--sand-muted); }
+
+  /* El riel del secundario existe pero está apagado: da estructura sin
+     competir. Al hover/focus se enciende en mint como cualquier otro
+     interactivo (la regla del sistema), así que sigue siendo obviamente
+     clickeable. */
+  .persona-opt.is-alt {
+    border-left-color: var(--ink-mid);
+    padding-top: 0.78rem;
+    padding-bottom: 0.78rem;
+  }
+
+  .persona-opt.is-alt .opt-label {
+    font-size: 0.74rem;   /* 11.8px — el piso del sistema es 11px */
+    color: var(--sand-muted);
+  }
+
+  /* ── Estados ─────────────────────────────────────────────────
+     VAN DESPUÉS DE LA JERARQUÍA A PROPÓSITO (lección 40 de este repo):
+     `.persona-opt:hover` y `.persona-opt.is-alt` tienen la MISMA
+     especificidad, así que gana la última en aparecer. Arriba, el riel
+     apagado del secundario le ganaba al mint del hover y la fila no
+     respondía al pasar por encima. */
+  .persona-opt:hover,
+  .persona-opt:focus-visible {
+    outline: none;
+    border-left-color: var(--accent-bright);
+    background: var(--bg-surface);
+  }
+
+  .persona-opt:hover .opt-label,
+  .persona-opt:focus-visible .opt-label {
+    color: var(--accent-bright);
   }
 
 
