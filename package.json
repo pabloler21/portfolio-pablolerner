@@ -18,8 +18,9 @@
     "verify:character": "node scripts/verify-character.mjs",
     "verify:contact": "python3 server/contact/test_contact.py",
     "verify:mobile": "astro build && node scripts/verify-mobile.mjs",
+    "verify:audio": "node scripts/verify-audio.mjs",
     "build:character": "node scripts/build-character-glb.mjs",
-    "verify": "npm run verify:jump && npm run verify:character && npm run verify:contact && npm run verify:ui",
+    "verify": "npm run verify:jump && npm run verify:character && npm run verify:audio && npm run verify:contact && npm run verify:ui",
     "verify:check": "node --max-old-space-size=8192 ./node_modules/.bin/astro check"
   },
   "dependencies": {

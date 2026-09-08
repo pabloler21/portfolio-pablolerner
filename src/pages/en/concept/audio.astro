@@ -1,0 +1,349 @@
+---
+import Base from '../../../layouts/Base.astro';
+/* Página de decisión — DIRECCIÓN DE LA MÚSICA DE FONDO.
+   Interna, no linkeada desde el nav, igual que /en/concept/flagship/ (que se
+   usó para elegir el acento ámbar) y /en/concept/city/.
+
+   Las tres variantes corren con el MISMO módulo que después se despacha
+   (src/lib/ambient.ts): lo que se escucha acá es lo que va a sonar en la
+   escena, no una maqueta. */
+
+const OPTIONS = [
+  {
+    id: 'engine',
+    tag: 'A',
+    name: 'ENGINE ROOM',
+    sub: 'drone · sin pulso',
+    desc: 'Quintas graves desafinadas atravesando un filtro que respira cada 40s, ventilación de fondo y un ping metálico lejano cada 20-60s. Lo más tenebroso y lo que menos interfiere.',
+    layers: ['3 osc · A1 + E2 + A2, detune ±7c', 'lowpass 200-900Hz · ciclo 40s', 'ruido en banda 380Hz · ventilación', 'ping triangular → reverb · 20-60s'],
+    risk: 'Puede leerse como que no suena nada.',
+  },
+  {
+    id: 'lofi',
+    tag: 'B',
+    name: 'LOFI PULSE',
+    sub: '60 BPM · sub + hat',
+    desc: 'Sub-kick blando en 1 y 3, hat de ruido a contratiempo, pad de séptima con wobble de cinta y bajo. El único que suena a lofi de verdad.',
+    layers: ['kick sub 95→45Hz · compases 1 y 3', 'hat ruido HP 7kHz · contratiempo', 'pad 4 voces + wobble 0.22Hz', 'i–VI–III–VII (Am) cada 8 compases'],
+    risk: 'Un beat SE NOTA en sesión larga, y compite con los beeps de la escena.',
+  },
+  {
+    id: 'terminal',
+    tag: 'C',
+    name: 'TERMINAL ARP',
+    sub: 'arpegio · sin batería',
+    desc: 'Acorde con novena desgranado lento sobre cama de drone, con delay realimentado. Movimiento sin percusión: más terminal de Blade Runner que lofi de estudio.',
+    layers: ['drone A2 + E3 · lowpass respirando', 'arpegio 1 nota / 1.2s · triangular', 'delay 480ms · feedback 0.35', 'Am9 ⇄ Fmaj9 cada ~34s'],
+    risk: 'El más melódico, o sea el más fácil de cansar.',
+  },
+];
+---
+
+<Base title="Concept — Audio Direction" lang="en">
+  <div class="ac-shell">
+
+    <div class="ac-header">
+      <div class="sys-text">FASE 4 · MÚSICA DE FONDO — COMPAÑERO DE DECISIÓN</div>
+      <h1 class="ac-title">DIRECCIÓN DE AUDIO — ELEGIR UNA</h1>
+      <p class="ac-sub">
+        Las tres son generativas en Web Audio: cero archivos, cero KB, y no loopean nunca
+        porque no hay loop — se programan sobre el reloj de audio a medida que suenan.
+        Corren con el mismo módulo que después se despacha, así que <strong>lo que escuchás
+        es lo que va a sonar</strong>. Dejá cada una un minuto largo: las tres tardan en
+        mostrar lo que hacen (el filtro de A respira cada 40s, B cambia de acorde cada 32s,
+        C rota el acorde cada 34s).
+      </p>
+      <p class="ac-warn">
+        ▸ El navegador no deja sonar nada hasta que toques algo, así que el primer PLAY es
+        el que habilita el audio. Escuchalo con volumen bajo: está pensado para estar
+        <em>abajo</em> de todo, no adelante.
+      </p>
+    </div>
+
+    <div class="ac-bar">
+      <label class="ac-vol">
+        <span class="ac-vol-label">VOLUMEN MASTER</span>
+        <input type="range" id="ac-vol" min="0" max="40" value="18" step="1" />
+        <span class="ac-vol-val" id="ac-vol-val">0.18</span>
+      </label>
+      <div class="ac-now">
+        <span class="ac-now-label">SONANDO ::</span>
+        <span class="ac-now-val" id="ac-now">—</span>
+        <span class="ac-clock" id="ac-clock">00:00</span>
+      </div>
+    </div>
+
+    <div class="ac-grid">
+      {OPTIONS.map(o => (
+        <section class="ac-card" data-card={o.id}>
+          <div class="ac-card-head">
+            <span class="ac-tag">[ {o.tag} ]</span>
+            <h2 class="ac-name">{o.name}</h2>
+            <span class="ac-subtitle">{o.sub}</span>
+          </div>
+
+          <p class="ac-desc">{o.desc}</p>
+
+          <div class="ac-layers">
+            <span class="ac-layers-label">CAPAS ::</span>
+            <ul class="ac-layer-list">
+              {o.layers.map(l => <li class="ac-layer">{l}</li>)}
+            </ul>
+          </div>
+
+          <p class="ac-risk"><span class="ac-risk-label">RIESGO ::</span> {o.risk}</p>
+
+          <button type="button" class="ac-play cta-btn" data-play={o.id}>[ PLAY ▸ ]</button>
+        </section>
+      ))}
+    </div>
+
+    <p class="ac-foot sys-text">
+      Cuando elijas, la que gane se integra a la escena con su propio control de mute.
+      Nada de esto se autoreproduce en el sitio real todavía — es una decisión aparte.
+    </p>
+
+  </div>
+</Base>
+
+<script>
+  import { createAmbient, runLive } from '../../../lib/ambient.ts';
+  import type { AmbientHandle, AmbientVariant } from '../../../lib/ambient.ts';
+
+  /* Un solo AudioContext para toda la página, creado en el PRIMER click y no
+     antes: crearlo al cargar lo deja 'suspended' y en Safari cuenta contra el
+     presupuesto de contextos. */
+  let ctx: AudioContext | null = null;
+  let handle: AmbientHandle | null = null;
+  let stopPump: (() => void) | null = null;
+  let startedAt = 0;
+  let current: string | null = null;
+
+  const nowEl = document.getElementById('ac-now')!;
+  const clockEl = document.getElementById('ac-clock')!;
+  const volEl = document.getElementById('ac-vol') as HTMLInputElement;
+  const volValEl = document.getElementById('ac-vol-val')!;
+
+  const vol = () => Number(volEl.value) / 100;
+
+  function stopCurrent() {
+    handle?.stop();
+    stopPump?.();
+    handle = null;
+    stopPump = null;
+    current = null;
+    nowEl.textContent = '—';
+    document.querySelectorAll<HTMLElement>('[data-play]').forEach(b => {
+      b.textContent = '[ PLAY ▸ ]';
+      b.classList.remove('is-playing');
+    });
+    document.querySelectorAll<HTMLElement>('[data-card]').forEach(c => c.classList.remove('is-active'));
+  }
+
+  function play(id: AmbientVariant, btn: HTMLElement) {
+    if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    stopCurrent();
+    handle = createAmbient(ctx, id, { volume: vol(), fadeIn: 2 });
+    /* En vivo la ventana de programación se mantiene adelantada con un timer;
+       offline (el arnés) se llama schedule() una sola vez. */
+    stopPump = runLive(handle, ctx);
+    handle.start();
+    startedAt = ctx.currentTime;
+    current = id;
+
+    btn.textContent = '[ STOP ■ ]';
+    btn.classList.add('is-playing');
+    document.querySelector(`[data-card="${id}"]`)?.classList.add('is-active');
+    nowEl.textContent = btn.closest('.ac-card')?.querySelector('.ac-name')?.textContent ?? id;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-play]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.play as AmbientVariant;
+      if (current === id) stopCurrent();
+      else play(id, btn);
+    });
+  });
+
+  volEl.addEventListener('input', () => {
+    volValEl.textContent = vol().toFixed(2);
+    handle?.setVolume(vol());
+  });
+
+  /* El reloj es dato, no decoración: sirve para saber si ya escuchaste lo
+     suficiente como para que la variante muestre lo que hace. */
+  setInterval(() => {
+    if (!ctx || !current) { clockEl.textContent = '00:00'; return; }
+    const s = Math.floor(ctx.currentTime - startedAt);
+    clockEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }, 500);
+</script>
+
+<style>
+  .ac-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .ac-header { margin-bottom: 1.6rem; }
+
+  .ac-title {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    letter-spacing: 0.14em;
+    color: var(--sand);
+    margin: 0.5rem 0 0.9rem;
+  }
+
+  .ac-sub, .ac-warn {
+    font-family: var(--font-sans);
+    font-size: 0.86rem;
+    line-height: 1.65;
+    color: var(--sand-muted);
+    max-width: 68ch;
+    margin: 0 0 0.7rem;
+  }
+
+  .ac-warn { color: var(--sand-dim); }
+
+  /* ── Barra de control ── */
+  .ac-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border: var(--border-mid);
+    background: var(--bg-panel);
+    margin-bottom: 1.4rem;
+  }
+
+  .ac-vol { display: flex; align-items: center; gap: 0.7rem; }
+
+  .ac-vol-label, .ac-now-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+  }
+
+  .ac-vol-val, .ac-clock {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--accent-bright);
+    font-variant-numeric: tabular-nums;
+  }
+
+  #ac-vol { width: 180px; accent-color: var(--accent-bright); }
+
+  .ac-now { display: flex; align-items: center; gap: 0.7rem; }
+
+  .ac-now-val {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--sand);
+  }
+
+  /* ── Tarjetas ── */
+  .ac-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1rem;
+  }
+
+  .ac-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.1rem;
+    border: var(--border-mid);
+    border-left: 2px solid var(--ink-mid);
+    background: var(--bg-panel);
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .ac-card.is-active {
+    border-left-color: var(--accent-bright);
+    background: var(--bg-surface);
+  }
+
+  .ac-card-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.6rem; }
+
+  .ac-tag {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+  }
+
+  .ac-name {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    letter-spacing: 0.14em;
+    color: var(--sand);
+    margin: 0;
+  }
+
+  .ac-subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+  }
+
+  .ac-desc {
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--sand-muted);
+    margin: 0;
+  }
+
+  .ac-layers-label, .ac-risk-label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+  }
+
+  .ac-layer-list {
+    list-style: none;
+    margin: 0.45rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ac-layer {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--sand-muted);
+    padding-left: 0.8rem;
+    border-left: 1px solid var(--accent);
+  }
+
+  .ac-risk {
+    font-family: var(--font-sans);
+    font-size: 0.76rem;
+    line-height: 1.55;
+    color: var(--sand-dim);
+    margin: 0;
+  }
+
+  .ac-play { margin-top: auto; text-align: center; }
+
+  .ac-play.is-playing {
+    border-color: var(--accent-bright);
+    color: var(--bg-void);
+    background: var(--accent-bright);
+  }
+
+  .ac-foot { margin-top: 1.6rem; max-width: 68ch; line-height: 1.7; }
+</style>
