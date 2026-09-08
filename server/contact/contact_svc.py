@@ -39,6 +39,7 @@ MAX_BODY = 16 * 1024          # el mensaje mas largo aceptado son 5000 chars
 RATE_MAX = 5                  # envios por IP...
 RATE_WINDOW = 3600            # ...por hora
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]+$")
+USER_AGENT = "pablolerner.dev-contact/1.0"
 
 _hits: dict[str, deque] = {}
 
@@ -93,7 +94,16 @@ def send(fields: dict) -> tuple[bool, str]:
     req = urllib.request.Request(
         f"{API_BASE}/emails",
         data=payload,
-        headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            # OBLIGATORIO. La API de Resend esta detras de Cloudflare, que
+            # rechaza el User-Agent por defecto de urllib ("Python-urllib/3.x")
+            # por firma de bot: devuelve 403 con "error code: 1010", que no es
+            # un error de Resend y no aparece en su documentacion.
+            "User-Agent": USER_AGENT,
+        },
         method="POST",
     )
     try:

@@ -22,7 +22,8 @@ class MockResend(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(n)) if n else {}
-        received.append({"body": body, "auth": self.headers.get("Authorization")})
+        received.append({"body": body, "auth": self.headers.get("Authorization"),
+                         "ua": self.headers.get("User-Agent")})
         if fail_next["on"]:
             self.send_response(403); self.send_header("Content-Length", "26"); self.end_headers()
             self.wfile.write(b'{"message":"not allowed"}\n')
@@ -93,6 +94,12 @@ ok = (st == 200 and body.get("ok") is True and len(received) == 1
       and "quiero contratarte" in sent.get("text", "")
       and received[0]["auth"] == "Bearer re_test_key")
 check("K2", "Envio valido llega a Resend", ok, f"{st} · reply_to={sent.get('reply_to')} · to={sent.get('to')}")
+
+# ── K2b · User-Agent propio ──────────────────────────────────────────────
+# La API de Resend esta detras de Cloudflare, que bloquea el UA por defecto de
+# urllib con un 403 "error code: 1010". Sin este header no sale un solo mail.
+ua = received[0]["ua"] if received else ""
+check("K2b", "Manda User-Agent propio (Cloudflare)", bool(ua) and "urllib" not in ua.lower(), f"UA={ua!r}")
 
 # ── K3 · honeypot: 200 al bot, pero NO se manda nada ─────────────────────
 received.clear(); svc._hits.clear()
