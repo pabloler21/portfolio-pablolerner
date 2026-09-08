@@ -92,11 +92,14 @@ navegador → POST https://pablolerner.dev/api/contact
   límites de tamaño por campo y rechazo de saltos de línea en nombre/email (inyección de
   cabeceras).
 - **`reply_to` es el visitante**: responder el mail le contesta directo a quien escribió.
-- **Con el dominio sin verificar en Resend**, el remitente debe ser `onboarding@resend.dev`
-  y el destino sólo puede ser **la casilla dueña de la cuenta de Resend**, que NO es
-  necesariamente la que el sitio muestra. Por eso `CONTACT_TO` apunta hoy a la de la
-  cuenta; verificado el dominio (SPF + DKIM en el DNS) se cambian `CONTACT_FROM` y
-  `CONTACT_TO` en el env y listo. No hace falta redeployar: se leen en cada arranque.
+- **Estado actual: dominio verificado.** Los mensajes salen de `contacto@pablolerner.dev`
+  hacia `lerner.pb@gmail.com`. Ambas cosas son config del server (`/etc/contact-svc.env`),
+  no del repo: se leen en cada arranque, así que cambiarlas es editar y reiniciar, sin
+  redeploy.
+- **Si alguna vez se vuelve a un dominio sin verificar**, Resend obliga a que el remitente
+  sea `onboarding@resend.dev` y a que el destino sea **la casilla dueña de la cuenta de
+  Resend** — que no es necesariamente la que el sitio publica. Ese error dice exactamente
+  a qué dirección sí se puede enviar, pero sólo si se registra el cuerpo de la respuesta.
 - **La API de Resend está detrás de Cloudflare y rechaza el `User-Agent` por defecto de
   `urllib`.** Devuelve `403 error code: 1010`, que no es un error de Resend ni figura en su
   documentación. `USER_AGENT` en `contact_svc.py` es obligatorio, y `verify:contact` K2b lo
