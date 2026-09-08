@@ -225,6 +225,21 @@ const plain = await grepSrc(/data-plain|iron-dust-plain|plain-toggle/);
 record('C9', 'Sin restos de plain mode', plain.length === 0,
   plain.length ? `${plain.length} refs: ${plain.slice(0, 4).join(', ')}…` : 'limpio');
 
+/* C10 — la direccion personal no se publica. Estaba en un mailto: del rail de
+   iconos, o sea en texto plano en las 11 paginas, que es lo que rastrean los
+   recolectores de spam. El contacto va por el formulario, que sale desde
+   contacto@pablolerner.dev. Se mira el HTML CONSTRUIDO y no el fuente: la
+   direccion sigue viviendo en la config del server, y lo que importa es que no
+   termine servida. */
+const correos = [];
+for (const f of await readdir(DIST, { recursive: true })) {
+  if (!f.endsWith('.html')) continue;
+  const t2 = await readFile(path.join(DIST, f), 'utf8');
+  if (/lerner\.pb@gmail\.com/.test(t2)) correos.push(f);
+}
+record('C10', 'El mail personal no se publica', correos.length === 0,
+  correos.length ? `${correos.length} paginas lo exponen: ${correos.slice(0, 3).join(', ')}…` : 'ninguna pagina lo expone');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');

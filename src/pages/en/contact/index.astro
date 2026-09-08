@@ -47,7 +47,14 @@ const lang = 'en';
   const form = document.getElementById('contact-form') as HTMLFormElement | null;
   const note = document.getElementById('c-note');
   const btn  = form?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-  const MAIL = 'lerner.pb@gmail.com';
+  /* Partido a proposito. Como string entero quedaba en el bundle servido, o
+     sea en texto plano en las paginas de contacto, que es lo que rastrean los
+     recolectores de spam. Partirlo NO lo hace secreto —un scraper que ejecuta
+     JS lo arma igual— pero lo saca del texto plano, que es el caso comun. Se
+     usa .join() y no una suma de literales porque el minificador pliega
+     'a' + 'b' a 'ab' y volveria a dejarlo entero. verify:ui C10 lo controla
+     sobre el HTML CONSTRUIDO, no sobre el fuente. */
+  const MAIL = ['lerner.pb', 'gmail.com'].join('@');
 
   function say(text: string, withMail: boolean) {
     if (!note) return;

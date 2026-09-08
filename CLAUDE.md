@@ -113,6 +113,18 @@ navegador → POST https://pablolerner.dev/api/contact
 - `npm run deploy:contact` instala/actualiza el servicio (idempotente, nunca pisa el env).
   `npm run verify:contact` levanta un Resend falso y ejercita los 8 caminos sin mandar
   un solo mail.
+- **El icono de sobre del rail izquierdo va al formulario, NO a un `mailto:`.** Un
+  `mailto:` no hace nada visible en una maquina sin cliente de correo configurado —la de
+  casi cualquiera que use Gmail en el navegador— asi que era el unico de los tres iconos
+  que podia no responder al tocarlo. Y publicaba la direccion personal en texto plano en
+  las 11 paginas.
+- **La direccion personal no se sirve en ninguna pagina.** Sigue existiendo como
+  fallback en `/contact/` (si el formulario falla por rate limit, servicio caido o falta
+  de red, se ofrece el mail directo), pero se arma en runtime con
+  `['lerner.pb','gmail.com'].join('@')`. Se usa `.join()` y no `'a' + 'b'` porque el
+  minificador pliega la suma de literales y volveria a dejarla entera. Esto NO la hace
+  secreta —un scraper que ejecuta JS la arma igual— pero la saca del texto plano, que es
+  el caso comun. `verify:ui` **C10** lo controla sobre el HTML construido.
 - La ruta `/api/*` vive en `vps-infra/caddy/Caddyfile` y se aplica con el deploy de ESE
   repo. El bloque del portfolio pasó a usar `handle`: sin eso, `file_server` y `try_files`
   también atenderían `/api/*`.

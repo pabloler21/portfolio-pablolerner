@@ -147,7 +147,15 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
         <a href="https://www.linkedin.com/in/pablo-lerner-591180336" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.44-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z"/></svg>
         </a>
-        <a href="mailto:lerner.pb@gmail.com" aria-label="Email">
+        {/* Va al formulario, NO a un mailto. Un `mailto:` no hace nada visible
+            en una maquina sin cliente de correo configurado —que es la de casi
+            cualquiera que usa Gmail en el navegador— asi que era el unico de
+            los tres iconos que podia no responder al tocarlo. Y publicaba la
+            direccion personal en texto plano en las 11 paginas del sitio, que
+            es justo lo que rastrean los recolectores de spam. El formulario ya
+            existe, sale desde contacto@pablolerner.dev y trae reply_to,
+            honeypot y rate limit. */}
+        <a href={`/${lang}/contact/`} aria-label={lang === 'en' ? 'Contact' : 'Contacto'} title={lang === 'en' ? 'Contact' : 'Contacto'}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18.5v-13Zm2.2.5 7.3 5.47a.9.9 0 0 0 1 0L19.8 6H4.2Zm15.8 1.6-7.02 5.26a2.9 2.9 0 0 1-3.36 0L4.6 7.6v10.9h15.4V7.6Z"/></svg>
         </a>
       </nav>
