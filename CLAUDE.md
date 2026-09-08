@@ -9,6 +9,10 @@ npm run dev           # dev server — http://localhost:4321 (always use this, n
 npm run build         # production build → dist/
 npm run preview       # serve production build locally
 npm run astro check   # TypeScript / Astro type-checking
+
+npm run verify        # los tres arneses: salto + personaje + UI
+npm run deploy:dry    # build + simulacro del rsync, no toca el server
+npm run deploy        # build + rsync al VPS + verificacion en vivo
 ```
 
 **WSL2 networking — read carefully, mistakes have been made here:**
@@ -34,7 +38,34 @@ Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent spe
 - **Vanilla JS** for role selector, keyboard navigation, terminal animation
 - **Three.js** (lazy-loaded via dynamic import) for ambient background and the 3D interactive home scene
 - **i18n:** Astro native, locales `en` (default) and `es`, both prefixed (`/en/…`, `/es/…`)
-- **Hosting:** Cloudflare Pages (target)
+- **Hosting:** VPS propio (Vultr) con **Caddy** sirviendo estáticos. Cloudflare Pages fue el plan original y quedó descartado — ver `## Deploy`
+
+---
+
+## Deploy
+
+`pablolerner.dev` (+ `www.` y `pablolerner.duckdns.org`) se sirve **estático desde un
+VPS propio en Vultr**, con Caddy. No hay CI: el deploy es `rsync` desde esta máquina.
+
+```bash
+npm run deploy:dry    # build + simulacro, muestra qué subiría y qué borraría
+npm run deploy        # build + rsync --delete + verificación en vivo
+```
+
+- **Host SSH**: `vultr` en `~/.ssh/config` → `deploy@64.176.23.59`. El directorio raíz
+  es `/var/www/portfolio`, propiedad de `deploy`: **no hace falta `sudo`**.
+- **`--delete` es intencional**: deja el server exactamente igual a `dist/`. Sin eso los
+  assets con hash superado y los modelos viejos se acumulan para siempre (había 52 MB
+  donde el build son 26 MB, con cuatro GLBs muertos y las páginas `ds/` ya retiradas).
+- **El Caddyfile se administra desde el repo `vps-infra`, NO se edita a mano en el
+  server.** El bloque del portfolio hace `try_files {path} {path}/ {path}.html /404.html`
+  y marca `/_astro/*` como `immutable` — por eso los assets van con hash en el nombre y
+  el HTML no se cachea agresivamente.
+- El script verifica después de subir: códigos HTTP de las 7 rutas reales + el 404, y
+  compara el **md5 del árbol servido contra el del build**. Si difieren, sale con error.
+- El VPS también corre otros proyectos (`aurea`, `starting`, `tarnish`) detrás del mismo
+  Caddy, algunos con un esquema de *lazy wake*. El portfolio es estático a propósito:
+  no tiene servicio que despertar ni entrada en el registro.
 
 ---
 
@@ -336,7 +367,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 | 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
-| 6 — Launch | **pending** | Custom domain, Cloudflare Pages deploy |
+| 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
 
 ---
 

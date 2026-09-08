@@ -9,6 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:dry": "bash scripts/deploy.sh --dry",
     "astro": "astro",
     "verify:ui": "astro build && node scripts/verify-ui.mjs",
     "verify:jump": "node scripts/verify-jump.mjs",
