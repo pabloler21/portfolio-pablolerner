@@ -1364,13 +1364,13 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        data-array order), asked explicitly. Must run after
        buildRoleBillboards populates roleBillRefs (it does, see the
        nier:zone handler above). */
-    roleBillRefs.forEach((ref, i) => {
+    roleBillRefs.forEach((ref) => {
       const p = projects[ref.projIdx];
       if (!p) return;
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'pd-row';
-      row.innerHTML = `<span class="pd-num">${String(i + 1).padStart(2, '0')}</span><span class="pd-info"><span class="pd-name">${p.name}</span><span class="pd-desc">${p.desc}</span></span>`;
+      row.innerHTML = `<span class="pd-info"><span class="pd-name">${p.name}</span><span class="pd-desc">${p.desc}</span></span>`;
       row.addEventListener('click', (e) => {
         teleportToBoard(ref.projIdx);
         document.getElementById('ps-projects-drawer').classList.remove('open');
@@ -2326,12 +2326,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   #ps-projects-drawer .pd-row:hover,
   #ps-projects-drawer .pd-row:focus-visible {
     color: var(--accent-bright);
-  }
-
-  #ps-projects-drawer .pd-num {
-    color: var(--sand-dim);
-    font-size: 0.62rem;
-    padding-top: 0.1rem;
   }
 
   #ps-projects-drawer .pd-info {

@@ -167,7 +167,6 @@ const term = termContent[role];
                   data-idx={i}
                 >
                   <span class="row-cursor" aria-hidden="true">◆</span>
-                  <span class="row-num">{pad2(i + 1)}</span>
                   <span class="row-name">{shortName(p.name)}</span>
                   <span class:list={['row-badge', { flag: p.featured }]}>{p.status}</span>
                 </div>
@@ -455,7 +454,7 @@ const term = termContent[role];
 
   .dossier-row {
     display: grid;
-    grid-template-columns: 0.8rem 1.4rem minmax(0, 1fr) auto;
+    grid-template-columns: 0.8rem minmax(0, 1fr) auto;   /* cursor · nombre · badge — la columna del número se fue con la numeración */
     align-items: center;
     gap: 0.4rem;
     padding: 0.52rem 0.55rem;
@@ -489,12 +488,6 @@ const term = termContent[role];
   .dossier-row.is-flagship .row-cursor {
     color: var(--accent-flag);
     opacity: 1;
-  }
-
-  .row-num {
-    color: var(--sand-dim);
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
   }
 
   .row-name {
