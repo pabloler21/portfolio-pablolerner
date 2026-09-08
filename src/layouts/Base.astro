@@ -467,6 +467,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     transition: color 0.15s ease, transform 0.15s ease;
   }
 
+  /* Debajo de 1400px no hay margen donde vivir: `max(0px, calc(...))` da 0 y
+     los iconos de 18px se desbordan mitad afuera de la pantalla (x = -9).
+     Estaba roto en TODO viewport menor a 1400, no solo en telefonos. Se le da
+     ancho propio y se lo mete adentro. Queda a media altura por la izquierda,
+     donde no pisa ni el minimapa (arriba) ni los controles tactiles (abajo). */
+  @media (max-width: 1400px) {
+    .ps-icon-rail {
+      width: auto;
+      padding-left: 0.55rem;
+      align-items: flex-start;
+    }
+  }
+
   .ps-icon-rail a:hover,
   .ps-icon-rail a:focus-visible {
     color: var(--accent-bright);

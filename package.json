@@ -17,13 +17,18 @@
     "verify:jump": "node scripts/verify-jump.mjs",
     "verify:character": "node scripts/verify-character.mjs",
     "verify:contact": "python3 server/contact/test_contact.py",
+    "verify:mobile": "astro build && node scripts/verify-mobile.mjs",
     "build:character": "node scripts/build-character-glb.mjs",
     "verify": "npm run verify:jump && npm run verify:character && npm run verify:contact && npm run verify:ui",
     "verify:check": "node --max-old-space-size=8192 ./node_modules/.bin/astro check"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
+    "@astrojs/react": "^6.0.5",
     "astro": "^7.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-joystick-component": "^6.2.1",
     "three": "^0.185.0",
     "typescript": "^6.0.3"
   },

@@ -37,6 +37,9 @@ Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent spe
 - **Astro 7** (static output, TypeScript strict)
 - **CSS custom properties** for all theming — no UI library
 - **Vanilla JS** for role selector, keyboard navigation, terminal animation
+- **React** — SOLO para `TouchControls.tsx`, los controles táctiles de la escena 3D. Es la
+  única isla React del sitio; entra con `client:media`, así que en escritorio se descargan
+  **0 KB** de React
 - **Three.js** (lazy-loaded via dynamic import) for ambient background and the 3D interactive home scene
 - **i18n:** Astro native, locales `en` (default) and `es`, both prefixed (`/en/…`, `/es/…`)
 - **Hosting:** VPS propio (Vultr) con **Caddy** sirviendo estáticos. Cloudflare Pages fue el plan original y quedó descartado — ver `## Deploy`
@@ -292,6 +295,27 @@ que a más intensidad los altos recortan y el personaje lee naranja fluorescente
 `position`/`rotation` del grupo en cada frame, así que va **envuelto en un `THREE.Group`**:
 el wrapper es lo que maneja la escena, el nodo interno conserva su transform.
 
+**Mobile / táctil**: la escena **corre** en teléfono. Hasta hace poco salía por un
+`if (touch || narrow)` antes de cargar Three.js y mostraba una lista de links: no
+andaba mal, no existía. Los controles son `TouchControls.tsx`, la única isla React
+del sitio.
+
+- **No le habla a la escena por una API propia**: despacha `KeyboardEvent` sintéticos
+  sobre `document`, que es donde ya se escuchan WASD y Space. El joystick recorre
+  exactamente el mismo camino que el teclado en vez de abrir una segunda puerta que
+  después se desincroniza.
+- **Aparecen recién al elegir rol.** El overlay del selector tiene `z-index: 9000`:
+  mostrados antes quedaban debajo y el dedo le pegaba al overlay.
+- **`client:media`, nunca `client:only`**: con `client:only` Astro baja los 184 KB del
+  runtime de React en toda visita, escritorio incluido, para que el componente devuelva
+  `null`.
+- **`JoystickShape.Square` de la librería NO es de esquina viva**: su `shapeFactory`
+  devuelve `borderRadius: Math.sqrt(size)` como estilo inline. Se anula con `!important`
+  (`verify:mobile` M7 lo controla).
+- `devicePixelRatio` se topea en **1.5** en táctil (2 en escritorio).
+- Cubierto por `npm run verify:mobile`, que emula un teléfono de verdad
+  (`hasTouch`, `isMobile`) y mide que el joystick **mueva**, no que se dibuje.
+
 **Salto y charcos de ácido**: `Space` dispara el clip `Jump` del GLB (0.9s).
 Dos cráteres con líquido tóxico cortan la avenida en `CRATER_ZS = [-5, -35]`,
 `CRATER_HALF_W 1.8` → bandas de 3.6u. La compuerta de `tick()` es **booleana
@@ -504,5 +528,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 36. **`Box3.setFromObject` sobre un `SkinnedMesh` mide la bind pose, no la pose animada.** Transforma la `boundingBox` de la geometría por la matriz del mesh e ignora el skinning, así que da el mismo resultado con cualquier animación aplicada. Normalizar el modelo nuevo contra el viejo con cajas comparaba una T-pose contra una pose horneada (1.79 de ancho contra 0.68) y el resultado parecía correcto por casualidad. Las posiciones de mundo de los HUESOS sí siguen al mixer: medir con `getWorldPosition` de cabeza y pies, con los dos modelos en la misma pose.
 37. **`mixer.stopAllAction()` no devuelve el esqueleto a la bind pose.** Deja los huesos donde quedaron, y `GLTFExporter` escribe la transformación viva de cada uno: exportar después de haber posado el modelo hornea esa pose como reposo del archivo. Hay que guardar position/quaternion/scale de cada hueso antes de posar y reponerlos a mano.
 38. **`AnimationMixer` restaura la bind pose en cuanto una acción se detiene y ningún otro clip usa ese hueso.** Lleva un `useCount` por binding; al llegar a 0 llama `restoreOriginalState()` **en el acto**. Y `play()` sólo marca la acción como activa — la pose recién se escribe en el siguiente `mixer.update()`. Así que parar la saliente antes de arrancar la entrante deja un frame entero dibujado en bind pose. Con el GLB viejo no se notaba porque su reposo era una pose de caminata horneada; con la bind pose real —una T-pose— aparece un parpadeo al pasar de idle a correr. **Arrancar siempre la entrante primero**: el contador nunca toca 0 y en el frame del cambio se ve la pose anterior, que es una pose real. En este repo todo pasa por `switchAction()` y `verify:character` A6 controla que siga habiendo un solo `.stop()`.
-39. **Registrá el cuerpo del error de una API ajena, no sólo el código.** El envío por Resend fallaba con `403` y el cuerpo decía `error code: 1010` — un código de **Cloudflare**, no de Resend: su API está detrás de Cloudflare y rechaza el `User-Agent` por defecto de `urllib` ("Python-urllib/3.x") por firma de bot. Nada de eso figura en la documentación de Resend, y con sólo el `403` a la vista la hipótesis obvia habría sido "la key está mal". El segundo `403`, ya con `User-Agent` propio, trajo el error real de Resend y venía con la solución escrita adentro (la casilla exacta a la que sí se podía enviar). Un `except` que se traga el cuerpo convierte diez segundos de diagnóstico en una tarde.
-40. **Antes de tocar la constante que nombra el síntoma, buscá quién la lee.** "El salto se queda corto, subile la altura" es un diagnóstico razonable y equivocado: la compuerta del charco es `if (!jumping)`, booleana, y `jumpY` no se lee en ningún lado salvo para pintar la Y del personaje. Con `JUMP_H` en 1.3 o en 10 el resultado es el mismo. Peor: el comentario del código prometía un umbral de `jumpY` que nunca existió. Un `grep` de tres segundos por la variable separa la constante estética de la que decide.
+39. **Un ancho `max(0px, calc((100vw - 1400px) / 2))` vale CERO debajo de 1400px, y lo que tenga adentro se desborda.** El rail de iconos sociales se dimensiona con el margen que sobra del shell; en un teléfono ese margen es 0, así que los iconos de 18px quedaban a `x = -9`, mitad afuera de la pantalla — y no sólo en teléfonos: en **todo** viewport menor a 1400. Es el mismo patrón de la lección 24 por el otro lado: allá el ID reintroducía un ancho que la clase contenía, acá el ancho calculado colapsa a cero y el contenido se sale. Si un elemento vive en el margen, hay que decidir qué hace cuando no hay margen.
+40. **En CSS, a igual especificidad gana el ÚLTIMO.** La media query de pantallas chicas no aplicaba porque la había puesto ANTES de la regla base: los dos selectores eran de clase, así que la de abajo ganaba y el panel seguía en 440px sobre un viewport de 390, perdiendo 50px por la izquierda. No era la lección 24 (ID contra clase) aunque se le pareciera: era orden puro. Los bloques responsive van al final.
+41. **Registrá el cuerpo del error de una API ajena, no sólo el código.** El envío por Resend fallaba con `403` y el cuerpo decía `error code: 1010` — un código de **Cloudflare**, no de Resend: su API está detrás de Cloudflare y rechaza el `User-Agent` por defecto de `urllib` ("Python-urllib/3.x") por firma de bot. Nada de eso figura en la documentación de Resend, y con sólo el `403` a la vista la hipótesis obvia habría sido "la key está mal". El segundo `403`, ya con `User-Agent` propio, trajo el error real de Resend y venía con la solución escrita adentro (la casilla exacta a la que sí se podía enviar). Un `except` que se traga el cuerpo convierte diez segundos de diagnóstico en una tarde.
+42. **Antes de tocar la constante que nombra el síntoma, buscá quién la lee.** "El salto se queda corto, subile la altura" es un diagnóstico razonable y equivocado: la compuerta del charco es `if (!jumping)`, booleana, y `jumpY` no se lee en ningún lado salvo para pintar la Y del personaje. Con `JUMP_H` en 1.3 o en 10 el resultado es el mismo. Peor: el comentario del código prometía un umbral de `jumpY` que nunca existió. Un `grep` de tres segundos por la variable separa la constante estética de la que decide.

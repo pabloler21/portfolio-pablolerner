@@ -1,5 +1,6 @@
 ---
 import { aiProjects, riskProjects } from '../../data/projects.ts';
+import TouchControls from './TouchControls.tsx';
 
 interface Props { lang: 'en' | 'es' }
 const { lang = 'en' } = Astro.props;
@@ -91,21 +92,28 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
     <a class="panel-all cta-btn" id="panel-all" href="#">{allLabel}</a>
   </aside>
 
-  <!-- 2D fallback (mobile / no WebGL) -->
+  <!-- Fallback SOLO para cuando no hay WebGL. Ya no es la pantalla de mobile:
+       en tactil la escena corre y se maneja con TouchControls. -->
   <div class="ps-fallback hidden" id="ps-fallback">
     <p class="panel-title sys-text">ACCESS UNIT SELECTION</p>
     <nav class="fb-menu" role="menu">
-      <a class="fb-item" href={allUrl.risk} role="menuitem">
-        <span class="fb-cursor">◆</span> DATA ANALYST <span class="fb-tag">PRIMARY</span>
-      </a>
       <a class="fb-item" href={allUrl.ai} role="menuitem">
-        <span class="fb-cursor"></span> AI ENGINEER
+        <span class="fb-cursor">◆</span> AI ENGINEER <span class="fb-tag">PRIMARY</span>
       </a>
-      <a class="fb-item" href={allUrl.ds} role="menuitem">
-        <span class="fb-cursor"></span> DATA SCIENTIST
+      <a class="fb-item" href={allUrl.risk} role="menuitem">
+        <span class="fb-cursor"></span> DATA ANALYST
       </a>
     </nav>
   </div>
+
+  <!-- Isla React: joystick + boton de salto.
+       client:media y NO client:only: con client:only, Astro baja el runtime de
+       React (184 KB) en TODA visita, incluida la de escritorio, para que el
+       componente devuelva null. Con client:media el navegador solo lo pide si
+       el dispositivo matchea — o sea, cero KB de React en escritorio.
+       El render inicial devuelve null, asi que el HTML del servidor y el
+       primer render del cliente coinciden y no hay desajuste de hidratacion. -->
+  <TouchControls client:media="(hover: none) and (pointer: coarse)" lang={lang} />
 
 </div>
 
@@ -117,15 +125,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
 (function () {
   /* ── Guards ── */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const touch   = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  const narrow  = window.innerWidth < 768;
-
-  if (touch || narrow) {
-    document.getElementById('ps-fallback').classList.remove('hidden');
-    document.getElementById('ps-canvas').style.display  = 'none';
-    document.getElementById('ps-hud').style.display     = 'none';
-    return;
-  }
+  /* La escena YA NO se apaga en tactil ni en pantallas angostas. Hasta ahora
+     salia aca mismo, antes de cargar Three.js, y en un telefono no habia
+     escena: habia una lista de links. Los controles viven en la isla React
+     TouchControls, que despacha los mismos KeyboardEvent que el teclado.
+     El fallback queda SOLO para el caso real de que no haya WebGL. */
 
   /* Billboard positions are computed per-role by buildRoleBillboards (avenue
      layout) — there are no fixed zones anymore */
@@ -290,7 +294,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     /* ── Renderer ── */
     renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true });
     renderer.setSize(W, H, false);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    /* Tope mas bajo en tactil: un telefono con DPR 3 renderizando a 2x paga
+       4x los pixeles de un 1x, y la escena ya trae bloom. A 1.5 la diferencia
+       no se ve a la distancia a la que se sostiene un telefono. */
+    const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    renderer.setPixelRatio(Math.min(devicePixelRatio, coarse ? 1.5 : 2));
     renderer.setClearColor(0x0d0f14, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = false;
@@ -498,6 +506,12 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       heroEl.classList.add('show');
       setTimeout(() => scrambleIn(document.getElementById('ps-hero-sub'), 'ACCESS TERMINAL'), 350);
     }
+
+    /* Contrato con TouchControls (isla React): los controles se muestran solo
+       si la escena arranco de verdad. El dataset cubre el caso de que la
+       escena gane la carrera y la isla hidrate despues del evento. */
+    document.documentElement.dataset.scene = 'ready';
+    window.dispatchEvent(new CustomEvent('nier:scene-ready'));
 
     tick(THREE);
     window.addEventListener('resize', onResize);
@@ -1693,6 +1707,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     document.getElementById('ps-fallback').classList.remove('hidden');
     document.getElementById('ps-canvas').style.display = 'none';
     document.getElementById('ps-hud').style.display    = 'none';
+    /* Sin escena no hay nada que controlar: la isla se esconde sola. */
+    delete document.documentElement.dataset.scene;
+    window.dispatchEvent(new CustomEvent('nier:scene-fallback'));
   }
 
   /* ────────────────── Render Loop ─────────────────────── */
@@ -2329,12 +2346,105 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   }
 
 
+  /* ── Pantallas chicas ──────────────────────────────────────────────
+     VA AL FINAL DEL BLOQUE A PROPOSITO. Estaba arriba y no aplicaba: los
+     selectores son de clase igual que los de base, o sea misma
+     especificidad, asi que gana el ULTIMO en aparecer. El panel se quedaba
+     en 440px sobre un viewport de 390 y se le cortaban 50px por la
+     izquierda. No es la leccion 24 (id contra clase): es orden puro. */
+  @media (max-width: 780px) {
+    /* 440px no entra en un telefono de 390. */
+    .ps-panel {
+      width: 100%;
+      max-height: 58vh;
+    }
+    .ps-projects-drawer {
+      width: min(300px, 86vw);
+    }
+    /* El minimapa se achica y se corre para no pisar los chips del HUD. */
+    .ps-minimap {
+      transform: scale(0.66);
+      transform-origin: top left;
+      top: 2rem;
+      left: 0.5rem;
+    }
+    /* El cartel de llegada sube: abajo estan el joystick y el salto. */
+    .ps-banner { bottom: auto; top: 30%; }
+  }
 </style>
 
 <!-- Styles for RUNTIME-INJECTED dossier elements (showPanel innerHTML).
      Astro scoped styles never match JS-created nodes (no scoping attribute),
      so these MUST be global — anchored to #ps-panel to avoid leaking. -->
 <style is:global>
+  /* ── Controles tactiles (isla React TouchControls) ──────────────────
+     Van aca y no en el bloque scoped por la leccion 22 de este repo: el DOM
+     que renderiza React no lleva el atributo data-astro-cid, asi que ninguna
+     regla scoped lo alcanzaria y los controles saldrian sin estilo. */
+  .tc-root {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;   /* solo los controles reciben el dedo, no la franja */
+  }
+
+  /* touch-action: none es lo que evita que arrastrar el pulgar scrollee la
+     pagina en vez de mover al personaje. */
+  .tc-stick,
+  .tc-jump {
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tc-stick {
+    border: 1px solid rgba(94, 231, 170, 0.28);
+    background: rgba(13, 15, 20, 0.35);
+    line-height: 0;
+  }
+
+  /* El `JoystickShape.Square` de la libreria NO es de esquina viva: su
+     shapeFactory devuelve `borderRadius: Math.sqrt(size)` — 10.77px para una
+     base de 116. Y lo aplica como estilo inline, asi que hace falta
+     !important para llegarle. La regla dura de este design system es cero
+     border-radius; el arnes (verify:mobile M7) controla que siga en cero. */
+  .tc-stick > div,
+  .tc-stick > div * {
+    border-radius: 0 !important;
+  }
+
+  .tc-jump {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    color: var(--sand);
+    background: rgba(13, 15, 20, 0.72);
+    border: 1px solid var(--accent-bright);
+    padding: 1.15rem 1.35rem;
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease, transform 0.1s ease;
+  }
+
+  /* Sin hover en tactil: el estado que importa es el de apretado. */
+  .tc-jump:active {
+    background: var(--accent-bright);
+    color: var(--bg-void);
+    transform: translateY(1px);
+  }
+
+  /* En apaisado el pulgar cae mas arriba y la franja inferior es angosta. */
+  @media (orientation: landscape) and (max-height: 480px) {
+    .tc-root { padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
+    .tc-jump { padding: 0.85rem 1.1rem; }
+  }
   /* Rows are runtime-created (document.createElement in populateProjectsDrawer)
      — component-scoped <style> never matches JS-injected DOM, so these live
      here, anchored to #ps-projects-drawer (lesson 22 in this repo's own
