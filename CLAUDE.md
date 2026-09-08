@@ -10,7 +10,8 @@ npm run build         # production build → dist/
 npm run preview       # serve production build locally
 npm run astro check   # TypeScript / Astro type-checking
 
-npm run verify        # los tres arneses: salto + personaje + UI
+npm run verify        # los cinco arneses: salto + personaje + audio + contacto + UI
+npm run verify:audio  # renderiza la musica offline y mide la señal (--wav deja previews)
 npm run deploy:dry    # build + simulacro del rsync, no toca el server
 npm run deploy        # build + rsync al VPS + verificacion en vivo
 npm run deploy:contact # instala/actualiza el endpoint de contacto en el VPS
@@ -41,6 +42,8 @@ Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent spe
   única isla React del sitio; entra con `client:media`, así que en escritorio se descargan
   **0 KB** de React
 - **Three.js** (lazy-loaded via dynamic import) for ambient background and the 3D interactive home scene
+- **Web Audio** — beeps y musica ambiente generativa (`src/lib/ambient.ts`). Cero archivos
+  de audio en todo el sitio, a proposito: ver `## Musica ambiente`
 - **i18n:** Astro native, locales `en` (default) and `es`, both prefixed (`/en/…`, `/es/…`)
 - **Hosting:** VPS propio (Vultr) con **Caddy** sirviendo estáticos. Cloudflare Pages fue el plan original y quedó descartado — ver `## Deploy`
 
@@ -186,6 +189,8 @@ src/
     global.css          # reset, scanlines, grain, Google Fonts, base type, .cta-btn utility
   data/
     projects.ts         # SINGLE SOURCE OF TRUTH for all project content (EN+ES)
+  lib/
+    ambient.ts          # motor de musica generativa (3 variantes; se despacha 'terminal')
   layouts/
     Base.astro          # YoRHa OS chrome — identity strip + AmbientCanvas + margin rain panels
     RoleLayout.astro    # 3-col grid (RoleNav 280px · center · TerminalWindow 220px). Owns the role-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (numbered listbox + pre-rendered detail panes, ↑↓ keyboard, scramble transition). Pages are thin wrappers.
@@ -442,6 +447,61 @@ const renderer = new THREE.WebGLRenderer({ canvas });  // first real getContext
 
 ---
 
+## Musica ambiente
+
+Suena en la escena 3D. **No hay archivo de audio en ningun lado**, y es la misma
+postura que ya habia tomado `beep()` ("no files to source/license"): un loop decente
+pesa 2-3 MB sobre un build de 26, hay que licenciarlo, y se escucha loopear a los tres
+minutos — aca la gente se queda caminando la avenida un rato largo. El motor
+(`src/lib/ambient.ts`) genera todo en vivo: 0 KB, y no repite nunca porque no hay loop.
+
+**La variante que se despacha es `terminal`**, elegida escuchando las tres en
+`/en/concept/audio/` (pagina interna, misma convencion que `concept/flagship.astro`).
+Las otras dos —`engine` (drone puro) y `lofi` (60 BPM con kick)— siguen en el modulo:
+son el material de esa decision y cambiar de una a otra es una linea.
+
+- **Arranca al elegir rol, NUNCA al cargar.** No es solo criterio de producto: el
+  navegador exige un gesto del usuario, y elegir perfil es un click. Entra con un fade
+  de 4s. En una recarga el evento `nier:zone` se re-despacha solo desde sessionStorage y
+  ahi NO hay gesto — el contexto queda `suspended`, asi que `startAmbient()` deja armado
+  un listener de un solo uso sobre el primer `pointerdown`/`keydown` real.
+- **`startAmbient()` va ANTES de la guarda de dedupe** del handler de `nier:zone` y
+  tiene la suya propia. Debajo del `return`, en una recarga el segundo evento (misma
+  zona) se descartaria junto con el arranque del audio.
+- **Un solo `AudioContext`** para beeps y musica (`getAudioCtx()`). Dos suenan igual y
+  se pagan dos veces; Safari ademas los cuenta contra un presupuesto por pestaña.
+- **Se apaga con `[ ♪ ]`** en la barra de arriba —mismo precedente que `[ PROJECTS ]`,
+  un control que solo existe donde hay escena (`surface === 'game'`)— y apagarla se
+  **recuerda para siempre** (`localStorage` `nier-audio`). Quien la apago una vez no
+  quiere que vuelva sola en la proxima visita. No va en el HUD de la escena: ese tiene
+  `pointer-events: none` y en un telefono la esquina de abajo ya es del joystick.
+- **Dos hechos distintos, a proposito**: `<html data-audio>` dice si la musica esta
+  SONANDO (existe el handle) y el boton dice la PREFERENCIA. Antes de elegir rol no
+  suena nada y el boton igual dice encendida, porque va a sonar: es un ajuste, no un
+  indicador. `data-audio` es ademas lo que el arnes mira para saber que `startAmbient()`
+  corrio, sin meterle ganchos de test al producto.
+- **Se suspende el contexto con la pestaña oculta**, o la musica sigue sonando de fondo.
+- El estado apagado se atenua **con color y con `line-through`**, nunca con `opacity`
+  (leccion 25), y el bloque CSS va DESPUES del `:hover` de `.os-nav-btn` — misma
+  especificidad, gana el ultimo (leccion 40, tercera vez en este repo).
+
+### Como esta verificado
+
+`createAmbient` recibe un `BaseAudioContext` en vez de crear el suyo. Esa es la decision
+que sostiene todo lo demas: el mismo codigo corre en vivo y adentro de un
+`OfflineAudioContext`, asi que `npm run verify:audio` **renderiza 96s y mide la señal**
+—sin huecos, sin clipeo, suave (RMS 0.015-0.026), sin continua, y que evolucione— en vez
+de comprobar que la funcion no explota. De ahi sale la segunda regla: los eventos
+discretos se programan sobre el reloj de audio en ventanas (`schedule(desde, hasta)`),
+nunca con `setTimeout` — offline el reloj de JS no avanza y no sonaria nada. En vivo
+`runLive()` mantiene la ventana adelantada.
+
+El reparto de alcance importa: **`verify:audio` mide que salga sonido; `verify:mobile`
+M17-M19 miden el cableado** (que arranque al elegir rol, que el boton corte, que
+apagarla se recuerde tras recargar). Ninguno de los dos cubre lo del otro.
+
+---
+
 ## TerminalWindow component
 
 Props: `title: string`, `lines: readonly string[]`
@@ -564,7 +624,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 35. **Un clip puede tener el nombre correcto y estar VACÍO.** El `Idle` del GLB tenía 0 pistas, 0 nodos, 0 segundos: cargaba sin error, el nombre matcheaba y la escena lo daba por bueno — el personaje simplemente no se movía nunca, y eso se leyó como "le falta una animación de respiración" en vez de "la que hay está vacía". La causa estaba dos pasos atrás: **cada FBX de Mixamo trae DOS animaciones**, la real (`mixamo.com`) y una `Take 001` de relleno con 0 pistas, y el orden NO es estable — en `Walking.fbx` y `Running.fbx` la real es la `[0]`, en `Breathing Idle.fbx` la vacía viene primera. La conversión tomaba `animations[0]`. Elegir por contenido (la de más pistas), nunca por índice. Es la lección 29 llevada al extremo.
 36. **`Box3.setFromObject` sobre un `SkinnedMesh` mide la bind pose, no la pose animada.** Transforma la `boundingBox` de la geometría por la matriz del mesh e ignora el skinning, así que da el mismo resultado con cualquier animación aplicada. Normalizar el modelo nuevo contra el viejo con cajas comparaba una T-pose contra una pose horneada (1.79 de ancho contra 0.68) y el resultado parecía correcto por casualidad. Las posiciones de mundo de los HUESOS sí siguen al mixer: medir con `getWorldPosition` de cabeza y pies, con los dos modelos en la misma pose.
 37. **`mixer.stopAllAction()` no devuelve el esqueleto a la bind pose.** Deja los huesos donde quedaron, y `GLTFExporter` escribe la transformación viva de cada uno: exportar después de haber posado el modelo hornea esa pose como reposo del archivo. Hay que guardar position/quaternion/scale de cada hueso antes de posar y reponerlos a mano.
-38. **`AnimationMixer` restaura la bind pose en cuanto una acción se detiene y ningún otro clip usa ese hueso.** Lleva un `useCount` por binding; al llegar a 0 llama `restoreOriginalState()` **en el acto**. Y `play()` sólo marca la acción como activa — la pose recién se escribe en el siguiente `mixer.update()`. Así que parar la saliente antes de arrancar la entrante deja un frame entero dibujado en bind pose. Con el GLB viejo no se notaba porque su reposo era una pose de caminata horneada; con la bind pose real —una T-pose— aparece un parpadeo al pasar de idle a correr. **Arrancar siempre la entrante primero**: el contador nunca toca 0 y en el frame del cambio se ve la pose anterior, que es una pose real. En este repo todo pasa por `switchAction()` y `verify:character` A6 controla que siga habiendo un solo `.stop()`.
+38. **`AnimationMixer` restaura la bind pose en cuanto una acción se detiene y ningún otro clip usa ese hueso.** Lleva un `useCount` por binding; al llegar a 0 llama `restoreOriginalState()` **en el acto**. Y `play()` sólo marca la acción como activa — la pose recién se escribe en el siguiente `mixer.update()`. Así que parar la saliente antes de arrancar la entrante deja un frame entero dibujado en bind pose. Con el GLB viejo no se notaba porque su reposo era una pose de caminata horneada; con la bind pose real —una T-pose— aparece un parpadeo al pasar de idle a correr. **Arrancar siempre la entrante primero**: el contador nunca toca 0 y en el frame del cambio se ve la pose anterior, que es una pose real. En este repo todo pasa por `switchAction()` y `verify:character` A6 controla que siga habiendo un solo `.stop()` **de AnimationAction** — `ambient.stop()` esta excluido por receptor, porque `.stop()` no es exclusivo del mixer (los beeps nunca cayeron ahi porque llevan argumentos y el patron pide parentesis vacio).
 39. **Un ancho `max(0px, calc((100vw - 1400px) / 2))` vale CERO debajo de 1400px, y lo que tenga adentro se desborda.** El rail de iconos sociales se dimensiona con el margen que sobra del shell; en un teléfono ese margen es 0, así que los iconos de 18px quedaban a `x = -9`, mitad afuera de la pantalla — y no sólo en teléfonos: en **todo** viewport menor a 1400. Es el mismo patrón de la lección 24 por el otro lado: allá el ID reintroducía un ancho que la clase contenía, acá el ancho calculado colapsa a cero y el contenido se sale. Si un elemento vive en el margen, hay que decidir qué hace cuando no hay margen.
 40. **En CSS, a igual especificidad gana el ÚLTIMO.** La media query de pantallas chicas no aplicaba porque la había puesto ANTES de la regla base: los dos selectores eran de clase, así que la de abajo ganaba y el panel seguía en 440px sobre un viewport de 390, perdiendo 50px por la izquierda. No era la lección 24 (ID contra clase) aunque se le pareciera: era orden puro. Los bloques responsive van al final.
 41. **El `fov` de Three.js es VERTICAL, y en una pantalla vertical eso es una trampa.** Con 52° fijos y el aspecto de un teléfono (0.46), el FOV **horizontal** cae a 25°: a la distancia del primer cartel la cámara veía hasta `x = ±4.3` con los carteles parados en `x = ±6.5`. No es que se vieran mal — estaban **fuera del cuadro**, y ninguna cantidad de centrar la cámara lo arreglaba. Cuando el encuadre depende del ancho, hay que fijar el horizontal y derivar el vertical del aspecto.

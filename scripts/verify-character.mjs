@@ -178,7 +178,14 @@ record('A7', 'JUMP_DUR coincide con el clip Jump', match,
    pose del GLB (una T-pose) y se dibuja un frame entero así en la transición
    de respirar a correr. */
 const stops = [...sceneSrc.matchAll(/^.*\.stop\(\).*$/gm)].map(m => m[0].trim())
-  .filter(l => !l.includes('stopAllAction'));
+  .filter(l => !l.includes('stopAllAction'))
+  /* `.stop()` no es exclusivo de AnimationAction: el handle de la música
+     ambiente también lo tiene, y A6 mira SÓLO las acciones del mixer. Se
+     excluye por receptor y con nombre exacto — un filtro amplio (cualquier
+     línea que diga 'ambient') se tragaría un a.stop() de verdad que estuviera
+     cerca. Los beeps nunca cayeron acá porque llevan argumentos:
+     `osc.stop(t + dur)` no matchea el paréntesis vacío del patrón. */
+  .filter(l => !/\bambient\.stop\(\)/.test(l));
 const helper = sceneSrc.match(/function switchAction[\s\S]*?\n  \}/);
 const playsFirst = !!helper && helper[0].indexOf('.play()') < helper[0].indexOf('.stop()');
 record('A6', 'El cambio de acción no pasa por bind pose', stops.length === 1 && playsFirst,

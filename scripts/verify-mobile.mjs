@@ -287,6 +287,44 @@ try {
   record('M16', 'Tactil camina mas rapido, salta igual', mm > 1 && soloPiso,
     `MOVE_MULT ${mm || '(no lo encontre)'} · en el aire manda JUMP_SPEED_MULT=${soloPiso}`);
 
+  /* ── Musica ambiente (M17-M19) ────────────────────────────────────────
+     Ojo con el alcance: que SALGA SONIDO lo mide verify:audio, renderizando
+     el motor en un OfflineAudioContext. Lo que se mide aca es el cableado, que
+     es lo que verify:audio no puede ver: que arranque al elegir rol, que el
+     boton la corte, y que apagarla se recuerde. `<html data-audio>` dice si
+     hay musica sonando de verdad (existe el handle); el boton dice la
+     preferencia. Son dos hechos distintos y por eso se miran los dos. */
+  const audioOn = await page.evaluate(() => document.documentElement.dataset.audio);
+  record('M17', 'La musica arranca al elegir rol', audioOn === 'on',
+    `data-audio=${audioOn} (el rol se eligio en M3b)`);
+
+  const btnAntes = await page.locator('#ps-audio-toggle').getAttribute('aria-pressed').catch(() => null);
+  await page.locator('#ps-audio-toggle').tap().catch(() => {});
+  await page.waitForTimeout(300);
+  const tras = await page.evaluate(() => ({
+    data: document.documentElement.dataset.audio,
+    pressed: document.getElementById('ps-audio-toggle')?.getAttribute('aria-pressed'),
+    guardado: localStorage.getItem('nier-audio'),
+    tachado: getComputedStyle(document.getElementById('ps-audio-toggle')).textDecorationLine,
+  }));
+  record('M18', 'El boton la corta y queda tachado',
+    btnAntes === 'true' && tras.data === 'off' && tras.pressed === 'false' && /line-through/.test(tras.tachado),
+    `data-audio=${tras.data} · aria-pressed=${tras.pressed} · ${tras.tachado}`);
+
+  /* M19 — apagarla se recuerda. Sin esto la musica vuelve sola en cada visita
+     de alguien que ya dijo que no la queria, que es peor que no tener boton. */
+  record('M19a', 'Apagarla se guarda', tras.guardado === 'off', `localStorage nier-audio=${tras.guardado}`);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(SCENE_READY, null, { timeout: 90000 }).catch(() => {});
+  await page.waitForTimeout(2500);   /* el rol se re-despacha solo desde sessionStorage */
+  const trasRecarga = await page.evaluate(() => ({
+    data: document.documentElement.dataset.audio,
+    pressed: document.getElementById('ps-audio-toggle')?.getAttribute('aria-pressed'),
+  }));
+  record('M19b', 'Y no vuelve sola al recargar',
+    trasRecarga.data === 'off' && trasRecarga.pressed === 'false',
+    `data-audio=${trasRecarga.data} · aria-pressed=${trasRecarga.pressed}`);
+
   await phone.close();
 
   /* ── Escritorio: no tiene que bajar React ──────────────────────────── */

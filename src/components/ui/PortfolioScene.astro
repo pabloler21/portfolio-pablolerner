@@ -131,6 +131,7 @@ const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
 <script>
 /* Plain <script> — no define:vars — so Vite bundles it and import('three') resolves.
    define:vars forces is:inline, which skips Vite processing entirely. */
+import { createAmbient, runLive } from '../../lib/ambient.ts';
 const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON.parse(document.getElementById('ps-data').textContent);
 (function () {
   /* ── Guards ── */
@@ -397,6 +398,12 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     window.addEventListener('nier:zone', (e) => {
       const zone = e.detail?.zone;
       if (!zone) return;
+      /* La música entra ANTES de la guarda de dedupe y tiene la suya propia
+         (`if (ambient)`): elegir perfil es el gesto que el navegador exige, y
+         si esto quedara debajo del `return` de abajo, en una recarga —donde el
+         evento llega dos veces con la misma zona— el segundo se descartaría
+         junto con el arranque del audio. */
+      startAmbient();
       /* Dedupe — PersonaSelector (600ms) and our sessionStorage fallback (200ms)
          can both fire on reload; the second identical event must no-op or
          showPanel runs twice and scramble/type animations interleave. */
@@ -530,7 +537,30 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       hidePanel();
       e.currentTarget.blur();
     });
-    document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
+    /* El corte de la música. Apagarla se recuerda para siempre: quien la
+       apagó una vez no quiere que vuelva sola en la próxima visita. */
+    document.getElementById('ps-audio-toggle')?.addEventListener('click', (e) => {
+      if (ambient) {
+        localStorage.setItem(AUDIO_KEY, 'off');
+        stopAmbient();
+      } else {
+        localStorage.setItem(AUDIO_KEY, 'on');
+        startAmbient();
+      }
+      e.currentTarget.blur();   /* si queda con foco, cada Space (salto) lo re-clickea */
+    });
+    paintAudioBtn();
+
+    document.addEventListener('visibilitychange', () => {
+      visible = !document.hidden;
+      /* Sin esto la música sigue sonando en una pestaña de fondo: el
+         AudioContext no se entera de que nadie está mirando. Se suspende el
+         contexto entero, así que también se lleva los beeps — que igual no
+         suenan, porque tick() ya sale temprano cuando !visible. */
+      if (!audioCtx) return;
+      if (document.hidden) audioCtx.suspend();
+      else if (ambient) audioCtx.resume();
+    });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
 
     /* WASD — scoped to movement keys only so we don't block browser shortcuts.
@@ -1056,9 +1086,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
      WASD keydown that got the player there, so it's never blocked by the
      browser's autoplay-needs-a-gesture policy. */
   let audioCtx = null;
-  function beep(freq, dur, type, vol) {
+  /* UN solo AudioContext para todo el sitio: los beeps y la música ambiente
+     comparten éste. Dos contextos suenan igual pero se pagan dos veces, y
+     Safari los cuenta contra un presupuesto por pestaña. */
+  function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function beep(freq, dur, type, vol) {
+    getAudioCtx();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = type;
@@ -1069,6 +1106,82 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     osc.start();
     osc.stop(audioCtx.currentTime + dur);
   }
+
+  /* ── Música ambiente ────────────────────────────────────────────────
+     Variante 'terminal' (arpegio sobre drone, sin batería), elegida
+     escuchando las tres en /en/concept/audio/. El motor vive aparte, en
+     src/lib/ambient.ts, porque se renderiza y se MIDE en verify:audio.
+
+     Arranca al elegir rol —nunca al cargar la página— y eso no es sólo
+     criterio: el navegador exige un gesto, y elegir perfil es un click. Si
+     el visitante la apaga una vez, no vuelve a arrancar nunca (localStorage).
+     El estado se refleja en <html data-audio>, igual que data-scene: es
+     estado real de la app y además es lo que el arnés puede observar sin que
+     haya que meterle ganchos de test al producto. */
+  const AUDIO_KEY = 'nier-audio';
+  let ambient = null;
+  let ambientPump = null;
+
+  const audioMuted = () => localStorage.getItem(AUDIO_KEY) === 'off';
+
+  /* Dos hechos distintos, a propósito:
+       <html data-audio>  — si la música está SONANDO de verdad (hay handle)
+       el botón           — la PREFERENCIA del visitante
+     Antes de elegir rol no suena nada y el botón igual dice "encendida",
+     porque va a sonar: el botón es un ajuste, no un indicador. Y data-audio
+     es lo que el arnés puede mirar para saber que startAmbient() corrió de
+     verdad, sin meterle ganchos de test al producto. */
+  function paintAudioBtn() {
+    const btn = document.getElementById('ps-audio-toggle');
+    document.documentElement.dataset.audio = ambient ? 'on' : 'off';
+    const on = !audioMuted();
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', String(on));
+    btn.classList.toggle('is-off', !on);
+    /* El glifo NO cambia. Un ♪ tachado con el combining solidus (U+0338) sale
+       como un cuadrito en la mitad de las fuentes mono, y en la barra no entra
+       una etiqueta ON/OFF sin desbordar un teléfono. El estado se lee por
+       color Y por line-through (CSS), o sea que no depende sólo del color;
+       aria-pressed y el title lo dicen en palabras. */
+    btn.title = on
+      ? (document.documentElement.lang === 'es' ? 'Música ambiente: encendida' : 'Ambient music: on')
+      : (document.documentElement.lang === 'es' ? 'Música ambiente: apagada' : 'Ambient music: off');
+  }
+
+  function startAmbient() {
+    if (ambient || audioMuted()) return;
+    const ctx = getAudioCtx();
+    ambient = createAmbient(ctx, 'terminal', { volume: 0.16, fadeIn: 4 });
+    ambientPump = runLive(ambient, ctx);
+    ambient.start();
+    paintAudioBtn();
+    /* Al recargar, `nier:zone` se re-despacha solo (sessionStorage) y ahí NO
+       hay gesto: el contexto queda 'suspended' y no sale sonido. En vez de
+       darlo por perdido se espera al primer toque real del visitante. */
+    if (ctx.state === 'suspended') {
+      const wake = () => {
+        ctx.resume();
+        window.removeEventListener('pointerdown', wake);
+        window.removeEventListener('keydown', wake);
+      };
+      window.addEventListener('pointerdown', wake, { once: true });
+      window.addEventListener('keydown', wake, { once: true });
+    }
+  }
+
+  function stopAmbient() {
+    if (!ambient) return;
+    ambient.stop();
+    ambientPump?.();
+    ambient = null;
+    ambientPump = null;
+    paintAudioBtn();
+  }
+
+  /* Se pinta ya, sin esperar a que cargue el GLB de 7 MB: quien apagó la
+     música en una visita anterior tiene que ver el botón tachado desde el
+     primer frame, no treinta segundos después. */
+  paintAudioBtn();
 
 
   /* ────────────────── Dynamic billboards — AVENUE ───────── */

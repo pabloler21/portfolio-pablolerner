@@ -99,6 +99,23 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
             <a class="os-nav-btn" href={`/${lang}/`}>[ PROJECTS ]</a>
           )}
           <a class="os-nav-btn" href={`/${lang}/contact/`}>[ CONTACT ]</a>
+          {/* Corte de la música ambiente. Vive acá y no en el HUD de la escena
+              por dos razones: el HUD es `pointer-events: none`, y en un
+              teléfono la esquina inferior ya es del joystick. Mismo precedente
+              que #ps-projects-tab — sólo existe donde hay escena, y es
+              PortfolioScene quien lo cablea. Arranca en 'on' porque la música
+              entra al elegir rol; si el visitante ya la apagó alguna vez, el
+              script lo corrige antes de que suene nada. */}
+          {surface === 'game' && (
+            <button
+              type="button"
+              class="os-nav-btn os-audio-btn"
+              id="ps-audio-toggle"
+              aria-pressed="true"
+              aria-label={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
+              title={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
+            >[ ♪ ]</button>
+          )}
         </div>
       </div>
 
@@ -410,6 +427,31 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 
   .os-nav-btn:hover,
   .os-nav-btn:focus-visible {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+
+  /* Toggle de la música ambiente. VA DESPUÉS DEL :hover a propósito: tiene la
+     misma especificidad (dos clases contra clase + pseudo-clase), así que
+     declarado antes el estado apagado nunca ganaría… y declarado después se
+     come el hover, por eso el hover del apagado se repite explícitamente
+     abajo. Es la lección 40 del repo, tercera vez.
+     Encendido lleva el mint de "activo"; apagado se atenúa CON COLOR —nunca
+     con opacity, lección 25— y además va tachado, para que el estado no
+     dependa sólo del color. */
+  .os-audio-btn {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+
+  .os-audio-btn.is-off {
+    color: var(--sand-dim);
+    border-color: var(--ink-mid);
+    text-decoration: line-through;
+  }
+
+  .os-audio-btn.is-off:hover,
+  .os-audio-btn.is-off:focus-visible {
     color: var(--accent-bright);
     border-color: var(--accent-bright);
   }
