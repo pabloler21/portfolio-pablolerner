@@ -13,6 +13,7 @@ npm run astro check   # TypeScript / Astro type-checking
 npm run verify        # los tres arneses: salto + personaje + UI
 npm run deploy:dry    # build + simulacro del rsync, no toca el server
 npm run deploy        # build + rsync al VPS + verificacion en vivo
+npm run deploy:contact # instala/actualiza el endpoint de contacto en el VPS
 ```
 
 **WSL2 networking — read carefully, mistakes have been made here:**
@@ -66,6 +67,40 @@ npm run deploy        # build + rsync --delete + verificación en vivo
 - El VPS también corre otros proyectos (`aurea`, `starting`, `tarnish`) detrás del mismo
   Caddy, algunos con un esquema de *lazy wake*. El portfolio es estático a propósito:
   no tiene servicio que despertar ni entrada en el registro.
+- **Ojo con la duplicación**: `vps-infra/scripts/deploy-portfolio.sh` hace build + rsync al
+  mismo destino. `npm run deploy` agrega simulacro y verificación; conviene dejar uno solo.
+
+### Formulario de contacto (Resend)
+
+El sitio es estático y la API key de Resend es un secreto, así que **no puede llamarse a
+Resend desde el navegador**: cualquiera la leería del bundle y mandaría mails en nombre
+del sitio. Hay un servicio chico en el mismo VPS.
+
+```
+navegador → POST https://pablolerner.dev/api/contact
+          → Caddy handle /api/* → 127.0.0.1:8110
+          → contact-svc (server/contact/contact_svc.py) → API de Resend
+```
+
+- **`server/contact/contact_svc.py`** — SOLO stdlib de Python, a propósito: idlea en
+  **10.4 MB**. El VPS tiene 1 GB y este servicio, a diferencia del resto, **no puede
+  dormir** (un POST contra un servicio dormido cae en la pantalla de espera y el mensaje
+  se pierde), así que está siempre encendido y con `MemoryMax=64M`.
+- **La key vive sólo en `/etc/contact-svc.env`** (root:contact 0640), nunca en el repo.
+  Sin ella el endpoint responde 503, jamás un 500.
+- Defensas: honeypot (`website`) que responde 200 y no envía, rate limit de 5/hora por IP,
+  límites de tamaño por campo y rechazo de saltos de línea en nombre/email (inyección de
+  cabeceras).
+- **`reply_to` es el visitante**: responder el mail le contesta directo a quien escribió.
+- **Con el dominio sin verificar en Resend**, el remitente debe ser `onboarding@resend.dev`
+  y el destino sólo puede ser la casilla dueña de la cuenta. Verificado el dominio (SPF +
+  DKIM en el DNS), se cambia `CONTACT_FROM` en el env y nada más.
+- `npm run deploy:contact` instala/actualiza el servicio (idempotente, nunca pisa el env).
+  `npm run verify:contact` levanta un Resend falso y ejercita los 8 caminos sin mandar
+  un solo mail.
+- La ruta `/api/*` vive en `vps-infra/caddy/Caddyfile` y se aplica con el deploy de ESE
+  repo. El bloque del portfolio pasó a usar `handle`: sin eso, `file_server` y `try_files`
+  también atenderían `/api/*`.
 
 ---
 

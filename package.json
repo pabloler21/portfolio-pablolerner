@@ -11,12 +11,14 @@
     "preview": "astro preview",
     "deploy": "bash scripts/deploy.sh",
     "deploy:dry": "bash scripts/deploy.sh --dry",
+    "deploy:contact": "bash server/contact/deploy.sh",
     "astro": "astro",
     "verify:ui": "astro build && node scripts/verify-ui.mjs",
     "verify:jump": "node scripts/verify-jump.mjs",
     "verify:character": "node scripts/verify-character.mjs",
+    "verify:contact": "python3 server/contact/test_contact.py",
     "build:character": "node scripts/build-character-glb.mjs",
-    "verify": "npm run verify:jump && npm run verify:character && npm run verify:ui",
+    "verify": "npm run verify:jump && npm run verify:character && npm run verify:contact && npm run verify:ui",
     "verify:check": "node --max-old-space-size=8192 ./node_modules/.bin/astro check"
   },
   "dependencies": {

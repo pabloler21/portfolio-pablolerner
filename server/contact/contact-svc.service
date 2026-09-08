@@ -1,0 +1,46 @@
+# Endpoint del formulario de contacto de pablolerner.dev.
+# Se instala con server/contact/deploy.sh (desde la maquina de desarrollo).
+#
+# NO es lazy: a diferencia del resto de los proyectos del VPS, este no puede
+# dormir. Un POST del formulario contra un servicio dormido cae en la pantalla
+# de "despertando" y el envio se pierde. Por eso no tiene entrada en
+# startingd/registry.json ni usa el snippet (lazy) del Caddyfile.
+[Unit]
+Description=pablolerner.dev — endpoint del formulario de contacto
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=contact
+Group=contact
+# La API key vive SOLO aca, root:contact 0640. Nunca en el repo ni en el unit.
+EnvironmentFile=/etc/contact-svc.env
+ExecStart=/usr/bin/python3 /opt/contact/contact_svc.py
+Restart=always
+RestartSec=3
+
+# El VPS tiene 1 GB y todo lo demas duerme para dejarle lugar a lo que corre.
+# Este servicio esta siempre encendido, asi que se le pone techo: stdlib pura
+# idlea en ~15 MB, 64 le sobra y lo vuelve incapaz de causar un OOM.
+MemoryMax=64M
+TasksMax=32
+
+# Endurecimiento: solo necesita hablar TCP hacia afuera y leer su propio .py
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

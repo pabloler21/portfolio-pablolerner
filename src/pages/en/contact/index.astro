@@ -9,7 +9,16 @@ const lang = 'en';
     <h1 class="contact-title">CONTACT</h1>
     <p class="contact-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN</p>
 
-    <form id="contact-form" class="contact-form">
+    <form id="contact-form" class="contact-form"
+      data-t-send="[ SEND → ]" data-t-sending="[ SENDING… ]"
+      data-t-ok="Message sent. I'll get back to you." data-t-err="Couldn't send it. Email me directly:" data-t-rate="Too many messages from here. Try again in a while, or email me directly:">
+      {/* Honeypot: invisible para una persona, irresistible para un bot.
+          Si viene con algo, el servidor responde 200 y NO manda nada — al bot
+          no se le avisa que lo detectamos, para que no reintente de otra forma. */}
+      <label class="c-hp" aria-hidden="true">
+        <span>Leave this field empty</span>
+        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+      </label>
       <label class="c-field">
         <span class="c-label">NAME</span>
         <input type="text" name="name" autocomplete="name" required />
@@ -26,18 +35,64 @@ const lang = 'en';
         <button type="submit" class="cta-btn cta-primary">[ SEND → ]</button>
         <a class="cta-btn" href={`/${lang}/`}>[ ← STREET ]</a>
       </div>
-      <p id="c-note" class="c-note sys-text" hidden>
-        This form isn't wired up yet — email directly:
-        <a href="mailto:lerner.pb@gmail.com">lerner.pb@gmail.com</a>
-      </p>
+<p id="c-note" class="c-note sys-text" role="status" aria-live="polite" hidden></p>
     </form>
   </section>
 </Base>
 
 <script>
-  document.getElementById('contact-form')?.addEventListener('submit', (e) => {
+  /* El formulario postea a /api/contact, un servicio chico en el mismo VPS que
+     habla con Resend. NO se llama a Resend desde acá: la API key es un secreto
+     y cualquiera podría leerla del bundle y mandar mails en nombre del sitio. */
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
+  const note = document.getElementById('c-note');
+  const btn  = form?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+  const MAIL = 'lerner.pb@gmail.com';
+
+  function say(text: string, withMail: boolean) {
+    if (!note) return;
+    note.textContent = text;
+    if (withMail) {
+      note.append(' ');
+      const a = document.createElement('a');
+      a.href = `mailto:${MAIL}`;
+      a.textContent = MAIL;
+      note.append(a);
+    }
+    note.removeAttribute('hidden');
+  }
+
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    document.getElementById('c-note')?.removeAttribute('hidden');
+    if (!btn) return;
+    const d = form.dataset;
+    const fd = new FormData(form);
+    btn.disabled = true;
+    btn.textContent = d.tSending ?? '…';
+    say('', false);
+    note?.setAttribute('hidden', '');
+
+    try {
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:    String(fd.get('name')    ?? ''),
+          email:   String(fd.get('email')   ?? ''),
+          message: String(fd.get('message') ?? ''),
+          website: String(fd.get('website') ?? ''),   /* honeypot */
+        }),
+      });
+      if (r.ok)                   { form.reset(); say(d.tOk ?? '', false); }
+      else if (r.status === 429)  { say(d.tRate ?? '', true); }
+      else                        { say(d.tErr ?? '', true); }
+    } catch {
+      /* Sin red, o el servicio caido: siempre queda el mail directo. */
+      say(d.tErr ?? '', true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = d.tSend ?? '';
+    }
   });
 </script>
 
@@ -111,5 +166,15 @@ const lang = 'en';
 
   .c-note a {
     color: var(--accent-bright);
+  }
+
+  /* Fuera de pantalla en vez de display:none ni opacity: un bot que lee el DOM
+     lo completa igual, y un lector de pantalla lo saltea por el aria-hidden. */
+  .c-hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
   }
 </style>
