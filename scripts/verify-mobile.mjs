@@ -266,6 +266,17 @@ try {
   const panelCerrado = await page.locator('#ps-panel').evaluate(el => !el.classList.contains('open')).catch(() => false);
   record('M15', 'La ✕ cierra el dossier', panelCerrado, panelCerrado ? 'cerro' : 'sigue abierto');
 
+  /* M16 — el paso en tactil. En vertical el fov sube a 85°, se ve mas mundo
+     por pantalla y el mismo desplazamiento se siente mas lento. Se compensa
+     con MOVE_MULT, pero SOLO en el piso: si entrara tambien en el aire, el
+     alcance del salto —calibrado contra los 3.6u del charco— cambiaria segun
+     el dispositivo y verify:jump pasaria a medir una de las dos versiones.
+     Esto no mide pixeles, mide esa decision, leida del fuente. */
+  const mm = parseFloat(src.match(/const MOVE_MULT = [^?]+\? ([\d.]+) : 1;/)?.[1] ?? '0');
+  const soloPiso = /\(jumping \? JUMP_SPEED_MULT : MOVE_MULT\)/.test(src);
+  record('M16', 'Tactil camina mas rapido, salta igual', mm > 1 && soloPiso,
+    `MOVE_MULT ${mm || '(no lo encontre)'} · en el aire manda JUMP_SPEED_MULT=${soloPiso}`);
+
   await phone.close();
 
   /* ── Escritorio: no tiene que bajar React ──────────────────────────── */

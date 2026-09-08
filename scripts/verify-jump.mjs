@@ -91,6 +91,17 @@ const record = (id, name, pass, detail) => results.push({ id, name, pass, detail
 record('J0', 'La compuerta sigue siendo booleana', gateIsBoolean,
   gateIsBoolean ? 'if (!jumping) — el modelo del test aplica' : 'CAMBIÓ: reescribir este test');
 
+/* J0b — y que en el aire no se le multiplique NADA más. El paso en el piso sí
+   cambia por dispositivo (MOVE_MULT: en táctil se ve más mundo por pantalla y
+   el mismo desplazamiento se siente más lento), pero si ese factor entrara
+   también en la rama del salto, el alcance dependería del teléfono y todos los
+   números de abajo pasarían a describir una de las dos versiones en vez del
+   producto. */
+const speedLine = src.match(/const speed = WALK_SPEED \*[^;]+;/)?.[0] ?? '';
+const airExpr = speedLine.match(/jumping \? ([^:]+):/)?.[1].trim();
+record('J0b', 'El alcance no depende del dispositivo', airExpr === 'JUMP_SPEED_MULT',
+  airExpr ? `en el aire: ${airExpr}` : 'no pude leer la línea de `speed`');
+
 /* J1 — el alcance no puede depender de los Hz del monitor. */
 const reaches = FPS.flatMap(f => [false, true].map(r => ({ fps: f, reduced: r, u: reach(f, r) })));
 const spread = Math.max(...reaches.map(r => r.u)) - Math.min(...reaches.map(r => r.u));
