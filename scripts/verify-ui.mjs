@@ -240,6 +240,38 @@ for (const f of await readdir(DIST, { recursive: true })) {
 record('C10', 'El mail personal no se publica', correos.length === 0,
   correos.length ? `${correos.length} paginas lo exponen: ${correos.slice(0, 3).join(', ')}…` : 'ninguna pagina lo expone');
 
+/* C11 — el cambio de idioma tiene que estar en TODAS las paginas construidas y
+   NO puede perder la pagina. Antes vivia en el StatusBar, que solo se renderiza
+   en surface="doc": en la home —la escena, la puerta de entrada del sitio— no
+   habia ninguno. Y sus links eran fijos a /en/ y /es/, asi que desde /en/risk/
+   te dejaba en la home española.
+   Se mira el HTML CONSTRUIDO y se comprueba que el destino EXISTE como archivo:
+   /en/concept/* solo esta en ingles, y un toggle ciego manda a un 404. */
+const paginas = (await readdir(DIST, { recursive: true })).filter(f => f.endsWith('index.html'));
+const sinToggle = [], malDestino = [];
+for (const f of paginas) {
+  const ruta = '/' + f.replace(/index\.html$/, '');
+  if (ruta === '/') continue;   /* el redirect raiz no lleva chrome */
+  const html = await readFile(path.join(DIST, f), 'utf8');
+  /* Solo las paginas que llevan el chrome del sitio. /en/concept/city/ es una
+     pagina suelta SIN layout Base —a proposito, para no abrir un tercer
+     contexto WebGL— asi que no tiene barra de identidad donde poner nada.
+     Exigirle el toggle era medir mal, no encontrar un bug. */
+  if (!html.includes('class="os-identity"')) continue;
+  const m = html.match(/class="os-lang-btn" href="([^"]+)"/);
+  if (!m) { sinToggle.push(ruta); continue; }
+  const idioma = ruta.startsWith('/es/') ? 'es' : 'en';
+  const otro = idioma === 'en' ? 'es' : 'en';
+  const hermana = ruta.replace(`/${idioma}/`, `/${otro}/`);
+  const existe = paginas.includes(hermana.slice(1) + 'index.html');
+  const esperado = existe ? hermana : `/${otro}/`;
+  if (m[1] !== esperado) malDestino.push(`${ruta} → ${m[1]} (esperaba ${esperado})`);
+}
+record('C11', 'Cambio de idioma en toda pagina con chrome', sinToggle.length === 0,
+  sinToggle.length ? `sin toggle: ${sinToggle.join(', ')}` : 'todas las paginas con barra de identidad lo tienen');
+record('C12', 'El cambio de idioma no pierde la pagina', malDestino.length === 0,
+  malDestino.length ? malDestino.slice(0, 3).join(' · ') : 'cada una apunta a su hermana (o a la home si no existe)');
+
 const pad = s => String(s).padEnd(40);
 let failed = 0;
 console.log('\n  CRITERIOS DE ACEPTACIÓN — spec §14\n');

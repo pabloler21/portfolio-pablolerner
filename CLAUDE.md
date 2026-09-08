@@ -281,6 +281,32 @@ Exported: `aiProjects`, `riskProjects`, `dsProjects` (empty — pending Pablo's 
 
 Max-width: **1400px**. os-shell border: mint glow `rgba(94,231,170,0.18)` not `var(--border)`.
 
+**Cambio de idioma (`.os-lang-btn`)**: vive en la franja de identidad, al final de la
+linea del nombre. Antes estaba SOLO en el `StatusBar`, que se renderiza unicamente en
+`surface="doc"` — o sea que en la home, que es la escena y la puerta de entrada del
+sitio, no habia forma de cambiar de idioma, y encima estaba al pie con scroll de por
+medio. Esta franja es la unica que se renderiza en TODAS las paginas.
+
+- Muestra el idioma **destino** (`ES` estando en ingles), no los dos: un `EN|ES` completo
+  ocupa el doble por la misma informacion.
+- **Va de ese lado y no con los otros botones porque no entra**: medido, los cinco suman
+  358.1px en 358 disponibles en un telefono de 390 y el parlante se caia al renglon de
+  abajo. Meterlo a la fuerza obligaba a achicar los tres botones-palabra en todos los
+  telefonos para acomodar uno mas.
+- `margin-left: auto` en vez de un margen fijo: `.identity-left` ya es flex con wrap, asi
+  que el chip se pega al borde derecho de SU linea. A 375 el nombre y el rol se comen la
+  linea entera y el chip baja — alineado a la derecha, no huerfano bajo el nombre.
+- **El destino se verifica contra el arbol de paginas** (`import.meta.glob`), no se arma
+  a ciegas: `/en/concept/*` solo existe en ingles y un swap ciego manda a un 404. Sin
+  hermana se cae a la home del otro idioma. Por lo mismo, el `hreflang` alternate solo se
+  emite si la traduccion existe: declarar como alternate una URL que da 404 es peor que
+  no declarar nada.
+- El `StatusBar` tambien perdia la pagina (sus links eran fijos a `/en/` y `/es/`, asi que
+  desde `/en/risk/` caias en la home española). Ahora recibe `altHref` de `Base`, que es
+  quien sabe que paginas existen.
+- Cubierto por `verify:ui` **C11** (toda pagina con barra de identidad lo tiene) y **C12**
+  (apunta a su hermana, o a la home si no existe).
+
 **Margin chrome panels** (visible only on viewports > 1400px):
 - `position: fixed; width: max(0px, calc((100vw - 1400px) / 2))` — no `max-width` cap
 - Left (`#margin-rain-left`) + Right (`#margin-rain-right`): Matrix character rain via canvas RAF loop

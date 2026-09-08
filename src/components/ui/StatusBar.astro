@@ -2,9 +2,14 @@
 interface Props {
   lang?: 'en' | 'es';
   surface?: 'game' | 'doc';
+  /* La ruta hermana ya resuelta por Base (que es quien sabe que paginas
+     existen). Antes estos links eran fijos a /en/ y /es/, asi que desde
+     /en/risk/ el toggle te dejaba en la home española, no en /es/risk/. */
+  altHref?: string;
 }
 
-const { lang = 'en', surface = 'doc' } = Astro.props;
+const { lang = 'en', surface = 'doc', altHref = '/en/' } = Astro.props;
+const aqui = Astro.url.pathname;
 
 const now = new Date();
 const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
@@ -24,9 +29,9 @@ const sysDate = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '
   <div class="bar-center">
     {/* El CV vive en la banda de identidad: acá estaba duplicado. */}
     <div class="lang-toggle">
-      <a href="/en/" class:list={['lang-btn', { active: lang === 'en' }]} aria-label="English">EN</a>
+      <a href={lang === 'en' ? aqui : altHref} class:list={['lang-btn', { active: lang === 'en' }]} aria-label="English">EN</a>
       <span class="sys-text">|</span>
-      <a href="/es/" class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
+      <a href={lang === 'es' ? aqui : altHref} class:list={['lang-btn', { active: lang === 'es' }]} aria-label="Español">ES</a>
     </div>
   </div>
 

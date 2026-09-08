@@ -32,6 +32,23 @@ const {
 
 const altLang = lang === 'en' ? 'es' : 'en';
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pablolerner.dev');
+
+/* Rutas que existen DE VERDAD, leidas del arbol de paginas en tiempo de build.
+   Sin esto el cambio de idioma manda a un 404 en las paginas que solo existen
+   en un idioma: /en/concept/* son internas y no tienen version en español. Y
+   se mantiene solo — el dia que exista /es/concept/audio, el boton empieza a
+   funcionar ahi sin tocar nada. */
+const RUTAS = new Set(
+  Object.keys(import.meta.glob('/src/pages/**/*.astro'))
+    .map(f => f.replace('/src/pages', '').replace(/\/index\.astro$/, '').replace(/\.astro$/, ''))
+    .map(r => r || '/'),
+);
+const aqui = Astro.url.pathname.replace(/\/$/, '') || '/';
+const hermana = aqui.replace(`/${lang}`, `/${altLang}`);
+const hayHermana = RUTAS.has(hermana);
+/* Sin hermana se cae a la home del otro idioma: perder el idioma es mejor que
+   perder la pagina. */
+const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
 ---
 
 <!doctype html>
@@ -46,7 +63,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     <!-- SEO bilingual -->
     <link rel="canonical" href={canonicalURL} />
     <link rel="alternate" hreflang={lang} href={canonicalURL} />
-    <link rel="alternate" hreflang={altLang} href={new URL(Astro.url.pathname.replace(`/${lang}/`, `/${altLang}/`), canonicalURL.origin)} />
+    {/* Solo si la traduccion EXISTE: declarar como alternate una URL que da
+        404 —lo que pasaba en /concept/, que solo esta en ingles— es peor que
+        no declarar nada. */}
+    {hayHermana && <link rel="alternate" hreflang={altLang} href={new URL(altHref, canonicalURL.origin)} />}
     <link rel="alternate" hreflang="x-default" href={new URL('/en/', canonicalURL.origin)} />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -82,6 +102,26 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
               ? 'Data Analyst & AI Engineer'
               : 'Data Analyst & AI Engineer'}
           </span>
+          {/* Cambio de idioma. Va ACA y no en el StatusBar porque el StatusBar
+              solo se renderiza en surface="doc": en la home —que es la escena y
+              la puerta de entrada del sitio— no habia forma de cambiar de
+              idioma, y encima estaba al pie, con scroll de por medio. Esta
+              franja es la unica que se renderiza en TODAS las paginas.
+              Y va de este lado y no con los otros botones porque no entra:
+              medido, los cinco suman 358.1px en 358 disponibles en un telefono
+              de 390 y el parlante se caia al renglon de abajo. Meterlo a la
+              fuerza significaba achicar los tres botones-palabra en todos los
+              telefonos para acomodar uno mas; de este lado el lugar ya estaba
+              libre (la linea del nombre ocupa 304 de 358).
+              Muestra el idioma DESTINO, no los dos: un "EN|ES" completo ocupa
+              el doble por la misma plata. */}
+          <a
+            class="os-lang-btn"
+            href={altHref}
+            hreflang={altLang}
+            aria-label={lang === 'en' ? 'Ver en español' : 'View in English'}
+            title={lang === 'en' ? 'Ver en español' : 'View in English'}
+          >{altLang.toUpperCase()}</a>
         </div>
         {/* STREET + PROJECTS + CONTACT, top-right of the identity bar —
             asked explicitly ("arriba a la derecha, en el nav bar superior"),
@@ -175,7 +215,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
 
       <!-- Footer -->
       {surface !== 'game' && (
-      <StatusBar lang={lang} surface={surface} />
+      <StatusBar lang={lang} surface={surface} altHref={altHref} />
       )}
     </div>
 
@@ -467,6 +507,39 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
      con opacity, lección 25— y además va tachado, para que el estado no
      dependa sólo del color. */
   .os-audio-btn {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+
+  /* Dos letras, sin corchetes: es un ajuste, no una accion de navegacion.
+     Lleva borde igual —tiene que leerse clickeable— pero en tono apagado para
+     no pelearle al nombre, que es lo primero que tiene que leerse de la
+     franja. Al hover pasa a mint como todo lo interactivo del sistema. */
+  .os-lang-btn {
+    display: inline-flex;
+    align-items: center;
+    /* auto y no un margen fijo: `.identity-left` ya es flex con wrap, asi que
+       esto lo empuja al borde derecho de SU linea. Cuando entra al lado del rol
+       queda al final de la franja, y cuando no entra —en un telefono de 375 el
+       nombre y el rol se comen la linea entera— baja alineado a la derecha en
+       vez de quedar huerfano debajo del nombre. */
+    margin-left: auto;
+    padding: 0.15rem 0.38rem;
+    border: 1px solid var(--ink-mid);
+    color: var(--sand-dim);
+    font-family: var(--font-mono);
+    /* 0.7rem = 11.2px. El piso del sistema son 11px y lo tenia en 0.58rem
+       (9.3px): lo marco C6, que es exactamente para lo que esta. */
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    vertical-align: middle;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .os-lang-btn:hover,
+  .os-lang-btn:focus-visible {
+    outline: none;
     color: var(--accent-bright);
     border-color: var(--accent-bright);
   }
