@@ -516,6 +516,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       e.currentTarget.blur();
     });
     document.getElementById('panel-close').addEventListener('click', (e) => {
+      /* Marcar como cerrado A MANO el cartel en cuyo círculo está parado el
+         jugador —ahí lo deja el teleport al seleccionar un proyecto—, o el
+         tick lo reabre enseguida. Se usa la MISMA condición que el tick
+         (`SPINNER_R`) y no `ref.opened`: si el panel se abrió clickeando el
+         cartel, `opened` todavía puede estar en false mientras el spinner
+         llena, y la ✕ tocada en ese hueco no marcaría nada. Se rearma solo
+         al salir del círculo. */
+      roleBillRefs.forEach(r => {
+        const dx = r.bx - charX, dz = r.bz - charZ;
+        if (dx * dx + dz * dz < SPINNER_R * SPINNER_R) r.dismissed = true;
+      });
       hidePanel();
       e.currentTarget.blur();
     });
@@ -1184,7 +1195,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       roleBillGroup.add(hit);
       zoneMeshes.push({ mesh: hit, key: role, projIdx });
 
-      roleBillRefs.push({ mesh: bill, frame, edges: edgeLines, hit, spinnerTicks, fillT: 0, opened: false, inBigCircle: false, borderColor, isHero, projIdx, bx, bz, lit: false });
+      roleBillRefs.push({ mesh: bill, frame, edges: edgeLines, hit, spinnerTicks, fillT: 0, opened: false, dismissed: false, inBigCircle: false, borderColor, isHero, projIdx, bx, bz, lit: false });
     });
 
     /* Warm amber glow light at the flagship — the finale (G7) */
@@ -2037,14 +2048,22 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
           tick.material.color.setHex(filled ? filledColor : 0x2a3040);
           tick.material.opacity = filled ? 0.85 : (ref.inBigCircle ? 0.7 : 0.4);
         });
-        if (ref.fillT >= 1 && !ref.opened) {
+        /* `dismissed` es el segundo pestillo, y sin él la ✕ del dossier no
+           servía para nada: cerrar a mano estando parado adentro del círculo
+           dejaba `opened` en false (lo limpia hidePanel) y en el frame
+           siguiente esta misma condición —fillT ya está en 1— volvía a abrir
+           el panel. Se veía como que el botón no hacía nada. Salir del
+           círculo lo rearma. */
+        if (ref.fillT >= 1 && !ref.opened && !ref.dismissed) {
           ref.opened = true;
           showPanel(activeRole, ref.projIdx);
-        } else if (!inSmallCircle && ref.opened) {
+        } else if (!inSmallCircle && (ref.opened || ref.dismissed)) {
           /* Closes immediately on stepping out — asked explicitly — not
              waiting for fillT to finish decaying back down. */
+          const estabaAbierto = ref.opened;
           ref.opened = false;
-          hidePanel();
+          ref.dismissed = false;
+          if (estabaAbierto) hidePanel();   /* ya cerrado a mano: no repetir el beep */
         }
       });
     }

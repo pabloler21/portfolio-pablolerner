@@ -257,14 +257,24 @@ try {
   record('M14', 'La ✕ cierra el cajon de proyectos', cajonCerrado && blancoOk,
     xBox ? `${Math.round(xBox.width)}×${Math.round(xBox.height)}px · cerro=${cajonCerrado}` : 'NO existe la ✕');
 
-  /* M15 — la misma salida en el dossier. Se abre a mano en vez de esperar la
-     proximidad: lo que se mide aca es el cableado del boton, no el trigger. */
-  await page.evaluate(() => document.getElementById('ps-panel').classList.add('open'));
-  await page.waitForTimeout(400);
+  /* M15 — la misma salida en el dossier, por el camino REAL: PROJECTS → una
+     fila → el teleport te deja parado en el centro del anillo → el spinner
+     llena → el panel se abre solo. Recien ahi se toca la ✕.
+     Forzar `.open` a mano —como hacia este test antes— pasaba en verde con el
+     bug adentro: cerrar estando parado en el circulo dejaba `opened` en false
+     y el tick siguiente REABRIA el panel (fillT ya estaba en 1), asi que la ✕
+     parecia no hacer nada. Por eso se espera un segundo y medio despues de
+     cerrar: lo que se mide es que SIGA cerrado, no que se cierre. */
+  await page.locator('#ps-projects-tab').tap();
+  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
+  await page.locator('#ps-projects-drawer .pd-row').first().tap().catch(() => {});
+  const seAbrioSolo = await page.waitForSelector('#ps-panel.open', { timeout: 20000 }).then(() => true).catch(() => false);
   await page.locator('#panel-close').tap().catch(() => {});
-  await page.waitForTimeout(400);
-  const panelCerrado = await page.locator('#ps-panel').evaluate(el => !el.classList.contains('open')).catch(() => false);
-  record('M15', 'La ✕ cierra el dossier', panelCerrado, panelCerrado ? 'cerro' : 'sigue abierto');
+  await page.waitForTimeout(1500);
+  const sigueCerrado = await page.locator('#ps-panel').evaluate(el => !el.classList.contains('open')).catch(() => false);
+  record('M15', 'La ✕ cierra el dossier y NO se reabre', seAbrioSolo && sigueCerrado,
+    !seAbrioSolo ? 'el panel no llego a abrirse por proximidad'
+                 : sigueCerrado ? 'cerrado 1.5s despues, parado en el circulo' : 'SE REABRIO solo');
 
   /* M16 — el paso en tactil. En vertical el fov sube a 85°, se ve mas mundo
      por pantalla y el mismo desplazamiento se siente mas lento. Se compensa

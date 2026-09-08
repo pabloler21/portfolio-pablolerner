@@ -325,6 +325,15 @@ del sitio.
   (`--accent-alert`), 44px de blanco de toque. Sin ella se entraba a un proyecto y
   no se salía: en un teléfono el cajón mide 300 de 390 y va de arriba abajo, no hay
   Escape ni lugar donde tocar afuera. Cubierto por `verify:mobile` M13/M14/M15.
+- **La ✕ del dossier necesita DOS pestillos, no uno.** `opened` es el one-shot que
+  evita que el panel se reabra en cada frame; `hidePanel()` lo limpia para que el
+  anillo pueda volver a dispararse. Pero al seleccionar un proyecto el teleport te
+  deja parado en el centro de ese anillo, así que cerrar a mano dejaba `fillT >= 1`
+  con `opened` en false y el tick siguiente reabría el panel: la ✕ parecía no hacer
+  nada. `dismissed` es el segundo pestillo, se marca sobre el cartel en cuyo círculo
+  está el jugador (misma condición que el tick, `SPINNER_R` — no `ref.opened`, que
+  todavía puede estar en false si el panel se abrió clickeando el cartel) y se rearma
+  solo al salir del círculo.
 - **El paso en táctil va ×1.3 (`MOVE_MULT`), y sólo en el piso.** En vertical el fov
   sube a 85°, se ve más mundo por pantalla y el mismo desplazamiento produce menos
   flujo óptico: a igual velocidad real, el paso se *siente* más lento. En el aire
@@ -566,3 +575,4 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 45. **Una chapa de 0.48rem no crea jerarquía.** El selector ofrecía dos filas con la misma forma, el mismo cuerpo y el mismo color, y toda la diferencia entre "el rol principal" y "el otro" era un badge `◆ PRIMARY` de 7.7px. Leído de corrido —y en un teléfono, donde el panel de preview directamente no se muestra— eso son dos opciones idénticas: una decisión que el visitante no tiene con qué tomar. La jerarquía la hacen el tamaño, el fondo y el riel; la etiqueta sólo la nombra una vez que ya se ve. Ojo con el orden al agregarla: `.persona-opt:hover` y `.persona-opt.is-alt` tienen la MISMA especificidad, así que el riel apagado del secundario le ganaba al mint del hover (lección 40 otra vez, en otro archivo).
 46. **"Corre muy lento en mobile" no era la velocidad.** En táctil no hay Shift, y la compuerta es `sprinting = wsadOn && !keys.Shift`: el personaje ya corría al máximo, más rápido que un escritorio caminando. Lo que cambia es cuánto mundo entra en la pantalla — el `fov` de Three.js es vertical, en un teléfono sube a 85° y el mismo desplazamiento produce menos flujo óptico, así que a igual velocidad real el paso se *siente* más lento. Es la lección 41 por el lado perceptual: antes el fov fijo sacaba los carteles del cuadro, ahora el fov adaptativo cambia la sensación de velocidad. Y al compensarlo, compensar sólo lo que se reportó: `MOVE_MULT` multiplica el paso en el piso y NO el salto, porque el alcance en el aire está calibrado contra el ancho del charco y no puede depender del dispositivo.
 47. **Un control flotante flota también sobre tus paneles.** El joystick es `position: fixed` con `z-index: 40` porque tiene que estar arriba de la escena; el cajón de proyectos tenía 11 porque sólo se comparaba contra el dossier (10). Nadie los comparó entre sí hasta que en un teléfono el cajón ocupó la pantalla entera y la mitad de abajo dejó de responder: los toques iban al joystick invisible que estaba encima. Cuando se agrega una capa fija, hay que revisar el z-index de TODO lo que pueda abrirse debajo, no sólo de sus vecinos.
+48. **Un test que fuerza el estado en vez de recorrer el camino real pasa en verde con el bug adentro.** M15 abría el dossier con `classList.add('open')`, tocaba la ✕ y comprobaba que la clase se hubiera ido. Verde — y el botón estaba roto en el producto: por el camino real el jugador está parado adentro del círculo del cartel (ahí lo deja el teleport al seleccionar un proyecto), así que el tick reabría el panel en el frame siguiente. El estado forzado nunca reproducía esa condición. Dos correcciones, las dos necesarias: recorrer el camino del usuario (PROJECTS → fila → el panel se abre SOLO por proximidad) y medir que **siga** cerrado un rato después, no que se cierre. Y antes de dar por bueno un test nuevo, correrlo contra el código sin el fix: si no falla, no está midiendo nada.
