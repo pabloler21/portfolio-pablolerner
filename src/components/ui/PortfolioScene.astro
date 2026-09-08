@@ -1138,11 +1138,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     if (!btn) return;
     btn.setAttribute('aria-pressed', String(on));
     btn.classList.toggle('is-off', !on);
-    /* El glifo NO cambia. Un ♪ tachado con el combining solidus (U+0338) sale
-       como un cuadrito en la mitad de las fuentes mono, y en la barra no entra
-       una etiqueta ON/OFF sin desbordar un teléfono. El estado se lee por
-       color Y por line-through (CSS), o sea que no depende sólo del color;
-       aria-pressed y el title lo dicen en palabras. */
+    /* El icono no se toca desde acá: los dos parlantes (normal y tachado)
+       están en el HTML y el CSS muestra uno según `.is-off`. Así el estado no
+       depende de que JS reconstruya nodos, y no depende sólo del color —
+       cambia la FORMA. aria-pressed y el title lo dicen en palabras. */
     btn.title = on
       ? (document.documentElement.lang === 'es' ? 'Música ambiente: encendida' : 'Ambient music: on')
       : (document.documentElement.lang === 'es' ? 'Música ambiente: apagada' : 'Ambient music: off');
@@ -1151,7 +1150,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   function startAmbient() {
     if (ambient || audioMuted()) return;
     const ctx = getAudioCtx();
-    ambient = createAmbient(ctx, 'terminal', { volume: 0.16, fadeIn: 4 });
+    ambient = createAmbient(ctx, 'terminal', { volume: 0.12, fadeIn: 4 });
     ambientPump = runLive(ambient, ctx);
     ambient.start();
     paintAudioBtn();

@@ -470,7 +470,7 @@ son el material de esa decision y cambiar de una a otra es una linea.
   zona) se descartaria junto con el arranque del audio.
 - **Un solo `AudioContext`** para beeps y musica (`getAudioCtx()`). Dos suenan igual y
   se pagan dos veces; Safari ademas los cuenta contra un presupuesto por pestaña.
-- **Se apaga con `[ ♪ ]`** en la barra de arriba —mismo precedente que `[ PROJECTS ]`,
+- **Se apaga con el boton del parlante** en la barra de arriba —mismo precedente que `[ PROJECTS ]`,
   un control que solo existe donde hay escena (`surface === 'game'`)— y apagarla se
   **recuerda para siempre** (`localStorage` `nier-audio`). Quien la apago una vez no
   quiere que vuelva sola en la proxima visita. No va en el HUD de la escena: ese tiene
@@ -481,9 +481,25 @@ son el material de esa decision y cambiar de una a otra es una linea.
   indicador. `data-audio` es ademas lo que el arnes mira para saber que `startAmbient()`
   corrio, sin meterle ganchos de test al producto.
 - **Se suspende el contexto con la pestaña oculta**, o la musica sigue sonando de fondo.
-- El estado apagado se atenua **con color y con `line-through`**, nunca con `opacity`
-  (leccion 25), y el bloque CSS va DESPUES del `:hover` de `.os-nav-btn` — misma
-  especificidad, gana el ultimo (leccion 40, tercera vez en este repo).
+- **El icono es un SVG inline, no un glifo.** `🔊`/`🔇` son emoji: salen en color, rompen
+  la barra mono y cada sistema los dibuja distinto. El SVG hereda `currentColor`, asi que
+  el mint de encendido y el atenuado de apagado salen del mismo CSS. Los DOS parlantes
+  (normal y tachado) estan en el HTML y el CSS muestra uno: el estado no depende de que
+  JS reconstruya nodos, y **no depende solo del color** — cambia la forma.
+- **Sin corchetes, a diferencia del resto de los botones.** Los corchetes enmarcan una
+  PALABRA en este lenguaje; alrededor de un icono son 23px sin significado, y esos 23px
+  importaban: la fila de cuatro botones cerraba con **0.7px de sobra** en un telefono de
+  390 y el boton se caia al renglon de abajo. Antes de tocar anchos, medir la fila.
+- El icono mide 13px y la caja de texto de los botones hermanos 10.99, asi que lleva
+  `margin-block: -1px`: sin eso el boton sale 2px mas alto y en una fila de cajas con
+  borde el desalineo se ve. `verify:mobile` **M20** controla que los cuatro sigan
+  midiendo igual, para que el ajuste no quede viejo.
+- El estado apagado se atenua **con color**, nunca con `opacity` (leccion 25), y el
+  bloque CSS va DESPUES del `:hover` de `.os-nav-btn` — misma especificidad, gana el
+  ultimo (leccion 40, tercera vez en este repo). El `:hover` del apagado ademas vive
+  dentro de `@media (hover: hover)`: **en tactil el `:hover` queda pegado despues de
+  tocar**, asi que el boton recien apagado se seguia viendo mint justo en el momento en
+  que hay que ver que se apago.
 
 ### Como esta verificado
 

@@ -114,7 +114,23 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
               aria-pressed="true"
               aria-label={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
               title={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
-            >[ ♪ ]</button>
+            >
+              {/* Parlante en SVG, no un glifo. 🔊/🔇 son emoji: salen en color,
+                  rompen la barra mono y cada sistema los dibuja distinto. Un
+                  SVG hereda currentColor, asi que el mint de "encendido" y el
+                  atenuado de "apagado" siguen saliendo del mismo CSS.
+                  Los DOS iconos van en el HTML y el CSS muestra uno: asi el
+                  estado no depende de que JS reconstruya nodos. */}
+              <svg class="ab-ico ab-on" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
+                <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
+                <path d="M16.5 8.6a5 5 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.7" />
+                <path d="M19.4 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.7" />
+              </svg>
+              <svg class="ab-ico ab-off" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
+                <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
+                <path d="M16.6 9 L21.6 15 M21.6 9 L16.6 15" fill="none" stroke="currentColor" stroke-width="1.9" />
+              </svg>
+            </button>
           )}
         </div>
       </div>
@@ -396,6 +412,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
   .id-ctas {
     display: flex;
     align-items: center;
+    justify-content: flex-end;   /* si en una pantalla muy angosta igual envuelve,
+                                    el boton cae alineado con los de arriba y no
+                                    colgando solo a la izquierda */
     gap: 0.4rem;
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -444,13 +463,51 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     border-color: var(--accent-bright);
   }
 
+  /* El boton lleva iconos, no texto: hay que centrarlos contra los corchetes. */
+  /* Sin corchetes y con padding propio: los corchetes enmarcan una PALABRA en
+     este lenguaje, alrededor de un icono son 23px sin significado. Y esos 23px
+     importaban: la fila de cuatro botones cerraba con 0.7px de sobra en un
+     telefono de 390 y el boton se caia al renglon de abajo. Sigue leyendose
+     como hermano de los otros porque conserva borde, alto y tipografia. */
+  .os-audio-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.45rem;
+    line-height: 1;
+  }
+
+  /* El icono mide 13px y la caja de texto de los botones hermanos mide 10.99,
+     asi que sin esto el boton sale 2px mas alto y en una fila de cajas con
+     borde el desalineo se ve. Se compensa 1px por lado en vez de achicar el
+     icono a 11px: el parlante tiene que LEERSE, que es todo el pedido.
+     verify:mobile M20 controla que los cuatro botones sigan midiendo igual. */
+  .ab-ico { display: block; margin-block: -1px; }
+  .ab-off { display: none; }
+
   .os-audio-btn.is-off {
     color: var(--sand-dim);
     border-color: var(--ink-mid);
-    text-decoration: line-through;
   }
 
-  .os-audio-btn.is-off:hover,
+  /* El parlante tachado ES el estado apagado, asi que no hace falta el
+     line-through que habia antes (y sobre un SVG solo habria tachado los
+     corchetes). El estado sigue sin depender solo del color: cambia la
+     FORMA del icono. */
+  .os-audio-btn.is-off .ab-on { display: none; }
+  .os-audio-btn.is-off .ab-off { display: block; }
+
+  /* Detras de @media (hover: hover) a proposito. En tactil el :hover queda
+     PEGADO despues de tocar, asi que el boton recien apagado se seguia viendo
+     mint — justo en el momento en que el visitante necesita ver que se apago.
+     En escritorio el hover del apagado sigue encendiendose. */
+  @media (hover: hover) {
+    .os-audio-btn.is-off:hover {
+      color: var(--accent-bright);
+      border-color: var(--accent-bright);
+    }
+  }
+
   .os-audio-btn.is-off:focus-visible {
     color: var(--accent-bright);
     border-color: var(--accent-bright);

@@ -305,11 +305,16 @@ try {
     data: document.documentElement.dataset.audio,
     pressed: document.getElementById('ps-audio-toggle')?.getAttribute('aria-pressed'),
     guardado: localStorage.getItem('nier-audio'),
-    tachado: getComputedStyle(document.getElementById('ps-audio-toggle')).textDecorationLine,
+    /* El icono es la mitad del mensaje: apagado tiene que mostrar el parlante
+       TACHADO, no el normal en gris. Si el estado dependiera solo del color,
+       un daltonico no lo distinguiria. */
+    iconoOn: getComputedStyle(document.querySelector('#ps-audio-toggle .ab-on')).display,
+    iconoOff: getComputedStyle(document.querySelector('#ps-audio-toggle .ab-off')).display,
   }));
-  record('M18', 'El boton la corta y queda tachado',
-    btnAntes === 'true' && tras.data === 'off' && tras.pressed === 'false' && /line-through/.test(tras.tachado),
-    `data-audio=${tras.data} · aria-pressed=${tras.pressed} · ${tras.tachado}`);
+  record('M18', 'El boton la corta y muestra el parlante tachado',
+    btnAntes === 'true' && tras.data === 'off' && tras.pressed === 'false'
+      && tras.iconoOn === 'none' && tras.iconoOff !== 'none',
+    `data-audio=${tras.data} · aria-pressed=${tras.pressed} · icono normal=${tras.iconoOn} tachado=${tras.iconoOff}`);
 
   /* M19 — apagarla se recuerda. Sin esto la musica vuelve sola en cada visita
      de alguien que ya dijo que no la queria, que es peor que no tener boton. */
@@ -324,6 +329,16 @@ try {
   record('M19b', 'Y no vuelve sola al recargar',
     trasRecarga.data === 'off' && trasRecarga.pressed === 'false',
     `data-audio=${trasRecarga.data} · aria-pressed=${trasRecarga.pressed}`);
+
+  /* M20 — la barra es una fila de cajas con borde: si una mide distinto, el
+     desalineo se ve. El boton de audio lleva un SVG de 13px donde los otros
+     llevan una caja de texto de 10.99, asi que se compensa con margin-block
+     negativo — y esto es lo que avisa si alguien cambia el tamaño del icono o
+     la tipografia de la barra y el ajuste queda viejo. */
+  const alturas = await page.evaluate(() =>
+    [...document.querySelector('.id-ctas').children].map(e => +e.getBoundingClientRect().height.toFixed(2)));
+  const parejas = new Set(alturas).size === 1;
+  record('M20', 'Los botones de la barra miden lo mismo', parejas, alturas.join(' / '));
 
   await phone.close();
 
