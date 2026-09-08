@@ -210,6 +210,18 @@ que a más intensidad los altos recortan y el personaje lee naranja fluorescente
 `position`/`rotation` del grupo en cada frame, así que va **envuelto en un `THREE.Group`**:
 el wrapper es lo que maneja la escena, el nodo interno conserva su transform.
 
+**Salto y charcos de ácido**: `Space` dispara un salto procedural (no hay clip
+de salto en el GLB). Dos cráteres con líquido tóxico cortan la avenida en
+`CRATER_ZS = [-5, -35]`, `CRATER_HALF_W 1.8` → bandas de 3.6u. La compuerta de
+`tick()` es **booleana sobre `jumping`**: en el aire se cruza siempre y la
+altura del arco **no participa** — `JUMP_H` es puramente estético. Lo que
+decide es el alcance horizontal, `JUMP_DUR` × velocidad × `JUMP_SPEED_MULT` =
+11.58u. En el piso, corriendo se cae y se respawnea en la entrada; caminando
+(Shift) se choca contra el borde. `jumpT` avanza con `dtScale`, nunca por
+frame (lección 34), y el arco **no** se achata bajo `prefers-reduced-motion`:
+es feedback de una tecla del jugador, no animación ambiente. Cubierto por
+`npm run verify:jump`.
+
 **Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8**, con crossfade
 entre `Walking` (timeScale 1.8) y `Running` (timeScale 1.3) — los clips de Mixamo son *in
 place*, así que su cadencia va atada a `WALK_SPEED` o los pies patinan · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
@@ -388,3 +400,5 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 31. **Mixamo entrega FBX y le pone `mixamo.com` de nombre a TODOS los clips.** Bajar tres animaciones y cargarlas juntas hace que se pisen entre sí: hay que renombrarlas por archivo. Además, sin tildar *In Place* el clip trae su propio desplazamiento (`Running` traía 739 unidades) y el personaje se va caminando solo peleando contra WASD — se anula la pista de posición horizontal de la cadera conservando el rebote vertical.
 32. **Convertir FBX → GLB sin Blender**: cargar los FBX con `FBXLoader` en una página headless, juntar los clips y exportar con `GLTFExporter({ binary: true, animations })`. Dos trampas: exportar con un override de materiales activo lo hornea dentro del GLB, y `GLTFExporter` embebe las texturas sin comprimir — las de Mixamo vienen en 2048 y el archivo pasaba de 7 a 41 MB. Reescalarlas a 256 antes de exportar lo deja en 7.2 MB.
 33. **`astro check` OOMea con el heap por defecto de Node en este proyecto.** Usar `npm run verify:check` (`--max-old-space-size=8192`). Baseline a 2026-08-20: 347 errores, 0 warnings, 118 hints.
+34. **Si normalizás el movimiento por `dtScale` pero dejás el reloj de una acción atado al frame, el alcance de esa acción depende de los Hz del monitor.** `charX/charZ` avanzaban por segundo (`dtScale`) y `jumpT` avanzaba por frame (`+= 0.016`): el salto duraba 87 *frames*, no 1.4 segundos, así que en 60Hz cubría 11.58u y en 144Hz 4.82u. Con `prefers-reduced-motion` —prendido de fábrica en Windows, lección 8— el paso se duplicaba y caía a 2.41u, menos que los 3.6u del charco de ácido: imposible de cruzar, y sin ningún error a la vista. Cuando dos magnitudes se suman en el mismo tick, las dos van en la misma unidad de tiempo.
+35. **Antes de tocar la constante que nombra el síntoma, buscá quién la lee.** "El salto se queda corto, subile la altura" es un diagnóstico razonable y equivocado: la compuerta del charco es `if (!jumping)`, booleana, y `jumpY` no se lee en ningún lado salvo para pintar la Y del personaje. Con `JUMP_H` en 1.3 o en 10 el resultado es el mismo. Peor: el comentario del código prometía un umbral de `jumpY` que nunca existió. Un `grep` de tres segundos por la variable separa la constante estética de la que decide.

@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "verify:ui": "astro build && node scripts/verify-ui.mjs",
-    "verify": "npm run verify:ui",
+    "verify:jump": "node scripts/verify-jump.mjs",
+    "verify": "npm run verify:jump && npm run verify:ui",
     "verify:check": "node --max-old-space-size=8192 ./node_modules/.bin/astro check"
   },
   "dependencies": {

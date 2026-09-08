@@ -168,12 +168,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   let prevMoving = false;
   let animClock = null;
   let jumping = false; let jumpT = 0;   /* salto procedural — no hay clip Jump en el GLB (sólo Running/Walking/Idle) */
-  /* Flatter leap, not a high hop — asked explicitly. Height cut back down,
-     duration kept long-ish (still clears the 3.6u crater gap at normal
-     running speed alone), and horizontal movement gets an extra forward
-     boost (JUMP_SPEED_MULT, applied in tick()) while airborne so it reads
-     as a projected leap rather than a vertical bounce. */
-  const JUMP_DUR = 1.4, JUMP_H = 1.3;
+  /* JUMP_H es SÓLO estética: la compuerta del charco es booleana sobre
+     `jumping` (ver CRATER_ZS abajo), así que la altura no decide nada. Quien
+     decide es JUMP_DUR × la velocidad horizontal — 11.58u de alcance, contra
+     un charco de 3.6u.
+     Historia de la altura, para que no se revierta sola: primero se pidió un
+     salto plano ("flatter leap, not a high hop") y quedó en 1.3; después se
+     pidió más altura porque el salto "se queda corto" y subió a 1.8 (= la
+     altura del personaje), que es lo que hace que el brinco LEA como que
+     pasa por encima del charco. El que se quedaba corto igual era el
+     alcance, no la altura; se arregló aparte en tick(). */
+  const JUMP_DUR = 1.4, JUMP_H = 1.8;
   const JUMP_SPEED_MULT = 1.5;
   const keys = {};
   const WALK_SPEED = 0.042;
@@ -207,9 +212,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   const SPINNER_TICKS = 10;    /* segments in the loading-spinner ring, lighting up one by one */
   const SPINNER_FILL_TIME = 1.1;   /* seconds to fully fill while standing in the small circle */
   const SPINNER_R = 1.3;       /* the SMALL circle's radius — must physically stand inside this (not just the big 8u sensor) for the fill to progress */
-  /* Craters before the 1st and 2nd billboard — a soft wall blocks a grounded
-     character from crossing while jumping (jumpY above the threshold in
-     tick()) passes straight through. */
+  /* Craters before the 1st and 2nd billboard. La compuerta de tick() es
+     BOOLEANA sobre `jumping`: en el aire se pasa siempre, sin importar la
+     altura del arco (no hay ningún umbral de jumpY, aunque este comentario
+     dijo durante un tiempo que sí). En el piso, corriendo se cae y se
+     respawnea; caminando (Shift) se choca contra el borde como una pared. */
   const CRATER_ZS = [-5, -35];   /* 2nd moved to a different stretch of the avenue entirely, not squeezed right after the 1st between boards 1 and 2 */
   const CRATER_HALF_W = 1.8;     /* bigger, asked explicitly */
   const OBELISK_X = 0, OBELISK_Z = -84;   /* must match buildCityDressing's obX/obZ — touch-to-navigate check lives in tick() */
@@ -1825,7 +1832,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        just with a shorter arc. */
     let jumpY = 0;
     if (jumping) {
-      jumpT += reduced ? 0.032 : 0.016;
+      /* El reloj del salto avanza en TIEMPO REAL, no por frame. Antes sumaba
+         un paso fijo por tick mientras el desplazamiento horizontal ya venía
+         normalizado por dtScale, así que el salto duraba 87 FRAMES en vez de
+         1.4 segundos: a más Hz, menos distancia cubierta en el aire. En un
+         monitor de 144Hz el alcance caía a 4.8u y con reduced-motion (que
+         duplicaba el paso) a 2.4u — menos que los 3.6u del charco, o sea
+         imposible de cruzar. La duración del salto es gameplay, no
+         decoración: la lección 8 del CLAUDE.md dice que el guard de
+         reduced-motion nunca va sobre la entrada del usuario, sólo sobre lo
+         visual (acá, la altura del arco unas líneas más abajo). */
+      jumpT += 0.016 * dtScale;
       const p = jumpT / JUMP_DUR;
       if (p >= 1) {
         jumping = false;
@@ -1834,7 +1851,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
           spread: 0.045, vy: 0.028, grav: -0.002, size: 0.26, opacity: 0.75, life: 0.4,
         });
       }
-      else jumpY = Math.sin(p * Math.PI) * (reduced ? JUMP_H * 0.4 : JUMP_H);
+      /* El arco NO se achata bajo reduced-motion: es el feedback directo de
+         una tecla que apretó el jugador, no una animación ambiente. Achatarlo
+         al 0.4 hacía que en Windows —donde el guard viene prendido de fábrica—
+         el salto se viera como un tropezón. */
+      else jumpY = Math.sin(p * Math.PI) * JUMP_H;
     }
 
     if (charGroup) charGroup.position.set(charX, bobY + jumpY, charZ);
