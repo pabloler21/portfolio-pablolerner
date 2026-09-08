@@ -307,6 +307,29 @@ medio. Esta franja es la unica que se renderiza en TODAS las paginas.
 - Cubierto por `verify:ui` **C11** (toda pagina con barra de identidad lo tiene) y **C12**
   (apunta a su hermana, o a la home si no existe).
 
+**Rail de contacto (`.ps-icon-rail`)** — GitHub/LinkedIn/formulario, en todas las
+paginas. **Tiene DOS disposiciones segun haya o no margen donde vivir**, y es el mismo
+elemento en las dos (no hay copia en el HTML):
+
+- **Desde 1400px**: columna vertical `position: fixed` en el margen izquierdo, la misma
+  franja donde cae la lluvia. Solo iconos.
+- **Debajo de 1400px, en `surface="doc"`**: deja de flotar. Pasa a `position: static`,
+  fila horizontal al pie de la pagina, justo encima del `StatusBar`, con etiqueta
+  (`GITHUB · LINKEDIN · EMAIL`, `CORREO` en español) y 44px de blanco de toque. Debajo de
+  360px se caen las palabras y quedan los iconos. El corte esta medido con la fuente real
+  y **en los dos idiomas**: la fila pide 298.3px en ingles y 305.6 en español (`CORREO` es
+  mas largo que `EMAIL`); a 360 hay 326 disponibles y sobra, a 344 hay 310 y en español
+  quedan 4.4px de aire, a 320 hay 286 y no entra.
+- **Debajo de 1400px, en `surface="game"`**: sigue fija (la escena ocupa el viewport y no
+  scrollea: no hay flujo donde caer), metida hacia adentro con `padding-left`.
+
+Por eso el `<nav>` esta escrito **al final del shell, despues de `</main>`**: cuando es
+`fixed` su lugar en el DOM da igual, asi que se lo pone donde tiene que caer cuando NO lo
+es. La version anterior lo tenia arriba y flotando siempre, y en `/contact/` a 320px los
+iconos caian sobre las etiquetas NAME/EMAIL del formulario (leccion 49). Cubierto por
+`verify:ui` **C13**, que mide el solapamiento REAL de rectangulos contra todo `<main>` a
+320 y 390 en las 6 paginas documento — no la posicion del rail, que no es lo que importa.
+
 **Margin chrome panels** (visible only on viewports > 1400px):
 - `position: fixed; width: max(0px, calc((100vw - 1400px) / 2))` — no `max-width` cap
 - Left (`#margin-rain-left`) + Right (`#margin-rain-right`): Matrix character rain via canvas RAF loop
@@ -690,3 +713,5 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 46. **"Corre muy lento en mobile" no era la velocidad.** En táctil no hay Shift, y la compuerta es `sprinting = wsadOn && !keys.Shift`: el personaje ya corría al máximo, más rápido que un escritorio caminando. Lo que cambia es cuánto mundo entra en la pantalla — el `fov` de Three.js es vertical, en un teléfono sube a 85° y el mismo desplazamiento produce menos flujo óptico, así que a igual velocidad real el paso se *siente* más lento. Es la lección 41 por el lado perceptual: antes el fov fijo sacaba los carteles del cuadro, ahora el fov adaptativo cambia la sensación de velocidad. Y al compensarlo, compensar sólo lo que se reportó: `MOVE_MULT` multiplica el paso en el piso y NO el salto, porque el alcance en el aire está calibrado contra el ancho del charco y no puede depender del dispositivo.
 47. **Un control flotante flota también sobre tus paneles.** El joystick es `position: fixed` con `z-index: 40` porque tiene que estar arriba de la escena; el cajón de proyectos tenía 11 porque sólo se comparaba contra el dossier (10). Nadie los comparó entre sí hasta que en un teléfono el cajón ocupó la pantalla entera y la mitad de abajo dejó de responder: los toques iban al joystick invisible que estaba encima. Cuando se agrega una capa fija, hay que revisar el z-index de TODO lo que pueda abrirse debajo, no sólo de sus vecinos.
 48. **Un test que fuerza el estado en vez de recorrer el camino real pasa en verde con el bug adentro.** M15 abría el dossier con `classList.add('open')`, tocaba la ✕ y comprobaba que la clase se hubiera ido. Verde — y el botón estaba roto en el producto: por el camino real el jugador está parado adentro del círculo del cartel (ahí lo deja el teleport al seleccionar un proyecto), así que el tick reabría el panel en el frame siguiente. El estado forzado nunca reproducía esa condición. Dos correcciones, las dos necesarias: recorrer el camino del usuario (PROJECTS → fila → el panel se abre SOLO por proximidad) y medir que **siga** cerrado un rato después, no que se cierre. Y antes de dar por bueno un test nuevo, correrlo contra el código sin el fix: si no falla, no está midiendo nada.
+49. **Meter un elemento hacia adentro no es decidir qué hace cuando no hay margen: sigue flotando.** La lección 39 dejó el rail de iconos con `padding-left` para que no se saliera de la pantalla, y eso corrigió el desborde y nada más: seguía siendo una columna `position: fixed` sobre una página donde no hay columna de margen. En `/contact/` a 320px llegaba a `x = 26.8` con el formulario empezando en 10.4 — los iconos encima de las etiquetas NAME/EMAIL — y a 360 quedaban a 3.6px del borde de la columna, que se lee igual de mal. El arreglo no era moverlo unos píxeles sino cambiarle la naturaleza: **debajo de 1400px, en una página documento, el rail deja de ser chrome y pasa a ser contenido en flujo** (fila horizontal al pie, encima del `StatusBar`), y ahí no puede pisar nada a ningún ancho. Un solo elemento con dos disposiciones, no dos copias en el HTML: como arriba de 1400 es `fixed`, su lugar en el DOM da igual, así que se lo escribe donde tiene que caer cuando NO lo es. En la escena sí sigue fijo, porque ahí no hay flujo donde caer.
+50. **Un backtick adentro de un comentario `{/* ... */}` de Astro rompe el compilador, y el error apunta a otra línea.** Un comentario con `` `position: fixed` `` adentro tiraba `[CompilerError] Unexpected token` en `Base.astro:228:5` —un `</div>` perfectamente balanceado, 37 líneas más abajo— porque el parser trata el backtick como apertura de template literal y se come el resto del archivo buscando el cierre. Media hora de contar `<div>`s por un error que no estaba donde decía. En los comentarios de expresión, cero backticks (y ojo también con `<`).

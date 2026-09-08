@@ -175,31 +175,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
         </div>
       </div>
 
-      {/* Contact icon rail — GitHub/LinkedIn/email, fixed in the left margin
-          column. Moved here from PortfolioScene (asked explicitly — "que se
-          vean los links de LinkedIn, GitHub" on every page, not just the
-          game); the rain behind it is still game-only, this just always
-          renders in that same screen position. */}
-      <nav class="ps-icon-rail" aria-label="Contact links">
-        <a href="https://github.com/pabloler21" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.1 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55 0-.27-.01-1.16-.02-2.1-3.2.7-3.88-1.35-3.88-1.35-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.78 1.08.78 2.17 0 1.57-.01 2.83-.01 3.22 0 .3.2.66.79.55A10.53 10.53 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg>
-        </a>
-        <a href="https://www.linkedin.com/in/pablo-lerner-591180336" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.44-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z"/></svg>
-        </a>
-        {/* Va al formulario, NO a un mailto. Un `mailto:` no hace nada visible
-            en una maquina sin cliente de correo configurado —que es la de casi
-            cualquiera que usa Gmail en el navegador— asi que era el unico de
-            los tres iconos que podia no responder al tocarlo. Y publicaba la
-            direccion personal en texto plano en las 11 paginas del sitio, que
-            es justo lo que rastrean los recolectores de spam. El formulario ya
-            existe, sale desde contacto@pablolerner.dev y trae reply_to,
-            honeypot y rate limit. */}
-        <a href={`/${lang}/contact/`} aria-label={lang === 'en' ? 'Contact' : 'Contacto'} title={lang === 'en' ? 'Contact' : 'Contacto'}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18.5v-13Zm2.2.5 7.3 5.47a.9.9 0 0 0 1 0L19.8 6H4.2Zm15.8 1.6-7.02 5.26a2.9 2.9 0 0 1-3.36 0L4.6 7.6v10.9h15.4V7.6Z"/></svg>
-        </a>
-      </nav>
-
       <!-- Navigation -->
       {surface !== 'game' && showTabs && (
       <header class="os-header">
@@ -212,6 +187,39 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
       <main class="os-main">
         <slot />
       </main>
+
+      {/* Rail de contacto — GitHub/LinkedIn/formulario. Pedido explicito
+          ("que se vean los links de LinkedIn, GitHub" en todas las paginas,
+          no solo en el juego).
+
+          VIVE ACA, al final del shell, y no arriba junto a la franja de
+          identidad, porque tiene DOS disposiciones segun haya o no margen
+          donde vivir (ver el CSS de .ps-icon-rail):
+            - Desde 1400px: fija en la columna de margen izquierda, vertical.
+              Al ser fija, su lugar en el DOM no la mueve.
+            - Debajo de 1400px, en una pagina documento: deja de flotar y pasa
+              a ser contenido en flujo, una fila horizontal al pie, justo
+              encima del StatusBar. Ahi si importa donde este escrita.
+          Un solo elemento con dos formas, no dos copias en el HTML. */}
+      <nav class="ps-icon-rail" aria-label="Contact links">
+        <a href="https://github.com/pabloler21" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.1 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55 0-.27-.01-1.16-.02-2.1-3.2.7-3.88-1.35-3.88-1.35-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.78 1.08.78 2.17 0 1.57-.01 2.83-.01 3.22 0 .3.2.66.79.55A10.53 10.53 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg><span class="rail-lbl">GITHUB</span>
+        </a>
+        <a href="https://www.linkedin.com/in/pablo-lerner-591180336" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.44-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z"/></svg><span class="rail-lbl">LINKEDIN</span>
+        </a>
+        {/* Va al formulario, NO a un mailto. Un `mailto:` no hace nada visible
+            en una maquina sin cliente de correo configurado —que es la de casi
+            cualquiera que usa Gmail en el navegador— asi que era el unico de
+            los tres iconos que podia no responder al tocarlo. Y publicaba la
+            direccion personal en texto plano en las 11 paginas del sitio, que
+            es justo lo que rastrean los recolectores de spam. El formulario ya
+            existe, sale desde contacto@pablolerner.dev y trae reply_to,
+            honeypot y rate limit. */}
+        <a href={`/${lang}/contact/`} aria-label={lang === 'en' ? 'Contact' : 'Contacto'} title={lang === 'en' ? 'Contact' : 'Contacto'}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18.5v-13Zm2.2.5 7.3 5.47a.9.9 0 0 0 1 0L19.8 6H4.2Zm15.8 1.6-7.02 5.26a2.9 2.9 0 0 1-3.36 0L4.6 7.6v10.9h15.4V7.6Z"/></svg><span class="rail-lbl">{lang === 'en' ? 'EMAIL' : 'CORREO'}</span>
+        </a>
+      </nav>
 
       <!-- Footer -->
       {surface !== 'game' && (
@@ -646,27 +654,91 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   }
 
   .ps-icon-rail a {
+    display: flex;
+    align-items: center;
     color: var(--sand);   /* the brightest token this palette allows — no pure #fff */
     transition: color 0.15s ease, transform 0.15s ease;
   }
 
-  /* Debajo de 1400px no hay margen donde vivir: `max(0px, calc(...))` da 0 y
-     los iconos de 18px se desbordan mitad afuera de la pantalla (x = -9).
-     Estaba roto en TODO viewport menor a 1400, no solo en telefonos. Se le da
-     ancho propio y se lo mete adentro. Queda a media altura por la izquierda,
-     donde no pisa ni el minimapa (arriba) ni los controles tactiles (abajo). */
+  /* La etiqueta sólo existe en la fila del pie: en el rail vertical del margen
+     no entra (la columna mide ~30px) y el icono ahí ya tiene su aria-label. */
+  .ps-icon-rail .rail-lbl { display: none; }
+
+  .ps-icon-rail a:hover,
+  .ps-icon-rail a:focus-visible {
+    color: var(--accent-bright);
+    transform: translateY(-1px);
+  }
+
+  /* ── Sin margen: el rail cambia de forma, no de lugar ──
+     Debajo de 1400px `max(0px, calc((100vw - 1400px) / 2))` vale CERO, así que
+     una columna fija de 18px queda flotando contra el borde izquierdo, ENCIMA
+     del contenido. En un teléfono angosto eso se cruza con el formulario de
+     /contact/: medido a 320px el rail llega a x=26.8 y `.contact-wrap` empieza
+     en 10.4 — los iconos caen sobre las etiquetas NAME/EMAIL. A 360 quedan a
+     3.6px del borde de la columna, que se lee igual de mal.
+
+     Los bloques responsive van DESPUÉS de la regla base: misma especificidad,
+     gana el último (lección 40).
+
+     La corrección anterior (meter el rail hacia adentro con padding) mantenía
+     el elemento flotando y sólo movía el choque unos píxeles. Acá el rail deja
+     de ser chrome de margen y pasa a ser lo que realmente es cuando no hay
+     margen: contenido. En una página documento cae en flujo al pie, horizontal,
+     encima del StatusBar — así no puede solaparse con nada a ningún ancho.
+     Es un solo elemento con dos disposiciones; arriba de 1400 sigue siendo el
+     rail vertical del margen y su lugar en el DOM no lo mueve, porque es fijo. */
   @media (max-width: 1400px) {
-    .ps-icon-rail {
+    html[data-surface='doc'] .ps-icon-rail {
+      position: static;
+      transform: none;
+      width: auto;
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 1.4rem 1rem;
+      border-top: var(--border);
+    }
+
+    html[data-surface='doc'] .ps-icon-rail a {
+      gap: 0.5rem;
+      /* 44px de blanco de toque: en flujo el icono son 18px y con el dedo eso
+         no se acierta. Mismo mínimo que la ✕ de los paneles de la escena. */
+      min-height: 44px;
+      padding: 0 0.7rem;
+      color: var(--sand-dim);
+    }
+
+    html[data-surface='doc'] .ps-icon-rail .rail-lbl {
+      display: inline;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+    }
+
+    /* En la escena no hay flujo donde caer: el shell es el viewport y no
+       scrollea, así que ahí el rail sigue fijo, sólo metido hacia adentro.
+       A media altura por la izquierda no pisa el minimapa (arriba) ni los
+       controles táctiles (abajo, `.tc-root`), y los paneles del dossier
+       (z 45/46) se dibujan por encima. */
+    html[data-surface='game'] .ps-icon-rail {
       width: auto;
       padding-left: 0.55rem;
       align-items: flex-start;
     }
   }
 
-  .ps-icon-rail a:hover,
-  .ps-icon-rail a:focus-visible {
-    color: var(--accent-bright);
-    transform: translateY(-1px);
+  /* Teléfono angosto: las tres palabras no entran en una línea. El corte está
+     medido con la fuente real y en los DOS idiomas — la fila pide 298.3px en
+     inglés y 305.6 en español (CORREO es más largo que EMAIL). A 360 hay 326
+     disponibles y sobra; a 344 hay 310 y en español quedan 4.4px de aire, que
+     es menos de lo que mueve un ajuste de fuente. Debajo de 360 se caen las
+     palabras y quedan los tres iconos, con más blanco de toque para compensar;
+     el aria-label sigue nombrándolos para quien no ve el icono. */
+  @media (max-width: 359px) {
+    html[data-surface='doc'] .ps-icon-rail .rail-lbl { display: none; }
+    html[data-surface='doc'] .ps-icon-rail a { padding: 0 1.1rem; }
   }
 
   /* ── Margin chrome — NieR chrome panels in browser margins beyond 1200px ── */

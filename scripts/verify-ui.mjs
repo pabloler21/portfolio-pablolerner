@@ -133,6 +133,34 @@ const RAIN_PROBE = () => {
   return { overlaps };
 };
 
+/* Solapamiento del rail de contacto contra el contenido de la pagina.
+   Devuelve un renglon por choque, con los pixeles de cruce, para que el
+   detalle diga cuanto y contra que — un booleano no alcanza para saber si
+   la correccion movio el problema o lo resolvio. */
+const RAIL_PROBE = () => {
+  const rail = document.querySelector('.ps-icon-rail');
+  if (!rail) return ['falta .ps-icon-rail'];
+  const r = rail.getBoundingClientRect();
+  const choques = [];
+  const victimas = document.querySelectorAll('.os-main, .os-main *, .os-identity, .status-bar');
+  for (const el of victimas) {
+    if (rail.contains(el) || el.contains(rail)) continue;
+    const b = el.getBoundingClientRect();
+    if (b.width < 1 || b.height < 1) continue;
+    const ox = Math.min(r.right, b.right) - Math.max(r.left, b.left);
+    const oy = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+    if (ox > 1 && oy > 1) {
+      const nombre = el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/)[0] : '');
+      choques.push(`pisa ${nombre} (${Math.round(ox)}x${Math.round(oy)}px)`);
+    }
+  }
+  /* Un rail metido a la fuerza tampoco puede empujar la pagina a lo ancho. */
+  if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) {
+    choques.push(`desborde horizontal ${document.documentElement.scrollWidth}>${document.documentElement.clientWidth}`);
+  }
+  return choques;
+};
+
 /* ── chequeos de fuente ───────────────────────────────────────── */
 
 async function grepSrc(re) {
@@ -204,6 +232,32 @@ try {
     broken.length ? broken.join(', ') : `${navTargets.size - missingAssets.length} destinos OK`);
   if (missingAssets.length) {
     console.log(`\n  ⚠ asset pendiente de contenido (no bloquea C4): ${missingAssets.join(', ')}`);
+  }
+
+  /* C13 — el rail de contacto no se monta encima del contenido en telefono.
+     Debajo de 1400px la columna de margen mide CERO, asi que un rail fijo ahi
+     queda flotando sobre la pagina: en /contact/ a 320px llegaba a x=26.8 con
+     el formulario empezando en 10.4, o sea los iconos sobre las etiquetas
+     NAME/EMAIL. Se mide el solapamiento REAL de rectangulos contra todo lo que
+     hay en <main> y en el pie, no la posicion del rail: lo que importa no es
+     donde esta sino que no pise nada. Ancho 320 (el telefono mas angosto que
+     se sigue usando) y 390 (el comun). */
+  {
+    const chico = await browser.newContext({ viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true });
+    const comun = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const choques = [];
+    for (const [ancho, c] of [[320, chico], [390, comun]]) {
+      const pg = await c.newPage();
+      for (const url of [...DOC_PAGES, '/en/contact/', '/es/contact/']) {
+        await pg.goto(BASE + url, { waitUntil: 'load' });
+        await pg.waitForTimeout(600);
+        for (const hit of await pg.evaluate(RAIL_PROBE)) choques.push(`${ancho}px ${url} ${hit}`);
+      }
+      await pg.close();
+      await c.close();
+    }
+    record('C13', 'El rail de contacto no pisa el contenido (320/390)', choques.length === 0,
+      choques.length ? choques.slice(0, 6).join(' · ') : 'sin solapamiento en 12 combinaciones');
   }
 
   await page.goto(BASE + GAME_PAGE, { waitUntil: 'load' });
