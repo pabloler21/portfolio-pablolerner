@@ -1150,7 +1150,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   function startAmbient() {
     if (ambient || audioMuted()) return;
     const ctx = getAudioCtx();
-    ambient = createAmbient(ctx, 'terminal', { volume: 0.12, fadeIn: 4 });
+    ambient = createAmbient(ctx, 'terminal', { volume: 0.085, fadeIn: 4 });
     ambientPump = runLive(ambient, ctx);
     ambient.start();
     paintAudioBtn();

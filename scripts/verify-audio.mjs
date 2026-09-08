@@ -14,6 +14,7 @@
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -83,6 +84,7 @@ function wav(samples, sampleRate) {
 const browser = await chromium.launch({ executablePath: resolveChrome(), env: browserEnv(), args: ['--no-sandbox'] });
 const VARIANTS = ['engine', 'lofi', 'terminal'];
 const stats = {};
+let despachado = null;
 
 try {
   const page = await browser.newPage();
@@ -215,12 +217,44 @@ try {
       await writeFile(path.join(OUT, `${variant}.wav`), wav(m.wavData, SR / 2));
     }
   }
+  /* El volumen que SE DESPACHA. Todo lo de arriba se renderiza a 0.18, que es
+     el volumen de audicion de la pagina de concepto — no el que suena en el
+     sitio. Esto lee el volumen real de PortfolioScene y renderiza a ESE nivel,
+     porque "suave" es un requisito del producto y hasta ahora no lo medía
+     nadie: alguien podia subirlo a 0.5 y la suite seguia en verde. */
+  const srcScene = readFileSync(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
+  const mv = srcScene.match(/createAmbient\(ctx, '(\w+)', \{ volume: ([\d.]+)/);
+  despachado = { variante: mv?.[1], vol: parseFloat(mv?.[2] ?? '0') };
+  despachado.med = await page.evaluate(async ({ variante, vol, SR, SEED }) => {
+    const mod = await import('/ambient.js');
+    const ctx = new OfflineAudioContext(2, SR * 40, SR);
+    const h = mod.createAmbient(ctx, variante, { volume: vol, fadeIn: 4, seed: SEED });
+    h.start(); h.schedule(0, 40);
+    const buf = await ctx.startRendering();
+    const L = buf.getChannelData(0), R = buf.getChannelData(1);
+    let peak = 0, sumSq = 0;
+    for (let i = 0; i < L.length; i++) {
+      const v = (L[i] + R[i]) / 2;
+      if (Math.abs(v) > peak) peak = Math.abs(v);
+      sumSq += v * v;
+    }
+    return { rms: Math.sqrt(sumSq / L.length), peak };
+  }, { variante: despachado.variante, vol: despachado.vol, SR, SEED });
 } finally {
   await browser.close();
   srv.close();
 }
 
 /* ── Aserciones ───────────────────────────────────────────────────────── */
+
+/* La banda tiene piso ademas de techo: una musica que no se oye no es suave,
+   es un bug silencioso. */
+record('V1', 'La variante despachada es la elegida', despachado?.variante === 'terminal',
+  `PortfolioScene despacha '${despachado?.variante}'`);
+record('V2', 'El volumen despachado es de fondo',
+  despachado?.med.rms > 0.002 && despachado?.med.rms < 0.03,
+  `volume ${despachado?.vol} → RMS ${despachado?.med.rms.toFixed(4)} `
+  + `(${(20 * Math.log10(despachado?.med.rms)).toFixed(1)} dBFS) · pico ${despachado?.med.peak.toFixed(3)}`);
 for (const v of VARIANTS) {
   const s = stats[v];
   const minWin = Math.min(...s.winRms);
