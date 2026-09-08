@@ -230,6 +230,42 @@ try {
   record('M12', 'Los carteles entran en cuadro (vertical)', media >= bx,
     `ve x = ±${media.toFixed(1)} · carteles en ±${bx} · fov ${vFov.toFixed(0)}° vert / ${(hFovReal * 180 / Math.PI).toFixed(0)}° horiz`);
 
+  /* M13 — los paneles tienen que dibujarse ARRIBA de los controles. El
+     joystick es `position: fixed` con z-index 40 y el cajon estaba en 11: en
+     la mitad de abajo del panel el dedo le pegaba al joystick, no a la lista.
+     Se lee el z-index computado, no el del fuente: lo que decide es lo que
+     resuelve el navegador. */
+  const zs = await page.evaluate(() => {
+    const z = s => { const e = document.querySelector(s); return e ? +getComputedStyle(e).zIndex : null; };
+    return { panel: z('#ps-panel'), drawer: z('#ps-projects-drawer'), controles: z('.tc-root') };
+  });
+  const arriba = zs.panel > zs.controles && zs.drawer > zs.controles;
+  record('M13', 'Los paneles tapan al joystick', arriba,
+    `panel ${zs.panel} · cajon ${zs.drawer} · controles ${zs.controles}`);
+
+  /* M14 — la salida. En un telefono el cajon mide 300 de 390 y va de arriba
+     abajo: sin una ✕ se entra y no se sale (no hay tecla Escape ni lugar
+     donde tocar afuera). Se mide que exista, que sea un blanco de pulgar
+     (44px) y —lo que importa— que CIERRE. */
+  await page.locator('#ps-projects-tab').tap();
+  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
+  const xBox = await page.locator('#pd-close').boundingBox().catch(() => null);
+  await page.locator('#pd-close').tap().catch(() => {});
+  await page.waitForTimeout(400);
+  const cajonCerrado = await page.locator('#ps-projects-drawer').evaluate(el => !el.classList.contains('open')).catch(() => false);
+  const blancoOk = !!xBox && xBox.width >= 44 && xBox.height >= 44;
+  record('M14', 'La ✕ cierra el cajon de proyectos', cajonCerrado && blancoOk,
+    xBox ? `${Math.round(xBox.width)}×${Math.round(xBox.height)}px · cerro=${cajonCerrado}` : 'NO existe la ✕');
+
+  /* M15 — la misma salida en el dossier. Se abre a mano en vez de esperar la
+     proximidad: lo que se mide aca es el cableado del boton, no el trigger. */
+  await page.evaluate(() => document.getElementById('ps-panel').classList.add('open'));
+  await page.waitForTimeout(400);
+  await page.locator('#panel-close').tap().catch(() => {});
+  await page.waitForTimeout(400);
+  const panelCerrado = await page.locator('#ps-panel').evaluate(el => !el.classList.contains('open')).catch(() => false);
+  record('M15', 'La ✕ cierra el dossier', panelCerrado, panelCerrado ? 'cerro' : 'sigue abierto');
+
   await phone.close();
 
   /* ── Escritorio: no tiene que bajar React ──────────────────────────── */

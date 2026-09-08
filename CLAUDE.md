@@ -144,6 +144,10 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 --accent-flag-bright: #c9a94f;  /* amber light — flagship text, metric, filled CTA */
 --accent-flag-bg:     #14110a;  /* warm black — flagship block backgrounds */
 
+/* Alerta — el ÚNICO rojo, y SÓLO para salir (la ✕ que cierra un panel) */
+--accent-alert:     #e05a4f;    /* 5.21:1 sobre --bg-void — AA ✓ */
+--accent-alert-dim: #7a2b26;    /* borde en reposo, nunca lleva texto */
+
 /* Typography */
 --font-display: 'IM Fell English', Georgia, serif;
 --font-mono:    'Share Tech Mono', 'Courier New', monospace;
@@ -161,6 +165,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - `--accent` (teal `#3d7a64`): decorative only — ◆ cursor, DotRow, badge/tab borders
 - `--accent-bright` (mint `#5ee7aa`): interactive only — CTAs, active states, hover
 - `--accent-flag*` (amber): flagship marking only — badge, board frame, list row, selector chip. NEVER on anything clickable. A flagship row that is ALSO selected shows both: mint border-left (interactive state) + amber badge (identity)
+- `--accent-alert` (rojo `#e05a4f`): **sólo para salir** — la ✕ que cierra un panel (`.ps-close`), nada más. Mint dice "seguir", ámbar dice "destacado"; ninguno podía decir "salí de acá", que es lo que hacía falta cuando en táctil el panel tapa la pantalla entera. No se usa para errores de formulario, badges ni estados: si aparece un segundo uso, discutirlo antes
 - No pure black (#000); no pure white (#fff)
 - Prose: `--font-sans` ≥ 0.8rem; labels/badges/nav: `--font-mono`
 - **Button convention (site-wide)**: mono + brackets `[ LABEL ↗ ]` (external) / `[ LABEL → ]` (internal nav). States: hover → mint border+text, `translateY(-1px)` · active → mint fill, `--bg-void` text, `translateY(1px)` · focus-visible → mint outline offset 2px. `.cta-btn` = secondary, `.cta-btn.cta-primary` = mint border always. Tabs are navigation, NOT buttons — no brackets.
@@ -313,6 +318,13 @@ del sitio.
   devuelve `borderRadius: Math.sqrt(size)` como estilo inline. Se anula con `!important`
   (`verify:mobile` M7 lo controla).
 - `devicePixelRatio` se topea en **1.5** en táctil (2 en escritorio).
+- **Los paneles tienen salida y van por encima del joystick.** `.ps-panel` (z 45) y
+  `.ps-projects-drawer` (z 46) están arriba de `.tc-root` (z 40): con 11 y 10 el
+  joystick se dibujaba SOBRE el cajón y en la mitad de abajo el dedo le pegaba al
+  joystick, no a la lista. Y los dos llevan una `.ps-close` — ✕ roja
+  (`--accent-alert`), 44px de blanco de toque. Sin ella se entraba a un proyecto y
+  no se salía: en un teléfono el cajón mide 300 de 390 y va de arriba abajo, no hay
+  Escape ni lugar donde tocar afuera. Cubierto por `verify:mobile` M13/M14/M15.
 - **Cámara**: sigue al personaje en X **a fondo**, así queda centrado — antes seguía sólo
   el 30% (y el `lookAt` el 20%), lo que en una pantalla angosta lo corría al borde del
   cuadro. Con tope de `CAM_X_LIMIT = 4.5`: hay dos edificios en `x = ±9, z = 1` (entrada
@@ -543,3 +555,6 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 42. **Un ajuste de cámara puede destapar un bug del mundo que llevaba meses escondido.** Al pasar el seguimiento en X del 30% al 100%, la cámara empezó a acercarse a los bordes de la calle y apareció que el personaje podía **caminar adentro** de los dos edificios de la entrada: su límite es `±8.8` y el edificio ocupa desde `x = 5.75`. Siempre estuvo así; lo tapaba que la cámara nunca llegaba hasta ahí. Cuando algo se ve mal recién después de un cambio, preguntarse si el cambio lo *causó* o sólo lo *destapó*.
 43. **Registrá el cuerpo del error de una API ajena, no sólo el código.** El envío por Resend fallaba con `403` y el cuerpo decía `error code: 1010` — un código de **Cloudflare**, no de Resend: su API está detrás de Cloudflare y rechaza el `User-Agent` por defecto de `urllib` ("Python-urllib/3.x") por firma de bot. Nada de eso figura en la documentación de Resend, y con sólo el `403` a la vista la hipótesis obvia habría sido "la key está mal". El segundo `403`, ya con `User-Agent` propio, trajo el error real de Resend y venía con la solución escrita adentro (la casilla exacta a la que sí se podía enviar). Un `except` que se traga el cuerpo convierte diez segundos de diagnóstico en una tarde.
 44. **Antes de tocar la constante que nombra el síntoma, buscá quién la lee.** "El salto se queda corto, subile la altura" es un diagnóstico razonable y equivocado: la compuerta del charco es `if (!jumping)`, booleana, y `jumpY` no se lee en ningún lado salvo para pintar la Y del personaje. Con `JUMP_H` en 1.3 o en 10 el resultado es el mismo. Peor: el comentario del código prometía un umbral de `jumpY` que nunca existió. Un `grep` de tres segundos por la variable separa la constante estética de la que decide.
+
+45. **Una chapa de 0.48rem no crea jerarquía.** El selector ofrecía dos filas con la misma forma, el mismo cuerpo y el mismo color, y toda la diferencia entre "el rol principal" y "el otro" era un badge `◆ PRIMARY` de 7.7px. Leído de corrido —y en un teléfono, donde el panel de preview directamente no se muestra— eso son dos opciones idénticas: una decisión que el visitante no tiene con qué tomar. La jerarquía la hacen el tamaño, el fondo y el riel; la etiqueta sólo la nombra una vez que ya se ve. Ojo con el orden al agregarla: `.persona-opt:hover` y `.persona-opt.is-alt` tienen la MISMA especificidad, así que el riel apagado del secundario le ganaba al mint del hover (lección 40 otra vez, en otro archivo).
+46. **Un control flotante flota también sobre tus paneles.** El joystick es `position: fixed` con `z-index: 40` porque tiene que estar arriba de la escena; el cajón de proyectos tenía 11 porque sólo se comparaba contra el dossier (10). Nadie los comparó entre sí hasta que en un teléfono el cajón ocupó la pantalla entera y la mitad de abajo dejó de responder: los toques iban al joystick invisible que estaba encima. Cuando se agrega una capa fija, hay que revisar el z-index de TODO lo que pueda abrirse debajo, no sólo de sus vecinos.

@@ -26,6 +26,14 @@
   --accent-flag-bright: #c9a94f;
   --accent-flag-bg:     #14110a;
 
+  /* Alerta — el ÚNICO rojo del sistema, y sólo para SALIR: la ✕ que cierra un
+     panel. Existe porque en táctil el panel tapa la pantalla entera y la
+     salida tiene que gritar; mint significa "seguir" y ámbar "destacado", así
+     que ninguno de los dos podía decir "salí de acá".
+     Contraste 5.21:1 sobre --bg-void — AA ✓ */
+  --accent-alert:     #e05a4f;
+  --accent-alert-dim: #7a2b26;   /* borde en reposo — nunca lleva texto encima */
+
   /* ── Typography ── */
   --font-display: 'IM Fell English', Georgia, serif;
   --font-mono:    'Share Tech Mono', 'Courier New', monospace;

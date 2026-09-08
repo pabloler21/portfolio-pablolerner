@@ -51,6 +51,8 @@ const dossier = {
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
+const drawerTitle     = lang === 'en' ? 'PROJECTS' : 'PROYECTOS';
+const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
 ---
 
 <div class="ps-shell" id="ps-shell">
@@ -80,6 +82,13 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
        same #ps-projects-tab id, wired up below regardless of which
        component rendered it. -->
   <aside class="ps-projects-drawer" id="ps-projects-drawer" aria-label="Project list">
+    <!-- La ✕ no es decorativa: en un teléfono este cajón mide 300 de 390 y
+         va de arriba abajo, así que sin ella no hay forma de volver a la
+         calle. Va en rojo a propósito — es la única salida de la pantalla. -->
+    <div class="pd-head">
+      <span class="pd-head-title">{drawerTitle}</span>
+      <button type="button" class="ps-close" id="pd-close" aria-label={closeLabel} title={closeLabel}>✕</button>
+    </div>
     <div class="pd-list" id="pd-list"></div>
   </aside>
 
@@ -87,6 +96,7 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
        step out of the small activation circle — asked explicitly, no more
        manual return button or badge chrome, just the essentials). -->
   <aside class="ps-panel" id="ps-panel" aria-label="Project dossier">
+    <button type="button" class="ps-close ps-close-panel" id="panel-close" aria-label={closeLabel} title={closeLabel}>✕</button>
     <h2 class="panel-title" id="panel-title">—</h2>
     <div class="panel-cards" id="panel-cards"></div>
     <a class="panel-all cta-btn" id="panel-all" href="#">{allLabel}</a>
@@ -476,6 +486,22 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
          paneles distintos"). */
       e.currentTarget.setAttribute('aria-expanded', String(open));
       e.currentTarget.blur();   /* left focused after a click, Space (jump) would silently re-toggle this on keyup */
+    });
+    /* Cerrar los dos paneles. En escritorio se salía caminando (el dossier se
+       cierra solo al salir del círculo) o volviendo a tocar PROJECTS; en un
+       teléfono el panel tapa la pantalla y encima queda ARRIBA del joystick,
+       así que no había con qué caminar ni a dónde tocar: se entraba a un
+       proyecto y no se salía más. El .blur() es el mismo cuidado que el resto
+       de los botones de acá: un botón con foco se vuelve a clickear solo en
+       el keyup de Space, o sea en cada salto. */
+    document.getElementById('pd-close').addEventListener('click', (e) => {
+      document.getElementById('ps-projects-drawer').classList.remove('open');
+      document.getElementById('ps-projects-tab').setAttribute('aria-expanded', 'false');
+      e.currentTarget.blur();
+    });
+    document.getElementById('panel-close').addEventListener('click', (e) => {
+      hidePanel();
+      e.currentTarget.blur();
     });
     document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
@@ -2196,16 +2222,43 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     transition: transform 0.3s ease;
     pointer-events: auto;
     overflow-y: auto;
-    padding: 3.2rem 0.8rem 1rem;
-    /* Above .ps-panel (z-index:10) — they can be open at once now (asked
-       explicitly), and the drawer, just summoned by clicking PROJECTS,
-       should be the one that's actually visible where they overlap. */
-    z-index: 11;
+    padding: 0;
+    /* Above .ps-panel — they can be open at once now (asked explicitly), and
+       the drawer, just summoned by clicking PROJECTS, should be the one
+       that's actually visible where they overlap.
+       Y los dos por ENCIMA de los controles táctiles (.tc-root, z-index 40):
+       antes el joystick se dibujaba sobre el cajón, o sea que en la mitad de
+       abajo del panel el dedo le pegaba al joystick y no a la lista. */
+    z-index: 46;
   }
 
   .ps-projects-drawer.open {
     transform: translateX(0);
   }
+
+  /* Cabecera del cajón. Sticky porque la lista scrollea adentro del mismo
+     contenedor: la salida no puede irse scrolleando hacia arriba. */
+  .pd-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--ink);
+    background: rgba(13, 15, 20, 0.96);
+  }
+
+  .pd-head-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--sand-dim);
+  }
+
+  .pd-list { padding: 0.4rem 0.8rem 1rem; }
 
   /* ── Project dossier panel ── */
   .ps-panel {
@@ -2220,7 +2273,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     backdrop-filter: blur(6px);
     transform: translateX(100%);
     transition: transform 0.3s ease;
-    z-index: 10;
+    /* Arriba de los controles táctiles (.tc-root, z-index 40) — ver el
+       comentario del cajón: con el panel abierto no se camina, se lee. */
+    z-index: 45;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -2250,9 +2305,57 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     color: var(--sand);
     margin: 0;
     min-height: 1.4em;
-    padding: 1.1rem 1.1rem 0.9rem;
+    /* El hueco de la derecha es el de la ✕, que va absoluta encima: sin él
+       un título largo se le mete debajo. */
+    padding: 1.1rem 4rem 0.9rem 1.1rem;
     border-bottom: 1px solid var(--ink);
     flex-shrink: 0;
+  }
+
+  /* ── Cerrar ────────────────────────────────────────────────────────
+     El único rojo del sistema (--accent-alert). Pedido de la mentora: en
+     táctil el panel ocupa la pantalla entera y "no te podés ir", así que la
+     salida tiene que notarse. Mint significa "seguir" y ámbar "destacado";
+     ninguno de los dos podía decir "salir". 2.75rem = 44px de área de
+     toque, que es el mínimo cómodo para un pulgar. */
+  .ps-close {
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    line-height: 1;
+    color: var(--accent-alert);
+    background: rgba(13, 15, 20, 0.72);
+    border: 1px solid var(--accent-alert-dim);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
+  }
+
+  .ps-close:hover,
+  .ps-close:focus-visible {
+    outline: none;
+    border-color: var(--accent-alert);
+    background: rgba(224, 90, 79, 0.14);
+    transform: translateY(-1px);
+  }
+
+  .ps-close:active {
+    background: var(--accent-alert);
+    color: var(--bg-void);
+    transform: translateY(1px);
+  }
+
+  /* En el dossier no hay cabecera donde meterla: va flotando arriba a la
+     derecha, del lado que se abra el panel. */
+  .ps-close-panel {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 2;
   }
 
   .panel-cards {
