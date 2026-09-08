@@ -414,16 +414,15 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       };
       if (walkClip) walkAction = loopIt(walkClip);
       if (runClip)  runAction  = loopIt(runClip);
-      if (idleClip) idleAction = loopIt(idleClip);   /* kept for completeness, never actually played — see locoState notes in tick() */
-      /* Start in the idle pose (paused Walking) instead of a bind-pose freeze */
-      if (walkAction) {
-        walkAction.reset();
-        walkAction.setEffectiveWeight(1);
-        walkAction.setEffectiveTimeScale(0);
-        walkAction.play();
-        walkAction.time = WALK_NEUTRAL_TIME;
-        moveAction = walkAction;
-      }
+      /* El clip Idle ES una respiración de 9.93s y SE REPRODUCE. Durante un
+         tiempo estuvo vacío (0 pistas) y el idle era un frame congelado de
+         Walking: el personaje quedaba como una estatua. La causa era la
+         conversión, no el asset — cada FBX de Mixamo trae la animación real
+         más una "Take 001" vacía, y en Breathing Idle.fbx la vacía viene
+         primera, así que el `animations[0]` de entonces se llevó la vacía.
+         Se rehornea con `node scripts/build-character-glb.mjs`. */
+      if (idleClip && idleClip.tracks.length > 0) idleAction = loopIt(idleClip);
+      startIdlePose();
       locoState = 'idle';
     } catch (_) { /* placeholder stays on load failure */ }
 
@@ -1343,6 +1342,30 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     shakeT = SHAKE_DUR;   /* camera shake on death, asked explicitly */
   }
 
+  /* Entrar en idle: se reproduce el clip de respiración. Si el GLB llegara
+     sin él (o vacío, como estuvo un tiempo) se cae al plan viejo — un frame
+     congelado de Walking, quieto pero no deformado. */
+  function startIdlePose() {
+    runAction?.stop();
+    if (idleAction) {
+      walkAction?.stop();
+      idleAction.reset();
+      idleAction.setEffectiveWeight(1);
+      idleAction.setEffectiveTimeScale(1);
+      idleAction.play();
+      moveAction = idleAction;
+      return;
+    }
+    if (walkAction) {
+      walkAction.reset();
+      walkAction.setEffectiveWeight(1);
+      walkAction.setEffectiveTimeScale(0);   /* pausado — un frame fijo, no un ciclo */
+      walkAction.play();
+      walkAction.time = WALK_NEUTRAL_TIME;
+    }
+    moveAction = walkAction;
+  }
+
   /* Teleport straight to a project's board — a deliberate, narrow exception
      to "no pointer-driven movement" scoped only to selecting a project
      (billboard click, panel nav, or the projects drawer), not general
@@ -1780,16 +1803,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       if (state !== locoState) {
         locoState = state;
         if (state === 'idle') {
-          runAction?.stop();
-          idleAction?.stop();   /* stop the broken clip too, so it never contributes weight */
-          if (walkAction) {
-            walkAction.reset();
-            walkAction.setEffectiveWeight(1);
-            walkAction.setEffectiveTimeScale(0);   /* paused — a still frame, not a moving loop */
-            walkAction.play();
-            walkAction.time = WALK_NEUTRAL_TIME;
-          }
-          moveAction = walkAction;
+          startIdlePose();
         } else if (state === 'jump') {
           /* Measured from the GLB: the time in Running (0.633s) where
              mixamorigLeftUpLeg/RightUpLeg are furthest apart — the widest
