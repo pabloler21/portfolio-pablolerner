@@ -12,7 +12,7 @@ const { active = 'terminal', lang = 'en' } = Astro.props;
    Los nombres de rol quedan en inglés en ambos locales: son títulos de
    puesto, y la regla de i18n del proyecto deja los técnicos en inglés. */
 const tabs = [
-  { id: 'terminal', label: 'TERMINAL',     href: `/${lang}/` },
+  { id: 'terminal', label: lang === 'en' ? 'STREET' : 'CALLE', href: `/${lang}/` },
   { id: 'risk',     label: 'DATA ANALYST', href: `/${lang}/risk/` },
   { id: 'ai',       label: 'AI ENGINEER',  href: `/${lang}/ai/` },
 ];

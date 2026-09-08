@@ -17,14 +17,11 @@ const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
   stack:    p.stack.slice(0, 6),
 });
 
-/* Explicit project selection per zone:
-   risk → FraudSense(0), Credit Scoring(1), E-commerce Inventory(5), SQL Fast Food(3)
-           billboards show projIdx 0,1,2 — SQL Fast Food (projIdx 3) appears in panel only
-   ai   → Iris(0), CV Evaluator(1), Hermes(2)
-   */
+/* Every project of the role gets its own billboard now — asked explicitly
+   ("que estén TODOS los proyectos en la calle"). */
 const zoneProjects = {
-  risk: [riskProjects[0], riskProjects[1], riskProjects[5], riskProjects[3]].map(p => mapProj(p, lang)),
-  ai:   [aiProjects[0],   aiProjects[1],   aiProjects[2]].map(p => mapProj(p, lang)),
+  risk: riskProjects.map(p => mapProj(p, lang)),
+  ai:   aiProjects.map(p => mapProj(p, lang)),
   ds:   [] as ReturnType<typeof mapProj>[],
 };
 
@@ -37,9 +34,9 @@ const allUrl: Record<ZoneKey, string> = {
   risk: `/${lang}/risk/`,
   ai:   `/${lang}/ai/`,
 };
+const contactUrl = `/${lang}/contact/`;
 
 const allLabel        = lang === 'en' ? 'VIEW ALL RECORDS →' : 'VER TODOS →';
-const bannerFmt       = lang === 'en' ? 'ACCESSING :: % RECORDS' : 'ACCEDIENDO :: REGISTROS %';
 const dossier = {
   mission:    lang === 'en' ? 'MISSION' : 'MISIÓN',
   other:      lang === 'en' ? 'OTHER RECORDS' : 'OTROS REGISTROS',
@@ -49,14 +46,9 @@ const dossier = {
   next:       lang === 'en' ? 'NEXT ▶' : 'SIG ▶',
   code:    'CODE ↗',
   live:    'LIVE ↗',
-};
-const endcap = {
-  sys:   'SYSTEM::ARCHIVE',
-  title: lang === 'en' ? 'ALL RECORDS ACCESSED' : 'REGISTROS COMPLETOS',
-  cta:   lang === 'en' ? '[ VIEW FULL ARCHIVE → ]' : '[ VER ARCHIVO COMPLETO → ]',
+  wip:     lang === 'en' ? 'WORK IN PROGRESS' : 'EN DESARROLLO',
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
-const hintLabel       = lang === 'en' ? 'WASD TO WALK · CLICK BILLBOARD' : 'WASD PARA CAMINAR · CLICK CARTEL';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
 ---
 
@@ -71,37 +63,30 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
     <div class="ps-hero-sub" id="ps-hero-sub">ACCESS TERMINAL</div>
   </div>
 
-  <!-- Unit tag HTML overlay — JS projects 3D position to screen each frame -->
-  <div id="unit-tag-hud" class="unit-tag-hud" aria-hidden="true">
-    <div class="utag-id">UNIT::PL-7729</div>
-    <div class="utag-role">◆ DATA ANALYST</div>
-  </div>
-
   <!-- HUD overlay -->
   <div class="ps-hud" id="ps-hud" aria-hidden="true">
-    <div class="ps-hint sys-text" id="ps-hint">{hintLabel}</div>
-    <div class="ps-zone-id sys-text hidden" id="ps-zone-id">ZONE: —</div>
-    <div class="ps-records sys-text hidden" id="ps-records">RECORDS 00/00</div>
     <div class="ps-minimap" id="ps-minimap">
       <canvas id="ps-minimap-canvas" width="140" height="190"></canvas>
     </div>
-    <div class="ps-banner" id="ps-banner"></div>
-    <button class="ps-back hidden" id="ps-back">{backLabel}</button>
   </div>
 
-  <!-- Project dossier panel (slides in from right on discovery) -->
+  <!-- Left rail (GitHub/LinkedIn/mail) now lives in Base.astro, rendered on
+       every page, not just this one — asked explicitly. -->
+
+  <!-- Right drawer: full project list — click teleports, sidebar stays closed for now.
+       The trigger button itself lives in Base.astro's top identity bar now
+       (asked explicitly — "arriba a la derecha, en el nav bar superior"),
+       same #ps-projects-tab id, wired up below regardless of which
+       component rendered it. -->
+  <aside class="ps-projects-drawer" id="ps-projects-drawer" aria-label="Project list">
+    <div class="pd-list" id="pd-list"></div>
+  </aside>
+
+  <!-- Project dossier panel (slides in from right, auto-closes when you
+       step out of the small activation circle — asked explicitly, no more
+       manual return button or badge chrome, just the essentials). -->
   <aside class="ps-panel" id="ps-panel" aria-label="Project dossier">
-    <div class="ps-panel-head">
-      <div class="dossier-sysrow">
-        <span class="sys-text panel-sys" id="panel-sys">UNIT PROFILE</span>
-        <span class="sys-text dossier-count" id="panel-count"></span>
-      </div>
-      <button class="ps-panel-close" id="ps-panel-close" aria-label="Close">{backLabel}</button>
-    </div>
-    <div class="dossier-titlebox">
-      <div class="dossier-status" id="dossier-status"></div>
-      <h2 class="panel-title" id="panel-title">—</h2>
-    </div>
+    <h2 class="panel-title" id="panel-title">—</h2>
     <div class="panel-cards" id="panel-cards"></div>
     <a class="panel-all cta-btn" id="panel-all" href="#">{allLabel}</a>
   </aside>
@@ -124,11 +109,11 @@ const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
 
 </div>
 
-<script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap })}></script>
+<script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl })}></script>
 <script>
 /* Plain <script> — no define:vars — so Vite bundles it and import('three') resolves.
    define:vars forces is:inline, which skips Vite processing entirely. */
-const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap } = JSON.parse(document.getElementById('ps-data').textContent);
+const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON.parse(document.getElementById('ps-data').textContent);
 (function () {
   /* ── Guards ── */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -151,6 +136,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let charX = CENTER.x, charZ = CENTER.z;
   let targetX = CENTER.x, targetZ = CENTER.z;
   let camTgtX = CENTER.x, camTgtZ = CENTER.z;
+  let shakeT = 0;   /* camera shake on death — decaying timer, triggered in respawnAtEntrance() */
+  const SHAKE_DUR = 0.4, SHAKE_MAG = 0.9;   /* bumped up — asked explicitly ("mas potente") */
   let isMoving = false;
   let activeZone = null;
   let zoneMeshes = [];   // [{mesh: hitbox, key, projIdx}]
@@ -160,41 +147,82 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let walkAction = null;
   let runAction = null;
   let idleAction = null;
-  let moveAction = null;          /* la acción de locomoción en curso, o null */
+  let moveAction = null;          /* la acción de locomoción activa: walk, run o idle — nunca null una vez cargado el mixer */
+  let locoState = 'idle';         /* 'idle' | 'walk' | 'run' — tracked separately from moveAction since idle reuses walkAction */
+  /* Stand-in pose for the broken Idle clip: the "passing" frame of the 1.0333s
+     Walking clip — an exact keyframe, so LINEAR sampling lands on it verbatim.
+     Measured from the GLB by sampling every keyframe and scoring each bone
+     against its OWN swing mean (deviation from the identity quaternion is
+     meaningless here — Mixamo's rest pose is a T-pose, so "closest to bind"
+     picks a mid-stride lunge, which is exactly what the previous 0.80 was).
+     The arms swing in true anti-phase, so both cross their neutral at the
+     same instant: at 0.4667 the pair is 8.4° off neutral combined — the
+     global minimum of the cycle — and the thighs are 11° apart, near their
+     closest. Every other frame is worse on both counts at once (0.80 was
+     37.7° of arm swing and a 63° stride, the widest in the clip). */
+  const WALK_NEUTRAL_TIME = 0.4667;
+  /* Measured from the GLB: the time in Running (0.633s duration) where
+     mixamorigLeftUpLeg/RightUpLeg are furthest apart on their swing axis —
+     the widest point of the running stride, used as the frozen jump pose. */
+  const JUMP_POSE_TIME = 0.267;
   let prevMoving = false;
   let animClock = null;
+  let jumping = false; let jumpT = 0;   /* salto procedural — no hay clip Jump en el GLB (sólo Running/Walking/Idle) */
+  /* Flatter leap, not a high hop — asked explicitly. Height cut back down,
+     duration kept long-ish (still clears the 3.6u crater gap at normal
+     running speed alone), and horizontal movement gets an extra forward
+     boost (JUMP_SPEED_MULT, applied in tick()) while airborne so it reads
+     as a projected leap rather than a vertical bounce. */
+  const JUMP_DUR = 1.4, JUMP_H = 1.3;
+  const JUMP_SPEED_MULT = 1.5;
   const keys = {};
   const WALK_SPEED = 0.042;
+  const SPRINT_MULT = 2.1;   /* was 1.8, then 2.0 — +5% again to cut foot-sliding, asked explicitly */
   /* Los clips de Mixamo vienen "in place", así que su cadencia hay que atarla a
-     WALK_SPEED o los pies patinan. A 60 fps son ~2.5 u/s caminando y ~4.5
-     esprintando; estos factores emparejan el ciclo con esa velocidad. */
+     WALK_SPEED o los pies patinan. A 60 fps son ~2.5 u/s caminando y ~5.0
+     esprintando; estos factores emparejan el ciclo con esa velocidad
+     (RUN_TIMESCALE escalado en la misma proporción que SPRINT_MULT). */
   const WALK_TIMESCALE = 1.8;
-  const RUN_TIMESCALE  = 1.3;
-  let unitTag = null;
+  const RUN_TIMESCALE  = 1.44;
   let composer = null;
-  let keyLight = null;
-  /* Presupuesto rotativo de farolas. En Three.js cambiar la CANTIDAD de luces
-     de la escena recompila el shader de todos los materiales iluminados, así
-     que el pool es de tamaño fijo y sólo se reposiciona. */
-  const LAMP_POOL_SIZE = 8;
-  let lampPool  = [];
-  let lampPosts = [];
   let activeRole = null;
   /* Dynamic billboards: built on role selection, destroyed on role change.
      Exactly N billboards exist for N projects of the active role — nothing else.
      AVENUE layout: boards spread along the street alternating sides, flagship
      last as the finale. Boards start dark and power on by proximity. */
+  /* ponytail: CHAR_HEIGHT anchors building/monument scale to the character.
+     Remy's GLB is normalized+centered at load (no direct Box3 measurement is
+     taken here — buildCityDressing runs before the async GLB load resolves),
+     so this is the same ~1.8u reference already implied by the existing
+     chest-height fill-light position (0, 1.6, ...) a few lines below. */
+  const CHAR_HEIGHT = 1.8;
   let roleBillGroup = null;  // THREE.Group holding ALL billboard structure of the active role
-  let roleBillRefs = [];     // [{mesh, edges, ring, borderColor, isHero, projIdx, bx, bz, lit}]
-  let endcapRef = null;      // avenue end screen {mesh, edges, bz, lit}
-  const chevrons = [];       // pool of ground arrow meshes guiding to the next unlit board
-  const PROXIMITY_R2 = 64;   // squared distance (8u) at which a board powers on
-  /* World bounds — keeps the character on the street, out of buildings */
-  const BOUND_X = 8.8, BOUND_Z_MIN = -46, BOUND_Z_MAX = 4.5;
+  let roleBillRefs = [];     // [{mesh, frame, edges, hit, ring, borderColor, isHero, projIdx, bx, bz, lit}]
+  /* squared distance (8u radius) at which a board powers on/off. Boards sit
+     off to the side (bx=±6.5) again, so the circle needs to reach far enough
+     to still cover a player walking straight down the middle (lateral
+     distance alone is already ~6.5) — an 8u radius gives roughly a ±4.6u
+     window in z around each board, which is enough at the 10u board spacing. */
+  const PROXIMITY_R2 = 64;
+  const SPINNER_TICKS = 10;    /* segments in the loading-spinner ring, lighting up one by one */
+  const SPINNER_FILL_TIME = 1.1;   /* seconds to fully fill while standing in the small circle */
+  const SPINNER_R = 1.3;       /* the SMALL circle's radius — must physically stand inside this (not just the big 8u sensor) for the fill to progress */
+  /* Craters before the 1st and 2nd billboard — a soft wall blocks a grounded
+     character from crossing while jumping (jumpY above the threshold in
+     tick()) passes straight through. */
+  const CRATER_ZS = [-5, -35];   /* 2nd moved to a different stretch of the avenue entirely, not squeezed right after the 1st between boards 1 and 2 */
+  const CRATER_HALF_W = 1.8;     /* bigger, asked explicitly */
+  const OBELISK_X = 0, OBELISK_Z = -84;   /* must match buildCityDressing's obX/obZ — touch-to-navigate check lives in tick() */
+  const OBELISK_TOUCH_R2 = 9;             /* 3u radius */
+  let obeliskTouched = false;             /* one-shot latch so the mailto redirect fires once per approach, not every frame inside range */
+  const SIDEBAR_ENABLED = true;           /* re-enabled — the small-circle spinner completing now opens a simplified version of it */
+  const DEATH_ENABLED = true;             /* re-enabled after the diagnostic pass */
+  /* World bounds — keeps the character on the street, out of buildings.
+     -76 fits the longest role (risk, 7 boards, deepest at z=-70) plus margin. */
+  const BOUND_X = 8.8, BOUND_Z_MIN = -87, BOUND_Z_MAX = 4.5;   /* -87 so the obelisk at z=-84 is actually reachable to touch */
   const clampX = (v) => Math.max(-BOUND_X, Math.min(BOUND_X, v));
   const clampZ = (v) => Math.max(BOUND_Z_MIN, Math.min(BOUND_Z_MAX, v));
-  let targetRotY = 0;        // character heading, lerped in tick (no snap turns)
-  let arrivalPending = false;/* true only for navigateTo walks — gates the banner */
+  let targetRotY = Math.PI;  // character heading, lerped in tick (no snap turns) — PI faces into the avenue (-z), away from the camera
   /* Flagship accent (Deus Ex amber) — decorative marking only, never interactive */
   const FLAG = 0x9a7b2d, FLAG_BRIGHT = 0xc9a94f;
   let sceneW = 1; let sceneH = 1;
@@ -203,7 +231,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   let introActive = false;   // cinematic camera pan on first visit
   let introT = 0;
   let particles = null; let particleVelocities = null;
-  let tagHudEl = null; let _tagPos = null; let heroEl = null;
+  let heroEl = null;
+  /* Gameplay FX pool — footstep dust, jump takeoff/landing puffs, crater
+     splash. Sprites (not the ambient THREE.Points above) so each burst
+     particle can fade/scale on its own timer independently. */
+  let fxPool = []; let fxDotTexture = null;
+  const FX_POOL_MAX = 60;
+  let craterMaterials = [];   // ShaderMaterial per pit, uTime advanced in tick()
+  let carColliders = [];      // [{x, z, r}] simple circle colliders, built once in buildStreet
 
   async function init() {
     const canvas = document.getElementById('ps-canvas');
@@ -221,8 +256,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     const THREE = await import('three');
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
 
-    _tagPos = new THREE.Vector3();
-    tagHudEl = document.getElementById('unit-tag-hud');
     heroEl = document.getElementById('ps-hero');
     const mmCv = document.getElementById('ps-minimap-canvas');
     if (mmCv) {
@@ -242,17 +275,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setClearColor(0x0d0f14, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    /* Sin tone mapping los altos recortan y el bloom los agarra: era la causa
-       de que el personaje leyera naranja fluorescente. Exposición 1.25 =
-       calibración A2 de la spec. */
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false;
 
     /* ── Scene + Fog ── */
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0d0f14, 0.018);
+    /* Density scaled down from 0.018 to keep the same haze-at-the-skyline
+       look now that the skyline sits at z=-96 instead of z=-58 (avenue got
+       much longer to fit every project as its own billboard). */
+    scene.fog = new THREE.FogExp2(0x0d0f14, 0.011);
 
     /* ── Camera — street perspective ── */
     camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 80);
@@ -270,40 +300,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         ]);
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        /* threshold 0.4 existía porque no había nada emisivo legítimo: lo único
-           que lo superaba era el personaje. Con pantallas y farolas self-lit
-           sube a 0.62 para que el bloom agarre pantallas, no piel.
-           RenderPass entrega lineal y el tone mapping lo aplica OutputPass, así
-           que el umbral se calibra contra la luz de escena, no contra la
-           exposición. */
-        const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.35, 0.62);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.6, 0.4, 0.4);
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
       } catch (_) { /* bloom is enhancement only — scene works without it */ }
     }
 
     /* ── Atmospheric lighting ── */
-    /* Calibración A2 de la spec: suficiente para leer al personaje, no tanta
-       como para que las fachadas se lean como geometría de juego. */
-    scene.add(new THREE.HemisphereLight(0x2a3040, 0x0d0f14, 2.0));
-    keyLight = new THREE.DirectionalLight(0xa0a8b8, 1.7);
+    scene.add(new THREE.HemisphereLight(0x2a3040, 0x0d0f14, 0.9));
+    const keyLight = new THREE.DirectionalLight(0xa0a8b8, 0.7);
     keyLight.position.set(8, 20, 5);
-    /* Única luz que proyecta. Ocho farolas con sombra serían 48 renders de
-       cara de cubo por frame. La caja de 28u sigue al personaje en vez de
-       cubrir la avenida: ~73 texels/unidad contra ~32, misma memoria. */
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.bias = -0.0007;
-    keyLight.shadow.camera.left   = -14;
-    keyLight.shadow.camera.right  =  14;
-    keyLight.shadow.camera.top    =  14;
-    keyLight.shadow.camera.bottom = -14;
-    keyLight.shadow.camera.near   = 1;
-    keyLight.shadow.camera.far    = 60;
-    keyLight.shadow.camera.updateProjectionMatrix();
     scene.add(keyLight);
-    scene.add(keyLight.target);
-    scene.add(new THREE.AmbientLight(0x1c2030, 0.85));
+    scene.add(new THREE.AmbientLight(0x1c2030, 0.55));
 
     /* ── City geometry ── */
     buildStreet(THREE);
@@ -320,7 +328,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     } catch (_) { /* non-critical — canvas will use fallback monospace */ }
     /* No billboards at init — the scene starts as clean city. Billboards are
        built dynamically in the nier:zone handler when a role is selected. */
-    buildChevrons(THREE);
 
     /* ── nier:zone listener — registered HERE (before GLB load) so PersonaSelector's
        600ms dispatch is never missed even if the model takes time to download. ── */
@@ -333,14 +340,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       if (zone === activeRole) return;
       activeRole = zone;
 
-      /* Update unit tag label */
-      const utagRole = document.querySelector('.utag-role');
-      if (utagRole) utagRole.textContent = '◆ ' + (zoneLabels[zone] ?? '');
-
       /* Rebuild billboards for the selected role only — everything from the
          previous role is destroyed. N projects → N billboards, nothing else. */
       buildRoleBillboards(THREE, zone);
       navigateTo(zone);
+      populateProjectsDrawer(zone);
     });
 
     /* Fallback: if sessionStorage has a stored zone, re-dispatch after init completes */
@@ -367,22 +371,21 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       charGroup = new THREE.Group();
       charGroup.add(gltf.scene);
       charGroup.position.set(charX, 0, charZ);
+      charGroup.rotation.y = targetRotY;   /* spawn facing into the avenue, not the camera */
       scene.add(charGroup);
-      charGroup.traverse(o => {
-        if (o.isMesh || o.isSkinnedMesh) { o.castShadow = true; o.receiveShadow = true; }
-      });
 
       /* El personaje conserva SUS materiales. El override que había acá pisaba
          todo con 0x181b22 sobre un fondo 0x0d0f14 y era lo que lo hacía
          desaparecer: la forma quedaba a cargo de la luz, y cuando la luz fallaba
-         sólo se veían los joints. Ahora conserva sus materiales porque hay una
-         escena que los ilumina. */
+         sólo se veían los joints. */
 
-      /* Ya no lleva luz propia. El PointLight que colgaba de acá era una
-         prótesis para un personaje que vivía en una ciudad de MeshBasic: sin
-         nada más que lo iluminara, había que traerle su propia lámpara. Con la
-         atmósfera en PBR lo iluminan la hemisférica, la luna y las farolas
-         reales, como a todo lo demás. */
+      /* Luz de acompañamiento, neutra y tenue: lo despega del fondo sin teñirlo.
+         Antes era un PointLight mint a 2.5 — con materiales reales le pintaba de
+         verde la piel y la ropa. Y sin tone mapping los altos recortan duro, así
+         que a más intensidad el personaje lee naranja fluorescente. */
+      const fillLight = new THREE.PointLight(0xcfd8e6, 0.85, 8);
+      fillLight.position.set(0.5, 1.6, 1.3);
+      charGroup.add(fillLight);
 
       /* Unit tag is rendered as HTML overlay (see #unit-tag-hud) — no 3D sprite needed */
 
@@ -404,17 +407,31 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       };
       if (walkClip) walkAction = loopIt(walkClip);
       if (runClip)  runAction  = loopIt(runClip);
-      if (idleClip) {
-        idleAction = loopIt(idleClip);
-        idleAction.play();
+      if (idleClip) idleAction = loopIt(idleClip);   /* kept for completeness, never actually played — see locoState notes in tick() */
+      /* Start in the idle pose (paused Walking) instead of a bind-pose freeze */
+      if (walkAction) {
+        walkAction.reset();
+        walkAction.setEffectiveWeight(1);
+        walkAction.setEffectiveTimeScale(0);
+        walkAction.play();
+        walkAction.time = WALK_NEUTRAL_TIME;
+        moveAction = walkAction;
       }
+      locoState = 'idle';
     } catch (_) { /* placeholder stays on load failure */ }
 
     /* ── Events ── */
     canvas.addEventListener('click', onCanvasClick.bind(null, THREE));
     canvas.addEventListener('mousemove', onHover.bind(null, THREE));
-    document.getElementById('ps-back').addEventListener('click', returnToCenter);
-    document.getElementById('ps-panel-close').addEventListener('click', returnToCenter);
+    document.getElementById('ps-projects-tab').addEventListener('click', (e) => {
+      const drawer = document.getElementById('ps-projects-drawer');
+      const open = drawer.classList.toggle('open');
+      /* Drawer overlaps the project dossier rather than closing it — asked
+         explicitly ("mejor no reemplazar sino superponerse, son dos
+         paneles distintos"). */
+      e.currentTarget.setAttribute('aria-expanded', String(open));
+      e.currentTarget.blur();   /* left focused after a click, Space (jump) would silently re-toggle this on keyup */
+    });
     document.addEventListener('visibilitychange', () => { visible = !document.hidden; });
     new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { threshold: 0.1 }).observe(canvas);
 
@@ -424,10 +441,25 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     document.addEventListener('keydown', e => {
       if (WASD_CODES.includes(e.code)) { keys[e.code] = true; e.preventDefault(); }
       else if (e.key === 'Shift') keys.Shift = true;
+      else if (e.code === 'Space') {
+        e.preventDefault();   /* Space scrolls the page by default */
+        if (!jumping) {
+          jumping = true; jumpT = 0;
+          spawnFxBurst(THREE, charX, 0.05, charZ, 0xff8c42, 8, { spread: 0.035, vy: 0.02, life: 0.35, size: 0.22 });
+        }
+      }
     });
     document.addEventListener('keyup', e => {
       keys[e.code] = false;
       if (e.key === 'Shift') keys.Shift = false;
+      /* Browsers fire a native click on a focused <button> when Space is
+         RELEASED (not pressed) — preventDefault on keydown alone doesn't
+         stop that. With the new PROJECTS tab/drawer rows/panel-close buttons
+         this session added, if one still had focus (e.g. the last thing
+         clicked before jumping into the game), every jump also silently
+         re-clicked it — re-teleporting the character, resetting nothing,
+         while the player thought they were just jumping over a crater. */
+      if (e.code === 'Space') e.preventDefault();
     });
 
     /* Cinematic intro — first visit only (no persona chosen yet). The camera
@@ -444,62 +476,190 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     tick(THREE);
     window.addEventListener('resize', onResize);
 
+    /* HDRI lazy — after first frame, non-blocking */
+    requestIdleCallback(() => loadHDRI(THREE), { timeout: 3000 });
+  }
+
+  /* A radial gradient (near-black center fading toward the rim) is what
+     actually sells "hole" in a scene with no real lighting/shading — a flat
+     color plane never does, regardless of how dark it is. Never pure black
+     per the hard constraint, so the center is a near-black, not #000. */
+  /* Radioactive-green glow (asked explicitly, edge line removed) — bright
+     toxic center fading to transparent, meant to be used with additive
+     blending so it actually glows against the dark asphalt, the same
+     convention as every other glow in this scene (ground rings, streetlamp
+     falloff before it was removed, etc). */
+  /* Simple animated "water" shader — asked explicitly ("que se note que es
+     un líquido"), a static gradient read as a flat glow, not a liquid.
+     Concentric rings sweeping outward from center + a fade near the jagged
+     edge; cheap (one sine per fragment), no geometry displacement needed
+     since the plane is flush with the asphalt. uTime is advanced from
+     tick()'s own clock (t) via craterMaterials.
+     ponytail: the edge fade used to start almost immediately (d=0.1) and
+     run all the way to the boundary (d=1.0), so most of the shape was
+     already faded well before reaching the actual jagged polygon edge —
+     the visible glow read as a smooth inscribed ellipse, not the jagged
+     mesh underneath ("se ven como ovalados", asked explicitly). Keeping the
+     interior solid and only feathering right at the true edge lets the
+     mesh's own jagged silhouette read through instead of a circular vignette. */
+  function makeWaterMaterial(THREE) {
+    return new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x6ee85a) } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        varying vec2 vUv;
+        void main() {
+          vec2 c = vUv - 0.5;
+          float d = length(c) * 2.0;
+          float wave = sin(d * 11.0 + uTime * 2.2) * 0.5 + 0.5;   /* + instead of - : ripples travel edge→center, asked explicitly */
+          float edge = 1.0 - smoothstep(0.65, 1.2, d);
+          gl_FragColor = vec4(uColor, edge * (0.22 + wave * 0.32));
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+  }
+
+  /* An irregular jagged outline instead of a clean rectangle — asked
+     explicitly, a crater shouldn't look like a cut piece of asphalt. Seeded
+     so it's stable across re-renders of the same crater. */
+  function jaggedHoleShape(THREE, width, depth, seed) {
+    const shape = new THREE.Shape();
+    const N = 14;
+    let s = seed;
+    const rand = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const jag = 0.72 + rand() * 0.5;
+      pts.push([Math.cos(a) * (width / 2) * jag, Math.sin(a) * (depth / 2) * jag]);
+    }
+    shape.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+    shape.closePath();
+    return shape;
+  }
+
+  /* THREE.ShapeGeometry does NOT normalize its UVs to 0-1 — it uses the
+     shape's raw local coordinates directly as UV. For a ~20-unit-wide
+     crater shape that means almost every UV falls miles outside [0,1] and
+     gets clamped to the texture's transparent edge pixel, so the gradient
+     fill never actually shows (only the EdgesGeometry rim, which doesn't
+     depend on UVs, was visible). Remap UVs to the shape's own bounding box. */
+  function remapShapeUVs(geo) {
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox;
+    const w = bb.max.x - bb.min.x || 1, h = bb.max.y - bb.min.y || 1;
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      uv.setXY(i, (pos.getX(i) - bb.min.x) / w, (pos.getY(i) - bb.min.y) / h);
+    }
+    uv.needsUpdate = true;
   }
 
   /* ────────────────── Street Geometry ──────────────────── */
-  /* ────────────────── Materiales de atmósfera ──────────── */
-  /* La luz es del mundo, la interfaz no se ilumina (spec §2). Todo lo que el
-     visitante pisa o rodea recibe luz; todo lo que informa —carteles, anillos,
-     chevrons, glows, ventanas— sigue self-lit con MeshBasic.
-     Se construyen así desde el origen: convertir por traverse después sería el
-     antipatrón de la lección 17. */
-  function atmosphereMaterial(THREE, hex) {
-    return new THREE.MeshStandardMaterial({
-      color: hex, roughness: 0.93, metalness: 0.04,
-    });
-  }
-
+  /* Avenue length: 7 projects (the biggest role, risk) alternating sides at
+     10u spacing reach z=-70 (see buildRoleBillboards), so the street, its
+     dressing and the world bounds all had to grow past the old 5-board/-42
+     length to fit "todos los proyectos en la calle" without running out of
+     road. */
   function buildStreet(THREE) {
     /* Asphalt */
     const asphalt = new THREE.Mesh(
-      new THREE.PlaneGeometry(22, 80),
-      atmosphereMaterial(THREE, 0x10131a)
+      new THREE.PlaneGeometry(22, 100),
+      new THREE.MeshBasicMaterial({ color: 0x10131a })
     );
     asphalt.rotation.x = -Math.PI / 2;
-    asphalt.position.set(0, 0, -28);
-    asphalt.receiveShadow = true;
+    asphalt.position.set(0, 0, -34);
     scene.add(asphalt);
 
     /* Sidewalks */
-    const swMat = atmosphereMaterial(THREE, 0x161a22);
+    const swMat = new THREE.MeshBasicMaterial({ color: 0x161a22 });
     [-11, 11].forEach(sx => {
-      const sw = new THREE.Mesh(new THREE.PlaneGeometry(6, 80), swMat);
+      const sw = new THREE.Mesh(new THREE.PlaneGeometry(6, 100), swMat);
       sw.rotation.x = -Math.PI / 2;
-      sw.position.set(sx, 0.01, -28);
-      sw.receiveShadow = true;
+      sw.position.set(sx, 0.01, -34);
       scene.add(sw);
     });
 
-    /* Lane dashes */
-    const dashMat = atmosphereMaterial(THREE, 0x232a38);
-    for (let dz = -4; dz > -64; dz -= 9) {
-      const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4.5), dashMat);
+    /* Craters — gaps across the street before the 1st and 2nd billboard, so
+       the player has to jump. A flat colored plane never reads as a hole in
+       this unlit scene (no shading to sell depth), so the pit is a canvas
+       radial gradient (dark center fading toward the rim) on an IRREGULAR
+       jagged outline instead of a clean rectangle — both asked explicitly.
+       Sits just above the asphalt (asphalt is one opaque plane at y=0, so
+       anything below it is invisible — that was the original bug). */
+    CRATER_ZS.forEach((cz, i) => {
+      const shape = jaggedHoleShape(THREE, 20, CRATER_HALF_W * 2, 71 + i * 37);
+      const geo = new THREE.ShapeGeometry(shape);
+      remapShapeUVs(geo);
+      /* No edge line, radioactive-green glow instead (asked explicitly) —
+         animated water shader so it reads as liquid, not a flat green stain. */
+      const mat = makeWaterMaterial(THREE);
+      craterMaterials.push(mat);
+      const pit = new THREE.Mesh(geo, mat);
+      pit.rotation.x = -Math.PI / 2;
+      pit.position.set(0, 0.012, cz);   /* above the sidewalk (0.01) — was under it, got clipped where they overlap in x */
+      scene.add(pit);
+    });
+
+    /* Lane dashes — skip any that would overlap a crater (the dash sits at
+       y=0.015, above the pit's y=0.008, and was drawing right across it). */
+    const dashMat = new THREE.MeshBasicMaterial({ color: 0x232a38 });
+    const DASH_HALF_LEN = 2.25;
+    for (let dz = -4; dz > -82; dz -= 9) {
+      const overlapsCrater = CRATER_ZS.some(cz =>
+        Math.abs(dz - cz) < DASH_HALF_LEN + CRATER_HALF_W
+      );
+      if (overlapsCrater) continue;
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.12, DASH_HALF_LEN * 2), dashMat);
       dash.rotation.x = -Math.PI / 2;
       dash.position.set(0, 0.015, dz);
       scene.add(dash);
     }
 
-    /* Foreground frame buildings — close to camera, fill viewport side edges */
-    addBuilding(THREE, -9, 1, 22);
-    addBuilding(THREE, 9, 1, 18);
+    /* Foreground frame buildings — close to camera, fill viewport side edges.
+       Heights are multiples of CHAR_HEIGHT so they read as proportionally
+       tall next to the character (roughly a 12- and 10-story building). */
+    addBuilding(THREE, -9, 1, CHAR_HEIGHT * 12);
+    addBuilding(THREE, 9, 1, CHAR_HEIGHT * 10);
 
-    /* Buildings — alternating left/right */
-    const leftH  = [14, 20, 11, 17, 13];
-    const rightH = [16, 12, 22, 15, 18];
-    const bZs    = [-6, -15, -24, -33, -42];
+    /* Buildings — alternating left/right, 6-12 stories tall relative to the character */
+    const leftH  = [8, 11, 6, 9, 7, 10, 6, 9].map(n => n * CHAR_HEIGHT);
+    const rightH = [9, 7, 12, 8, 10, 7, 11, 8].map(n => n * CHAR_HEIGHT);
+    const bZs    = [-6, -15, -24, -33, -42, -51, -60, -69];
     bZs.forEach((bz, i) => {
       addBuilding(THREE, -14, bz, leftH[i]);
       addBuilding(THREE,  14, bz, rightH[i]);
+    });
+
+    /* A handful of parked cars, one at a time (not stacked — asked
+       explicitly), sitting on the sidewalk-side empty slot: boards alternate
+       sides at bx=±6.5 per walk-order index k (see buildRoleBillboards,
+       side = k%2===0 ? -1 : 1), so at any given k only one side has a board
+       — these sit on the OTHER side at a few of those k positions. */
+    [1, 3, 5].forEach((k, i) => {
+      const boardSide = k % 2 === 0 ? -1 : 1;
+      const car = buildCar(THREE);
+      const cx = -boardSide * 6.5, cz = -10 - k * 10 + (i - 1) * 1.5;
+      car.position.set(cx, 0, cz);
+      car.rotation.y = 1.5 + i * 0.4;
+      scene.add(car);
+      /* Simple collision shape — asked explicitly. A circle ignoring the
+         car's rotation, not a true oriented box: cheap and good enough to
+         stop the player walking through it (body is 4.3x1.8, so its
+         bounding-circle radius is ~2.33). */
+      carColliders.push({ x: cx, z: cz, r: 2.35 });
     });
   }
 
@@ -507,9 +667,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     /* Deterministic width so scene is stable across re-renders */
     const w = 5.5 + ((Math.abs(bx) * 7 + Math.abs(bz) * 13) % 3);
     const bGeo = new THREE.BoxGeometry(w, h, 3.5);
-    const b = new THREE.Mesh(bGeo, atmosphereMaterial(THREE, 0x12151c));
+    const b = new THREE.Mesh(bGeo, new THREE.MeshBasicMaterial({ color: 0x12151c }));
     b.position.set(bx, h / 2, bz);
-    b.castShadow = true;
     scene.add(b);
 
     /* Edge lines */
@@ -520,10 +679,13 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     edges.position.set(bx, h / 2, bz);
     scene.add(edges);
 
-    /* Emissive windows — street-facing side only */
+    /* Lit windows — street-facing side, both sides of the avenue (addBuilding
+       is called symmetrically for negative and positive bx already). Bumped
+       from 0.5 to 0.88 opacity: at 0.5 the teal blended down toward the void
+       background and read as flat/unlit rather than "lit". */
     const faceZ = bx < 0 ? bz + 1.75 : bz - 1.75;
     const rotY  = bx < 0 ? 0 : Math.PI;
-    const wMat  = new THREE.MeshBasicMaterial({ color: 0x4d8f75, transparent: true, opacity: 0.5 });
+    const wMat  = new THREE.MeshBasicMaterial({ color: 0x4d8f75, transparent: true, opacity: 0.88 });
     const cols  = Math.floor(w / 1.2);
     const rows  = Math.floor(h / 1.6);
     let seed = Math.abs(bx * 13 + bz * 7);
@@ -544,36 +706,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   /* Streetlamps, neon signs, skyline + stars — ambience only, all
      MeshBasic/additive (no real lights), placed clear of billboard slots. */
   function buildCityDressing(THREE) {
-    /* Streetlamps: both sidewalk edges, offset from billboard z-rows */
-    const lampHeadMat = atmosphereMaterial(THREE, 0xbfd9cc);
-    const lampGlowMat = new THREE.MeshBasicMaterial({
-      color: 0x5ee7aa, transparent: true, opacity: 0.05,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    });
-    for (let lz = -5; lz >= -44; lz -= 9.5) {
-      [-5.4, 5.4].forEach(lx => {
-        const pole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.05, 4.3, 6),
-          atmosphereMaterial(THREE, 0x232a38)
-        );
-        pole.position.set(lx, 2.15, lz);
-        pole.castShadow = true;
-        scene.add(pole);
-        lampPosts.push(new THREE.Vector3(lx * 0.96, 4.32, lz));
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.14), lampHeadMat);
-        head.position.set(lx * 0.96, 4.32, lz);
-        scene.add(head);
-        /* Sin cono volumétrico: incluso a opacity 0.045 el DoubleSide sumaba
-           dos caras por cono y el bloom aditivo lo amplificaba, así que se leía
-           como un cono verde sólido en vez de como luz. La luz la dan el head
-           y el glow del piso. */
-        const glow = new THREE.Mesh(new THREE.CircleGeometry(1.05, 14), lampGlowMat);
-        glow.rotation.x = -Math.PI / 2;
-        glow.position.set(lx * 0.96, 0.015, lz);
-        scene.add(glow);
-      });
-    }
-
     /* Neon signs on inner building faces — canvas-textured, dim teal glow */
     const SIGNS = [
       { text: '7F·DATA',   x: -10.6, y: 9.5,  z: -6,  c: '#3d7a64' },
@@ -625,7 +757,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       new THREE.PlaneGeometry(95, 18),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCv), transparent: true, depthWrite: false })
     );
-    skyline.position.set(0, 8.5, -58);
+    skyline.position.set(0, 8.5, -96);
     scene.add(skyline);
 
     /* Stars — static points high above, subtle */
@@ -636,7 +768,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       sSeed = (sSeed * 1103515245 + 12345) & 0x7fffffff;
       starPos[i*3]   = ((sSeed % 1000) / 1000 - 0.5) * 90;
       starPos[i*3+1] = 15 + ((sSeed >> 10) % 1000) / 1000 * 20;
-      starPos[i*3+2] = -12 - ((sSeed >> 20) % 1000) / 1000 * 48;
+      starPos[i*3+2] = -12 - ((sSeed >> 20) % 1000) / 1000 * 92;
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
@@ -644,13 +776,76 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       color: 0xa8c4d8, size: 0.045, transparent: true, opacity: 0.28, sizeAttenuation: true,
     })));
 
-    /* Pool fijo: 8 luces creadas acá y nunca más. Se reposicionan en tick(). */
-    for (let i = 0; i < LAMP_POOL_SIZE; i++) {
-      const pl = new THREE.PointLight(0xcfe3d8, 24, 16, 2);
-      pl.position.set(0, -100, 0);   /* fuera de vista hasta el primer tick */
-      scene.add(pl);
-      lampPool.push(pl);
-    }
+    /* Obelisco (Buenos Aires) — sized to the REAL monument's proportions,
+       scaled off CHAR_HEIGHT ≈ 1.8m so 1 scene unit ≈ 1 meter: 67.5m tall,
+       ~6.4m base tapering to ~4.2m near the shaft top, ~3m pyramidal cap.
+       CylinderGeometry(r, r, h, 4) inscribes a square whose flat-face width
+       is r·√2 (with the 45° yaw below turning the diamond into flat faces
+       toward the avenue), hence the /Math.SQRT2 below. Placed past where any
+       role's boards reach (deepest board z is -40, walk clamp is -46) and in
+       front of the skyline backdrop at z=-58. Purely decorative, no hitbox.
+       Pale cool gray (never pure white), MeshBasic like the rest of this
+       ambience-only city dressing (no real lights besides the character's). */
+    const obX = OBELISK_X, obZ = OBELISK_Z;
+    const shaftH = 64, tipH = 3.5;
+    const rBottom = 6.4 / Math.SQRT2, rTop = 4.2 / Math.SQRT2;
+    const obMat = new THREE.MeshBasicMaterial({ color: 0x878d97 });   /* darker/less bright than the original 0xc7ccd6, still not pure black/white */
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, shaftH, 4), obMat);
+    shaft.position.set(obX, shaftH / 2, obZ);
+    shaft.rotation.y = Math.PI / 4;   /* flat faces toward the avenue instead of an edge */
+    scene.add(shaft);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(rTop, tipH, 4), obMat);
+    tip.position.set(obX, shaftH + tipH / 2, obZ);
+    tip.rotation.y = Math.PI / 4;
+    scene.add(tip);
+
+    /* Two holes flanking the obelisk — enormous (asked explicitly): the
+       avenue's world bounds (BOUND_X=8.8) put the obelisk WITHIN reach now
+       (avenue got extended past it since these were first added), so a
+       small decorative pit here left a walkable gap between the shaft and
+       the clamp — reachable but with nothing visually stopping the player
+       there. Sized to flank right up against the shaft (half-width ~4.53)
+       and run past BOUND_X, so the edge of the world reads as "there's a
+       pit", not an invisible wall. Same water shader as the street craters
+       (these are "los pozos" too — asked to read as liquid, plural). */
+    [-9, 9].forEach((hx, i) => {
+      const holeShape = jaggedHoleShape(THREE, 10, 16, 131 + i * 53);
+      const holeGeo = new THREE.ShapeGeometry(holeShape);
+      remapShapeUVs(holeGeo);
+      const mat = makeWaterMaterial(THREE);
+      craterMaterials.push(mat);
+      const hole = new THREE.Mesh(holeGeo, mat);
+      hole.rotation.x = -Math.PI / 2;
+      hole.position.set(obX + hx, 0.012, obZ);   /* above the sidewalk (0.01) — these got much wider and now reach into its footprint ("tapados por la vereda") */
+      scene.add(hole);
+    });
+
+  }
+
+  /* A basic low-poly car — body + cabin + 4 wheels, all box/cylinder
+     primitives, MeshBasic to match the rest of this ambience-only dressing. */
+  /* Real sedan proportions (~4.3m long, ~1.8m wide, ~1.5m roof), anchored to
+     the same CHAR_HEIGHT≈1.8m/unit scale as everything else — the previous
+     version was 1.8 units long (a person's HEIGHT, not a car's length),
+     which read as a toy. */
+  function buildCar(THREE) {
+    const car = new THREE.Group();
+    const bodyMat = new THREE.MeshBasicMaterial({ color: 0x2a3040 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.7, 1.8), bodyMat);
+    body.position.set(0, 0.7, 0);
+    car.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.55, 1.55), bodyMat);
+    cabin.position.set(-0.15, 1.225, 0);
+    car.add(cabin);
+    const wheelMat = new THREE.MeshBasicMaterial({ color: 0x111418 });
+    const wheelR = 0.33;
+    [[-1.5, -0.82], [-1.5, 0.82], [1.5, -0.82], [1.5, 0.82]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(wheelR, wheelR, 0.26, 12), wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wx, wheelR, wz);
+      car.add(wheel);
+    });
+    return car;
   }
 
   /* ────────────────── Particles ───────────────────────── */
@@ -675,29 +870,93 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     scene.add(particles);
   }
 
-  /* ────────────────── Ground chevrons (persistent pool) ── */
-  /* Animated ▲ arrows on the asphalt flowing from the character toward the
-     next undiscovered billboard. Repositioned + pulsed every tick. */
-  function buildChevrons(THREE) {
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.45, -0.35); shape.lineTo(0, 0.1); shape.lineTo(0.45, -0.35);
-    shape.lineTo(0.45, -0.05);  shape.lineTo(0, 0.4); shape.lineTo(-0.45, -0.05);
-    const geo = new THREE.ShapeGeometry(shape);
-    for (let j = 0; j < 8; j++) {
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color: 0x5ee7aa,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
+  /* ── Gameplay FX — footstep dust, jump puffs, crater splash ──
+     Small pool of THREE.Sprites (each needs its own opacity/scale timer,
+     which a single THREE.Points draw call can't give per-particle) sharing
+     one soft radial-gradient dot texture, tinted per spawn via .color. */
+  function makeFxDotTexture(THREE) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 32;
+    const ctx = cv.getContext('2d');
+    const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 32, 32);
+    return new THREE.CanvasTexture(cv);
+  }
+
+  function spawnFx(THREE, x, y, z, color, opts = {}) {
+    if (!fxDotTexture) fxDotTexture = makeFxDotTexture(THREE);
+    let p = fxPool.find(e => !e.active);
+    if (!p) {
+      if (fxPool.length >= FX_POOL_MAX) return;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: fxDotTexture, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
       }));
-      m.rotation.x = -Math.PI / 2;   /* flat on the ground, tip pointing −z */
-      m.position.set(0, 0.03, 0);
-      chevrons.push(m);
-      scene.add(m);
+      scene.add(sprite);
+      p = { sprite };
+      fxPool.push(p);
+    }
+    p.sprite.material.color.setHex(color);
+    p.size = opts.size ?? 0.3;
+    p.baseOpacity = opts.opacity ?? 0.85;
+    p.sprite.scale.setScalar(p.size);
+    p.sprite.position.set(x, y, z);
+    p.vx = opts.vx ?? (Math.random() - 0.5) * 0.02;
+    p.vy = opts.vy ?? 0.025;
+    p.vz = opts.vz ?? (Math.random() - 0.5) * 0.02;
+    p.grav = opts.grav ?? -0.0018;
+    p.life = p.maxLife = opts.life ?? 0.45;
+    p.active = true;
+    p.sprite.visible = true;
+  }
+
+  function spawnFxBurst(THREE, x, y, z, color, count, opts = {}) {
+    const spread = opts.spread ?? 0.03;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = spread * (0.5 + Math.random() * 0.5);
+      spawnFx(THREE, x, y, z, color, { ...opts, vx: Math.cos(a) * s, vz: Math.sin(a) * s });
     }
   }
+
+  function updateFx(dtScale) {
+    fxPool.forEach(p => {
+      if (!p.active) return;
+      p.life -= 0.016 * dtScale;
+      if (p.life <= 0) { p.active = false; p.sprite.visible = false; return; }
+      p.vy += p.grav * dtScale;
+      p.sprite.position.x += p.vx * dtScale;
+      p.sprite.position.y += p.vy * dtScale;
+      p.sprite.position.z += p.vz * dtScale;
+      const f = p.life / p.maxLife;
+      p.sprite.material.opacity = f * p.baseOpacity;
+      p.sprite.scale.setScalar(p.size * (0.6 + 0.4 * f));
+    });
+  }
+
+  /* ── Simple sound cues ── asked explicitly for the loading dots, panel
+     open, footsteps, and touching a crater. No audio assets — synthesized
+     beeps via Web Audio (a couple lines, no files to source/license).
+     AudioContext is created lazily on first beep(), always well after the
+     WASD keydown that got the player there, so it's never blocked by the
+     browser's autoplay-needs-a-gesture policy. */
+  let audioCtx = null;
+  function beep(freq, dur, type, vol) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  }
+
 
   /* ────────────────── Dynamic billboards — AVENUE ───────── */
   /* DEFINITIVE ARCHITECTURE: billboards are built ON role selection and
@@ -721,7 +980,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     }
     roleBillRefs = [];
     zoneMeshes = [];
-    endcapRef = null;
   }
 
   function buildRoleBillboards(THREE, role) {
@@ -731,38 +989,24 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
 
     roleBillGroup = new THREE.Group();
 
-    /* Role label sprite floats over the avenue entrance */
-    const sprite = makeLabel(THREE, zoneLabels[role].toUpperCase(), '#5ee7aa');
-    sprite.position.set(0, 8.5, -10);
-    sprite.material.opacity = 0.9;
-    roleBillGroup.add(sprite);
-
     /* Walk order: non-flagship projects first, flagship (projIdx 0) closes */
     const order = projects.map((_, i) => i).slice(1).concat([0]);
 
     order.forEach((projIdx, k) => {
       const proj   = projects[projIdx];
       const isHero = projIdx === 0;
-      const side   = k % 2 === 0 ? -1 : 1;         /* left, right, left… */
+      const side   = k % 2 === 0 ? -1 : 1;           /* alternating: left, right, left… — asked explicitly, one project per hand */
       const bx     = side * 6.5;
       const bz     = -10 - k * 10;
-      const rotY   = side === -1 ? 0.5 : -0.5;     /* 3/4 angle toward walking camera */
+      const rotY   = 0;                             /* re-oriented toward the camera every frame in tick() — see boardFaceCamera */
       const w   = isHero ? 6.0 : 4.2;
       const h   = isHero ? 4.0 : 2.8;
       const cvW = isHero ? 768 : 576;
       const cvH = isHero ? 512 : 384;
       const boardY = isHero ? 5.2 : 4.5;
-      const poleH  = isHero ? 5.7 : 5.0;
       /* Flagship board is marked in amber (Deus Ex) — regular boards teal */
       const borderColor = isHero ? FLAG : 0x3d7a64;
-
-      /* Pole */
-      const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.06, poleH, 8),
-        new THREE.MeshBasicMaterial({ color: 0x232a38 })
-      );
-      pole.position.set(bx, poleH / 2, bz);
-      roleBillGroup.add(pole);
+      /* ponytail: no pole, ever — the board floats free of any support post (asked explicitly) */
 
       /* Frame backing */
       const frameGeo = new THREE.BoxGeometry(w + 0.18, h + 0.1, 0.1);
@@ -796,17 +1040,35 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       bill.translateZ(0.06);   /* offset along facing direction so it sits on the frame */
       roleBillGroup.add(bill);
 
-      /* Ground ring under the board — lights up on discovery (amber for flagship) */
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1.0, 1.28, 28),
-        new THREE.MeshBasicMaterial({
-          color: isHero ? FLAG_BRIGHT : 0x5ee7aa, transparent: true, opacity: 0,
-          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-        })
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(bx * 0.82, 0.02, bz + 1.4);
-      roleBillGroup.add(ring);
+      /* TWO circles, asked explicitly, not one: a small visible marker under
+         the board (this one) that stays small, and a big INVISIBLE sensor
+         zone (PROXIMITY_R2, 8u radius, checked in tick() — never rendered
+         as geometry) that triggers it. The small marker doesn't need to
+         match the sensor's size or position — it's a fixed decoration at
+         the board's own (bx,bz) that only changes STATE based on whether
+         the player is inside that far-larger invisible zone. Two states,
+         always visible (asked explicitly — dim from outside, not
+         invisible): DIM (default, "unlit edge" 0x2a3040 tone used
+         everywhere in this scene) — visible before you're in range, just
+         not glowing. FILLED (bright, sweeps in one tick at a time while
+         inside range) — the loading-spinner fill; the board's own
+         light/color change fires the moment you first enter range. */
+      const spinnerTicks = [];
+      for (let s = 0; s < SPINNER_TICKS; s++) {
+        const ang = (s / SPINNER_TICKS) * Math.PI * 2;
+        const tick = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.1, 0.28),
+          new THREE.MeshBasicMaterial({
+            color: 0x2a3040, transparent: true, opacity: 0.4,
+            blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+          })
+        );
+        tick.rotation.x = -Math.PI / 2;
+        tick.rotation.z = -ang;
+        tick.position.set(bx + Math.sin(ang) * SPINNER_R, 0.025, bz + Math.cos(ang) * SPINNER_R);
+        roleBillGroup.add(tick);
+        spinnerTicks.push(tick);
+      }
 
       /* Transparent hitbox (never use visible:false — raycaster skips invisible) */
       const hit = new THREE.Mesh(
@@ -820,7 +1082,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       roleBillGroup.add(hit);
       zoneMeshes.push({ mesh: hit, key: role, projIdx });
 
-      roleBillRefs.push({ mesh: bill, edges: edgeLines, ring, borderColor, isHero, projIdx, bx, bz, lit: false });
+      roleBillRefs.push({ mesh: bill, frame, edges: edgeLines, hit, spinnerTicks, fillT: 0, opened: false, inBigCircle: false, borderColor, isHero, projIdx, bx, bz, lit: false });
     });
 
     /* Warm amber glow light at the flagship — the finale (G7) */
@@ -830,69 +1092,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     light.userData = { zone: role };
     roleBillGroup.add(light);
 
-    /* ── End-cap: giant terminal screen past the flagship (G3) ──
-       Starts dark, powers on by z-band proximity, click → full archive page */
-    const ecZ = last.bz - 11;
-    const ecW = 10, ecH = 5, ecY = 4.3;
-    const ecFrameGeo = new THREE.BoxGeometry(ecW + 0.3, ecH + 0.2, 0.16);
-    const ecFrame = new THREE.Mesh(ecFrameGeo, new THREE.MeshBasicMaterial({ color: 0x111418 }));
-    ecFrame.position.set(0, ecY, ecZ);
-    roleBillGroup.add(ecFrame);
-    const ecEdges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(ecFrameGeo),
-      new THREE.LineBasicMaterial({ color: 0x2a3040 })
-    );
-    ecEdges.position.copy(ecFrame.position);
-    roleBillGroup.add(ecEdges);
-
-    const ecCv = document.createElement('canvas');
-    ecCv.width = 1024; ecCv.height = 512;
-    drawEndcapCanvas(ecCv.getContext('2d'), 1024, 512);
-    const ecScreen = new THREE.Mesh(
-      new THREE.PlaneGeometry(ecW, ecH),
-      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ecCv), color: 0x30343d })
-    );
-    ecScreen.position.set(0, ecY, ecZ + 0.09);
-    roleBillGroup.add(ecScreen);
-
-    const ecHit = new THREE.Mesh(
-      new THREE.PlaneGeometry(ecW, ecH),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-    );
-    ecHit.position.set(0, ecY, ecZ + 0.1);
-    ecHit.userData = { zone: '__endcap', projIdx: -1 };
-    roleBillGroup.add(ecHit);
-    zoneMeshes.push({ mesh: ecHit, key: '__endcap', projIdx: -1 });
-
-    endcapRef = { mesh: ecScreen, edges: ecEdges, bz: ecZ, lit: false };
-
     scene.add(roleBillGroup);
-  }
-
-  /* End-cap screen texture — terminal-style archive prompt */
-  function drawEndcapCanvas(ctx, W, H) {
-    ctx.fillStyle = '#111418';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#5ee7aa';
-    ctx.fillRect(0, 0, W, 6);
-    ctx.fillRect(0, H - 6, W, 6);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '22px "Share Tech Mono", monospace';
-    ctx.fillText(endcap.sys, W / 2, H * 0.24);
-    ctx.fillStyle = '#E8E4D0';
-    ctx.font = 'bold 58px "Share Tech Mono", monospace';
-    ctx.fillText(endcap.title, W / 2, H * 0.46);
-    ctx.fillStyle = '#5ee7aa';
-    ctx.font = '26px "Share Tech Mono", monospace';
-    ctx.fillText('◆ ◆ ◆', W / 2, H * 0.6);
-    const btnW = 560, btnH = 74, btnX = (W - btnW) / 2, btnY = H * 0.68;
-    ctx.fillStyle = '#5ee7aa';
-    ctx.fillRect(btnX, btnY, btnW, btnH);
-    ctx.fillStyle = '#0d0f14';
-    ctx.font = 'bold 30px "Share Tech Mono", monospace';
-    ctx.fillText(endcap.cta, W / 2, btnY + 48);
-    ctx.textAlign = 'left';
   }
 
   /* Draws a billboard canvas texture for one project.
@@ -1031,21 +1231,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     ctx.fillText(line.trim(), x, y);
   }
 
-  function makeLabel(THREE, text, hexColor) {
-    const cv = document.createElement('canvas');
-    cv.width = 320; cv.height = 72;
-    const ctx = cv.getContext('2d');
-    ctx.clearRect(0, 0, 320, 72);
-    ctx.fillStyle = hexColor;
-    ctx.font = 'bold 20px "Share Tech Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.letterSpacing = '3px';
-    ctx.fillText(text, 160, 44);
-    const tex = new THREE.CanvasTexture(cv);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(3.2, 0.72, 1);
-    return sprite;
+  /* ────────────────── HDRI Environment ────────────────── */
+  async function loadHDRI(THREE) {
+    try {
+      const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
+      new RGBELoader().load('/hdri/cobblestone_street_night_1k.hdr', (texture) => {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+        scene.environment = pmrem.fromEquirectangular(texture).texture;
+        texture.dispose();
+        pmrem.dispose();
+      });
+    } catch (_) { /* HDRI is visual enhancement only — scene works without it */ }
   }
 
   /* ────────────────── Character Placeholder ────────────── */
@@ -1073,6 +1270,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     eye.position.set(0, 1.638, 0.22);
     charGroup.add(body, head, visor, eye);
     charGroup.position.set(charX, 0, charZ);
+    charGroup.rotation.y = targetRotY;   /* spawn facing into the avenue, not the camera */
     scene.add(charGroup);
   }
 
@@ -1094,10 +1292,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   }
 
   function onCanvasClick(THREE, e) {
-    /* 1) Billboard / end-cap hit */
+    /* Billboard hit */
     const hit = getZoneHit(THREE, e);
     if (hit) {
-      if (hit.key === '__endcap') { window.location.href = allUrl[activeRole] ?? allUrl.risk; return; }
       showPanel(hit.key, hit.projIdx);
       return;
     }
@@ -1111,86 +1308,141 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     /* Hover glow — hovered billboard's frame edges flash bright (amber for the
        flagship, mint otherwise); others restore to their state color */
     roleBillRefs.forEach(ref => {
-      const hovered = hit && hit.key !== '__endcap' && ref.projIdx === hit.projIdx;
+      const hovered = hit && ref.projIdx === hit.projIdx;
       ref.edges.material.color.setHex(
         hovered ? (ref.isHero ? FLAG_BRIGHT : 0x5ee7aa)
                 : (ref.lit ? ref.borderColor : 0x2a3040)
       );
     });
-    if (endcapRef) {
-      const ecHover = hit && hit.key === '__endcap';
-      endcapRef.edges.material.color.setHex(
-        ecHover ? 0x5ee7aa : (endcapRef.lit ? 0x3d7a64 : 0x2a3040)
-      );
-    }
   }
 
   /* ────────────────── Navigation ──────────────────────── */
+  /* Dead-center (x=0), not offset toward the first board's side — boards
+     alternate sides, and starting biased toward one side put the OTHER
+     side's boards too far away (laterally) for the 8u activation circle to
+     ever reach, so half the boards never lit up. Shared by navigateTo (role
+     select) and respawnAtEntrance (falling into a crater while running). */
+  function resetToEntrance() {
+    const first = roleBillRefs[0];
+    charX = 0;
+    charZ = first ? first.bz + 10 : -8;   /* 2m further back than before, asked explicitly */
+    targetX = charX; targetZ = charZ;
+    if (charGroup) charGroup.position.set(charX, 0, charZ);
+  }
+
+  function respawnAtEntrance() {
+    resetToEntrance();
+    jumping = false; jumpT = 0;
+    shakeT = SHAKE_DUR;   /* camera shake on death, asked explicitly */
+  }
+
+  /* Teleport straight to a project's board — a deliberate, narrow exception
+     to "no pointer-driven movement" scoped only to selecting a project
+     (billboard click, panel nav, or the projects drawer), not general
+     click-to-move on empty ground. Stands at the exact center of that
+     board's activation circle (its own bx/bz), facing further into the
+     avenue toward it, so it reads as active immediately. Pulled out of
+     showPanel so a selection can teleport WITHOUT opening the sidebar. */
+  /* Right drawer's project list — click a row → teleport to that board (no
+     sidebar per SIDEBAR_ENABLED). Global styles for these JS-injected rows
+     live in the <style is:global> block, anchored to #ps-projects-drawer
+     (lesson 22: component-scoped styles never match runtime-created DOM). */
+  function populateProjectsDrawer(zone) {
+    const list = document.getElementById('pd-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const projects = zoneProjects[zone] ?? [];
+    /* Same order the boards actually sit in along the street (roleBillRefs
+       is built in WALK order — flagship/projIdx 0 goes last — not the raw
+       data-array order), asked explicitly. Must run after
+       buildRoleBillboards populates roleBillRefs (it does, see the
+       nier:zone handler above). */
+    roleBillRefs.forEach((ref, i) => {
+      const p = projects[ref.projIdx];
+      if (!p) return;
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'pd-row';
+      row.innerHTML = `<span class="pd-num">${String(i + 1).padStart(2, '0')}</span><span class="pd-info"><span class="pd-name">${p.name}</span><span class="pd-desc">${p.desc}</span></span>`;
+      row.addEventListener('click', (e) => {
+        teleportToBoard(ref.projIdx);
+        document.getElementById('ps-projects-drawer').classList.remove('open');
+        document.getElementById('ps-projects-tab').setAttribute('aria-expanded', 'false');
+        e.currentTarget.blur();   /* a focused row would silently re-click (re-teleport) on the next Space/jump */
+      });
+      list.appendChild(row);
+    });
+  }
+
+  function panelSideFor(projIdx) {
+    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
+    return (ref && ref.bx > 0) ? 'left' : 'right';
+  }
+
+  /* ponytail: `.ps-panel`'s transform is translateX(±100%) — relative to
+     its OWN box, not the viewport — while `left`/`right` (the anchor edge)
+     just snap instantly on class change (not transitioned). Swapping sides
+     while `transform`'s transition is still active carries the OLD side's
+     numeric offset over onto the NEW anchor edge, which visually drags the
+     panel across the screen instead of sliding in from its own edge (bug
+     reported explicitly: "se ve el movimiento que pasa de la izquierda a la
+     derecha"). Fix: when the side actually changes, kill the transition for
+     one frame, snap straight to the new side's closed position, flush it
+     with a reflow, then restore the transition so `open` animates in fresh
+     from the correct edge. */
+  function setPanelSide(wantLeft) {
+    const panel = document.getElementById('ps-panel');
+    if (panel.classList.contains('left') === wantLeft) return;
+    panel.style.transition = 'none';
+    panel.classList.remove('open');
+    panel.classList.toggle('left', wantLeft);
+    void panel.offsetWidth;
+    panel.style.transition = '';
+  }
+
+  function teleportToBoard(projIdx) {
+    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
+    if (!ref) return;
+    charX = ref.bx;
+    charZ = ref.bz;
+    targetX = charX; targetZ = charZ;
+    targetRotY = Math.PI;
+    if (charGroup) charGroup.position.set(charX, 0, charZ);
+    /* Camera shake on every teleport to a ring's center — asked explicitly
+       ("cada vez que se te transporta al centro de un anillo"). Every
+       teleport path (billboard click, drawer row, the ring-fill opening the
+       sidebar) funnels through this one function, so one shakeT here covers
+       all of them. Reuses the same decaying timer as the death shake. */
+    shakeT = SHAKE_DUR;
+  }
+
   function navigateTo(zone) {
     activeZone = zone;
-    /* Walk to the avenue entrance — just short of the first billboard, so
-       proximity power-on fires as a small arrival event */
-    const first = roleBillRefs[0];
-    targetX = first ? first.bx * 0.35 : 0;
-    targetZ = first ? first.bz + 4 : -6;
-    isMoving = true;
-    arrivalPending = true;   /* only navigateTo walks fire the arrival banner */
+    /* Teleport straight to the avenue entrance instead of auto-walking there —
+       the character must never move on its own, only via WASD (or selecting
+       a project, which is its own explicit teleport-on-select exception). */
+    resetToEntrance();
     hidePanel();
-    document.getElementById('ps-hint').classList.add('hidden');
-    document.getElementById('ps-zone-id').classList.remove('hidden');
-    document.getElementById('ps-zone-id').textContent = 'ZONE: ' + zoneLabels[zone];
-    document.getElementById('ps-records').classList.remove('hidden');
-    updateRecordsHUD(false);
   }
 
-  /* Discovery counter HUD — flashes when a new record powers on (G6) */
-  function updateRecordsHUD(flash) {
-    const el = document.getElementById('ps-records');
-    if (!el || !roleBillRefs.length) return;
-    const lit = roleBillRefs.filter(r => r.lit).length;
-    el.textContent = 'RECORDS ' + String(lit).padStart(2, '0') + '/' + String(roleBillRefs.length).padStart(2, '0');
-    if (flash && !reduced) {
-      el.classList.remove('flash');
-      void el.offsetWidth;   /* restart the animation */
-      el.classList.add('flash');
-    }
-  }
-
-  function returnToCenter() {
-    hidePanel();
-    document.getElementById('ps-back').classList.add('hidden');
-    document.getElementById('ps-hint').classList.remove('hidden');
-  }
-
-  function onArrival(zone) {
-    isMoving = false;
-    arrivalPending = false;
-    if (!zone) return;
-    document.getElementById('ps-back').classList.remove('hidden');
-    showBanner(zone);
-    /* Panel opening is handled by the proximity power-on system — the first
-       billboard lights up as the character reaches the avenue entrance */
-  }
-
-  /* ────────────────── Arrival banner ──────────────────── */
-  function showBanner(zone) {
-    const banner = document.getElementById('ps-banner');
-    if (!banner) return;
-    banner.textContent = bannerFmt.replace('%', zoneLabels[zone]);
-    banner.classList.remove('sweep');
-    void banner.offsetWidth;   /* force reflow so the animation restarts */
-    banner.classList.add('sweep');
-  }
 
   /* ────────────────── Minimap 2.0 (G4) ────────────────── */
-  /* World→map: x ∈ [-10,10] → px ∈ [15,125] · z ∈ [6,-56] → py ∈ [12,178].
-     Heading arrow, click = fast-travel, pulse on next objective, corner-cut frame. */
+  /* World→map: x ∈ [-10,10] → px ∈ [15,125] · z ∈ [6,-90] → py ∈ [12,178].
+     Heading arrow, click = fast-travel, pulse on next objective, corner-cut frame.
+     ponytail: z-range was still [6,-56] from before the avenue grew to fit
+     every project + the obelisk (BOUND_Z_MIN=-87) — anything past z=-56
+     computed a negative py and drew off the top edge of the canvas ("el
+     minimapa quedo cortado"). Extended to -90, past BOUND_Z_MIN. */
+  /* mz maps world z so that walking FORWARD (into the avenue, z decreasing)
+     moves the marker UP the minimap (py decreasing) — the intuitive
+     top-down-minimap convention. It was previously inverted: forward
+     progress moved the marker down, which read as "backwards"/upside-down. */
   const MM = {
     W: 140, H: 190,
     mx: (x) => 15 + ((x + 10) / 20) * 110,
-    mz: (z) => 12 + ((6 - z) / 62) * 166,
+    mz: (z) => 12 + ((z + 90) / 96) * 166,
     invX: (px) => ((px - 15) / 110) * 20 - 10,
-    invZ: (py) => 6 - ((py - 12) / 166) * 62,
+    invZ: (py) => ((py - 12) / 166) * 96 - 90,
   };
 
   function drawMinimap() {
@@ -1206,16 +1458,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     ctx.lineTo(W - 0.5, H - 0.5);
     ctx.lineTo(0.5, H - 0.5);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(13,15,20,0.94)';
+    ctx.fillStyle = 'rgba(13,15,20,0.66)';   /* 30% more transparent, asked explicitly (was 0.94) */
     ctx.fill();
     ctx.strokeStyle = '#2a3040';
     ctx.stroke();
-    /* street */
+    /* street — ponytail: this stopped at z=-54 from before the avenue grew
+       to fit every project + the obelisk (BOUND_Z_MIN=-87); boards/obelisk
+       past that point drew floating past where the visible street ended
+       ("el minimapa quedo cortado", still broken after the mz() range fix
+       alone). Extended to -88, just past the world's own Z bound. */
     ctx.strokeStyle = '#1c2030';
     ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.moveTo(mx(0), mz(6));
-    ctx.lineTo(mx(0), mz(-54));
+    ctx.lineTo(mx(0), mz(-88));
     ctx.stroke();
     ctx.lineWidth = 1;
     /* header */
@@ -1243,11 +1499,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
         ctx.strokeRect(px - 2.5, py - 2.5, 5, 5);
       }
     });
-    /* end-cap marker — wide bar at the avenue end */
-    if (endcapRef) {
-      ctx.fillStyle = endcapRef.lit ? '#5ee7aa' : '#2a3040';
-      ctx.fillRect(mx(0) - 8, mz(endcapRef.bz) - 1.5, 16, 3);
-    }
+    /* Obelisk marker — asked explicitly ("que se vea el obelisco también"),
+       a small triangle (echoes the monument's own silhouette) so it reads
+       as distinct from the square board markers. */
+    const obPx = mx(OBELISK_X), obPy = mz(OBELISK_Z);
+    ctx.fillStyle = '#878d97';
+    ctx.beginPath();
+    ctx.moveTo(obPx, obPy - 4);
+    ctx.lineTo(obPx + 2.8, obPy + 3);
+    ctx.lineTo(obPx - 2.8, obPy + 3);
+    ctx.closePath();
+    ctx.fill();
+
     /* character — heading arrow, not a dot */
     const cx = mx(charX), cy = mz(charZ);
     const ang = charGroup ? Math.PI - charGroup.rotation.y : 0;
@@ -1297,6 +1560,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
      MISSION section, highlighted metric box, large CTAs, and the remaining
      projects as numbered navigable rows (click → walk to that board). */
   function showPanel(zone, projIdx = 0) {
+    /* ponytail: sidebar disabled for now, asked explicitly ("que nada abra
+       el sidebar por ahora") — still teleport (selecting a project should
+       still move the character), just skip populating/opening the panel UI.
+       Flip SIDEBAR_ENABLED back to true to restore it, nothing else to undo. */
+    if (!SIDEBAR_ENABLED) { teleportToBoard(projIdx); return; }
     const projects = zoneProjects[zone];
     document.getElementById('panel-all').href = allUrl[zone];
 
@@ -1304,102 +1572,60 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     cards.innerHTML = '';
 
     if (!projects || !projects.length) {
-      document.getElementById('panel-sys').textContent = 'SYS::' + zoneLabels[zone];
-      document.getElementById('panel-count').textContent = '0 REC';
-      document.getElementById('dossier-status').innerHTML = '';
       scrambleIn(document.getElementById('panel-title'), zoneLabels[zone]);
       cards.innerHTML = '<p class="panel-empty sys-text">[ RECORDS INCOMING ]</p>';
+      setPanelSide(panelSideFor(projIdx) === 'left');
       document.getElementById('ps-panel').classList.add('open');
+      beep(340, 0.15, 'sine', 0.07);
       return;
     }
 
     const heroIdx = (projIdx !== null && projIdx !== undefined && projIdx < projects.length) ? projIdx : 0;
     const hero = projects[heroIdx];
 
-    document.getElementById('panel-sys').textContent = 'SYS::' + zoneLabels[zone].toUpperCase();
-    document.getElementById('panel-count').textContent =
-      'REC ' + String(heroIdx + 1).padStart(2, '0') + '/' + String(projects.length).padStart(2, '0');
-    document.getElementById('dossier-status').innerHTML =
-      `<span class="d-badge${hero.featured ? ' d-badge-flag' : ''}">${hero.featured ? '◆ ' : ''}${hero.status}</span>`;
-    scrambleIn(document.getElementById('panel-title'), hero.name);
+    setPanelSide(panelSideFor(heroIdx) === 'left');
+    teleportToBoard(heroIdx);
 
-    /* Discovery progress — one block per board in walk order (G5) */
-    const litCount = roleBillRefs.filter(r => r.lit).length;
-    const blocks = roleBillRefs.map(r =>
-      `<span class="d-block${r.lit ? ' on' : ''}${r.isHero ? ' flag' : ''}"></span>`
-    ).join('');
+    /* ponytail: simplified panel, asked explicitly — just what the project
+       IS (name, one-line mission, headline metric, links). Dropped: the
+       discovery-progress block row, stack chips, PREV/NEXT nav and the
+       "other records" list — the projects drawer already covers jumping to
+       a different project, this panel doesn't need to duplicate that. */
+    scrambleIn(document.getElementById('panel-title'), hero.name);
 
     const body = document.createElement('div');
     body.className = 'dossier-body';
     body.innerHTML = `
-      ${roleBillRefs.length ? `
-      <div class="d-progress">
-        <span class="d-label">${dossier.discovered} ${String(litCount).padStart(2, '0')}/${String(roleBillRefs.length).padStart(2, '0')}</span>
-        <span class="d-blocks">${blocks}</span>
-      </div>` : ''}
+      ${heroIdx === projects.length - 1 ? `<div class="d-wip">${dossier.wip}</div>` : ''}
       <div class="d-section">
         <div class="d-label">${dossier.mission}</div>
         <p class="d-desc">${hero.desc}</p>
       </div>
       ${hero.outcome ? `<div class="d-metric${hero.featured ? ' d-metric-flag' : ''}">◆ ${hero.outcome}</div>` : ''}
-      ${hero.stack?.length ? `
-      <div class="d-stackrow">
-        <div class="d-label">${dossier.stack}</div>
-        <div class="d-chips">${hero.stack.map(s => `<span class="d-chip">${s}</span>`).join('')}</div>
-      </div>` : ''}
       <div class="d-ctas">
         <a class="d-cta d-cta-primary" href="${hero.github}" target="_blank" rel="noopener">[ ${dossier.code} ]</a>
         ${hero.demo ? `<a class="d-cta d-cta-ghost" href="${hero.demo}" target="_blank" rel="noopener">[ ${dossier.live} ]</a>` : ''}
       </div>
-      <div class="d-nav">
-        <button type="button" class="d-nav-btn" data-nav="-1">[ ${dossier.prev} ]</button>
-        <button type="button" class="d-nav-btn" data-nav="1">[ ${dossier.next} ]</button>
-      </div>
     `;
     cards.appendChild(body);
 
-    /* PREV/NEXT — cambia de registro; caminar es cosa del jugador (WASD) */
-    body.querySelectorAll('.d-nav-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const n = projects.length;
-        const nextIdx = (heroIdx + parseInt(btn.dataset.nav, 10) + n) % n;
-        showPanel(zone, nextIdx);
-      });
-    });
-
-    /* Otros registros — la fila cambia el registro mostrado, no desplaza */
-    const others = document.createElement('div');
-    others.className = 'd-others';
-    others.innerHTML = `<div class="d-label">${dossier.other}</div>`;
-    projects.forEach((p, i) => {
-      if (i === heroIdx) return;
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'd-row';
-      row.innerHTML = `
-        <span class="d-num">${String(i + 1).padStart(2, '0')}</span>
-        <span class="d-row-name">${p.name}</span>
-        <span class="d-row-badge">${p.status}</span>
-      `;
-      row.addEventListener('click', () => {
-        showPanel(zone, i);
-      });
-      others.appendChild(row);
-    });
-    cards.appendChild(others);
-
-    /* Staggered block reveal */
-    [body, others].forEach((el, i) => {
-      el.style.opacity = '0';
-      el.style.transition = 'opacity 0.25s ease';
-      setTimeout(() => { el.style.opacity = '1'; }, 60 + i * 160);
-    });
+    body.style.opacity = '0';
+    body.style.transition = 'opacity 0.25s ease';
+    setTimeout(() => { body.style.opacity = '1'; }, 60);
 
     document.getElementById('ps-panel').classList.add('open');
+    beep(340, 0.15, 'sine', 0.07);
   }
 
   function hidePanel() {
     document.getElementById('ps-panel').classList.remove('open');
+    beep(220, 0.12, 'sine', 0.06);   /* close cue, asked explicitly — lower than the 340Hz open tone */
+    /* Reset whichever board's ring is currently marked opened, so closing
+       the panel from outside the small-circle tick loop (e.g. the PROJECTS
+       button below) doesn't leave that ring stuck "already opened" — it
+       needs to be able to re-fire if the player walks back into it. */
+    const openRef = roleBillRefs.find(r => r.opened);
+    if (openRef) openRef.opened = false;
   }
 
   /* ────────────────── Fallback ────────────────────────── */
@@ -1412,21 +1638,36 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
   /* ────────────────── Render Loop ─────────────────────── */
   function tick(THREE) {
     requestAnimationFrame(() => tick(THREE));
-    if (!visible || !renderer) return;
+    /* The jump arc is advanced further down in this same function, so bailing
+       out mid-air used to latch `jumping` forever: locoState stuck on 'jump'
+       and idle never came back after tabbing away or scrolling the canvas out
+       of view. Cancelling here covers both sources of `visible`
+       (visibilitychange and the IntersectionObserver) at the one point they
+       both route through. */
+    if (!visible || !renderer) { jumping = false; jumpT = 0; return; }
     t += 0.016;
 
     /* Character movement — WASD takes priority over click-to-walk.
-       Shift = sprint (×1.8). Position always clamped to world bounds. */
+       Default is running; holding Shift slows it down to a walk (asked
+       explicitly — inverted from the original walk-default/Shift-to-run). */
     const wsadX = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
     const wsadZ = (keys['KeyS'] || keys['ArrowDown']  ? 1 : 0) - (keys['KeyW'] || keys['ArrowUp']   ? 1 : 0);
     const wsadOn = wsadX !== 0 || wsadZ !== 0;
-    const sprinting = wsadOn && !!keys.Shift;
+    const sprinting = wsadOn && !keys.Shift;
+
+    /* ponytail: root-cause fix for "walks slower than before" — charX/charZ
+       used to advance by a FIXED amount per tick(), so real-world speed was
+       silently tied to frame rate (a busier scene = fewer frames/sec = slower
+       walk). dtScale normalizes every per-tick displacement to a 60fps
+       baseline so speed stays constant regardless of frame rate. */
+    const delta = animClock ? Math.min(animClock.getDelta(), 0.05) : 0;
+    const dtScale = delta > 0 ? delta * 60 : 1;
 
     let nowMoving = false;
 
     if (wsadOn) {
       const len = Math.sqrt(wsadX * wsadX + wsadZ * wsadZ);
-      const speed = WALK_SPEED * (sprinting ? 1.8 : 1);
+      const speed = WALK_SPEED * (sprinting ? SPRINT_MULT : 1) * (jumping ? JUMP_SPEED_MULT : 1) * dtScale;
       charX += (wsadX / len) * speed;
       charZ += (wsadZ / len) * speed;
       targetRotY = Math.atan2(wsadX, wsadZ);
@@ -1437,51 +1678,166 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       const dz = targetZ - charZ;
       const dist2 = dx * dx + dz * dz;
       if (dist2 > 0.003) {
-        charX += dx * (reduced ? 1 : 0.035);
-        charZ += dz * (reduced ? 1 : 0.035);
+        const lerpF = reduced ? 1 : Math.min(1, 0.035 * dtScale);
+        charX += dx * lerpF;
+        charZ += dz * lerpF;
         if (dist2 > 0.01) targetRotY = Math.atan2(dx, dz);
         nowMoving = true;
       } else {
-        if (isMoving && arrivalPending) onArrival(activeZone);
         nowMoving = false;
       }
     }
     charX = clampX(charX); charZ = clampZ(charZ);
+
+    /* Car collision — simple circle push-out, asked explicitly ("colission
+       shapes simples a los autos"). Ignores car rotation on purpose (a true
+       oriented box is overkill for "don't walk through it"). */
+    carColliders.forEach(c => {
+      const dx = charX - c.x, dz = charZ - c.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const minDist = c.r + 0.4;
+      if (dist > 0.0001 && dist < minDist) {
+        const push = minDist - dist;
+        charX += (dx / dist) * push;
+        charZ += (dz / dist) * push;
+      }
+    });
+
+    /* ponytail: footstep dust removed — tried it, "no son tan utiles" (asked
+       explicitly). A footstep sound was tried too and also asked to be
+       removed. Jump takeoff/landing bursts stayed, those read well. */
+
+    /* Crater gate — jumping sails straight over it (unchanged). Grounded is
+       now split by gait, asked explicitly: walking (Shift held, slow) just
+       bumps into the edge like a wall; running (the default) falls straight
+       in and respawns at the avenue entrance. */
+    if (!jumping) {
+      CRATER_ZS.forEach(cz => {
+        const near = cz + CRATER_HALF_W, far = cz - CRATER_HALF_W;
+        if (charZ < near && charZ > far) {
+          /* ponytail: DEATH_ENABLED off — diagnostic request, to test whether
+             jumping the gap is blocked by something else entirely (the walking
+             edge-block below is untouched). Flip back to true to restore. */
+          if (sprinting && DEATH_ENABLED) {
+            /* Green splash — asked explicitly ("particulas onda splash
+               verdes cuando cae en el liquido verde") — before the reset
+               moves charX/charZ away from the crater. */
+            spawnFxBurst(THREE, charX, 0.15, charZ, 0x8cdc50, 14, {
+              spread: 0.06, vy: 0.05, grav: -0.0026, size: 0.32, opacity: 0.85, life: 0.55,
+            });
+            beep(90, 0.3, 'sawtooth', 0.09);   /* splash — asked explicitly ("cuando toque el agua contaminada") */
+            respawnAtEntrance();
+          }
+          else if (!sprinting) charZ = (charZ > cz) ? near : far;
+        }
+      });
+    }
+
+    /* Touching the obelisk navigates to contact (one-shot latch — without
+       obeliskTouched this fired on every single frame spent inside the
+       radius, not once). Navigates to the real contact page now that one
+       exists (Phase 4) — a simple, deliberately non-functional form. */
+    const obDx = charX - OBELISK_X, obDz = charZ - OBELISK_Z;
+    const inObeliskRange = obDx * obDx + obDz * obDz < OBELISK_TOUCH_R2;
+    if (inObeliskRange && !obeliskTouched) {
+      obeliskTouched = true;
+      window.location.href = contactUrl;
+    } else if (!inObeliskRange) {
+      obeliskTouched = false;
+    }
+
     isMoving = nowMoving;
 
     /* Smooth heading — shortest-arc lerp instead of snap turns */
     if (charGroup) {
       const dr = Math.atan2(Math.sin(targetRotY - charGroup.rotation.y), Math.cos(targetRotY - charGroup.rotation.y));
-      charGroup.rotation.y += dr * (reduced ? 1 : 0.16);
+      charGroup.rotation.y += dr * (reduced ? 1 : Math.min(1, 0.16 * dtScale));
     }
 
-    /* Animation mixer */
-    const delta = animClock ? Math.min(animClock.getDelta(), 0.05) : 0;
+    /* Animation mixer — one active locomotion state (walk/run/idle-pose).
+       ponytail: the GLB's "Idle" clip is a broken export — 0.000s duration,
+       zero usable keyframes (confirmed by parsing the glb directly), so
+       playing it does nothing and the skeleton just freezes wherever the
+       last real clip left it. Real fix is re-exporting that clip; until then,
+       "idle" is Walking paused at a fixed neutral time instead of the empty
+       clip. locoState (not the action object) tracks which of the 3 states is
+       current, since two states can point at the same walkAction object. */
+    let bobY = 0;
     if (mixer) {
       mixer.update(delta);
-      /* Dos clips reales en vez de uno acelerado: Walking al moverse y Running
-         con Shift, con crossfade entre ellos. */
-      const wanted = nowMoving ? ((sprinting && runAction) ? runAction : walkAction) : null;
-      if (wanted && wanted !== moveAction) {
-        moveAction?.fadeOut(0.22);
-        idleAction?.fadeOut(0.22);
-        wanted.reset()
-              .setEffectiveTimeScale(wanted === runAction ? RUN_TIMESCALE : WALK_TIMESCALE)
-              .fadeIn(0.22).play();
-        moveAction = wanted;
-      } else if (!wanted && moveAction) {
-        moveAction.fadeOut(0.25);
-        moveAction = null;
-        idleAction?.reset().fadeIn(0.25).play();
+      /* Jumping holds a STATIC running-stride pose (legs spread, no clip
+         actually playing) for the whole arc — asked explicitly: not the
+         animated walk cycle, a frozen mid-stride frame. Landing hands back
+         to whatever state WASD/Shift currently calls for. */
+      const state = jumping ? 'jump' : !nowMoving ? 'idle' : (sprinting && runAction) ? 'run' : 'walk';
+      if (state !== locoState) {
+        locoState = state;
+        if (state === 'idle') {
+          runAction?.stop();
+          idleAction?.stop();   /* stop the broken clip too, so it never contributes weight */
+          if (walkAction) {
+            walkAction.reset();
+            walkAction.setEffectiveWeight(1);
+            walkAction.setEffectiveTimeScale(0);   /* paused — a still frame, not a moving loop */
+            walkAction.play();
+            walkAction.time = WALK_NEUTRAL_TIME;
+          }
+          moveAction = walkAction;
+        } else if (state === 'jump') {
+          /* Measured from the GLB: the time in Running (0.633s) where
+             mixamorigLeftUpLeg/RightUpLeg are furthest apart — the widest
+             running stride. Paused (timeScale 0), so it never advances. */
+          walkAction?.stop();
+          idleAction?.stop();
+          const pose = runAction ?? walkAction;
+          if (pose) {
+            pose.reset();
+            pose.setEffectiveWeight(1);
+            pose.setEffectiveTimeScale(0);
+            pose.play();
+            pose.time = pose === runAction ? JUMP_POSE_TIME : WALK_NEUTRAL_TIME;
+          }
+          if (pose !== runAction) runAction?.stop();
+          moveAction = pose;
+        } else {
+          const real = state === 'run' ? runAction : walkAction;
+          (state === 'run' ? walkAction : runAction)?.stop();
+          idleAction?.stop();
+          if (real) {
+            real.reset();
+            real.setEffectiveWeight(1);
+            real.setEffectiveTimeScale(state === 'run' ? RUN_TIMESCALE : WALK_TIMESCALE);
+            real.play();
+          }
+          moveAction = real;
+        }
       }
     } else if (charGroup) {
-      charGroup.position.y = nowMoving
+      bobY = nowMoving
         ? Math.abs(Math.sin(t * 9)) * 0.04
         : Math.sin(t * 1.4) * 0.012;
     }
     prevMoving = nowMoving;
 
-    if (charGroup) charGroup.position.set(charX, 0, charZ);
+    /* Procedural jump — no Jump clip in this GLB (only Running/Walking/Idle),
+       so the arc is a plain parabola on the wrapper group's Y, independent of
+       the mixer/horizontal movement. Reduced motion still jumps (user input),
+       just with a shorter arc. */
+    let jumpY = 0;
+    if (jumping) {
+      jumpT += reduced ? 0.032 : 0.016;
+      const p = jumpT / JUMP_DUR;
+      if (p >= 1) {
+        jumping = false;
+        /* Landing puff — asked explicitly ("particulas cuando... aterriza"). */
+        spawnFxBurst(THREE, charX, 0.02, charZ, 0xff8c42, 10, {
+          spread: 0.045, vy: 0.028, grav: -0.002, size: 0.26, opacity: 0.75, life: 0.4,
+        });
+      }
+      else jumpY = Math.sin(p * Math.PI) * (reduced ? JUMP_H * 0.4 : JUMP_H);
+    }
+
+    if (charGroup) charGroup.position.set(charX, bobY + jumpY, charZ);
 
     /* G_40_3 — particle drift */
     if (particles) {
@@ -1498,92 +1854,85 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       pos.needsUpdate = true;
     }
 
-    /* G_40_4 — unit tag HTML overlay: project 3D position to screen */
-    if (tagHudEl && charGroup && _tagPos) {
-      charGroup.getWorldPosition(_tagPos);
-      _tagPos.y += 2.8;
-      _tagPos.project(camera);
-      const sx = (_tagPos.x * 0.5 + 0.5) * sceneW;
-      const sy = (-_tagPos.y * 0.5 + 0.5) * sceneH;
-      tagHudEl.style.transform = `translate(-50%, -100%) translate(${sx}px,${sy}px)`;
-      /* El chip no comparte espacio con el título del intro: se superponían
-         literalmente sobre el mismo punto de la pantalla. */
-      const heroUp = heroEl && heroEl.classList.contains('show');
-      tagHudEl.style.display = (!heroUp && _tagPos.z < 1) ? '' : 'none';
-    }
+    updateFx(dtScale);
+    craterMaterials.forEach(m => { m.uniforms.uTime.value = t; });
 
-    /* Proximity power-on — a dark board lights up (CRT flicker) when the
-       character gets close OR walks past its z-row. The z-band trigger is
-       essential: walking straight down the middle must discover BOTH sides
-       of the street (radial-only left the far side dark forever). */
+    /* Big circle (8u) — VISUAL-ONLY: brightens the small circle's dim
+       baseline (still not glowing) so it reads as "in range, come stand
+       here". Does NOT touch the board's screen — that only turns on in the
+       small circle below, synced with the spinner. */
     if (roleBillRefs.length && frameCount % 4 === 0) {
       roleBillRefs.forEach(ref => {
-        if (ref.lit) return;
         const dx = ref.bx - charX, dz = ref.bz - charZ;
-        if (dx * dx + dz * dz < PROXIMITY_R2 || Math.abs(dz) < 4.5) {
+        ref.inBigCircle = dx * dx + dz * dz < PROXIMITY_R2;
+      });
+    }
+
+    /* Small circle (SPINNER_R, ~1.3u) — the screen turning on and the
+       spinner filling happen together, synced, both driven by physically
+       standing inside this tight zone (asked explicitly — not the big 8u
+       sensor above). Every frame (not throttled) so the sweep is smooth.
+       Stepping out reverses both. Once fillT reaches 1 the (simplified)
+       project panel opens — `opened` is a one-shot latch so it doesn't
+       refire every frame you stay standing there. */
+    if (roleBillRefs.length) {
+      roleBillRefs.forEach(ref => {
+        const dx = ref.bx - charX, dz = ref.bz - charZ;
+        const inSmallCircle = dx * dx + dz * dz < SPINNER_R * SPINNER_R;
+
+        if (inSmallCircle && !ref.lit) {
           ref.lit = true;
           flickerOn(ref.mesh.material);
           ref.edges.material.color.setHex(ref.borderColor);
+        } else if (!inSmallCircle && ref.lit) {
+          ref.lit = false;
+          ref.mesh.material.color.setHex(0x30343d);   /* back to the pre-power-on dim tint */
+          ref.edges.material.color.setHex(0x2a3040);
+        }
+
+        const dFill = (delta || 0.016) / SPINNER_FILL_TIME;
+        ref.fillT = inSmallCircle ? Math.min(1, ref.fillT + dFill) : Math.max(0, ref.fillT - dFill);
+        const litCount = Math.round(ref.fillT * SPINNER_TICKS);
+        /* A short rising blip each time a new dot turns green — asked
+           explicitly ("cada vez que una de las bolitas se pone verde"). Only
+           on the way up (litCount growing), never while draining back down. */
+        if (litCount > (ref.litCount || 0)) beep(220 + litCount * 6, 0.1, 'sine', 0.045);   /* softer/muted, asked explicitly — was a bright rising 'square' blip */
+        ref.litCount = litCount;
+        const filledColor = ref.isHero ? FLAG_BRIGHT : 0x5ee7aa;
+        ref.spinnerTicks.forEach((tick, si) => {
+          const filled = si < litCount;
+          tick.material.color.setHex(filled ? filledColor : 0x2a3040);
+          tick.material.opacity = filled ? 0.85 : (ref.inBigCircle ? 0.7 : 0.4);
+        });
+        if (ref.fillT >= 1 && !ref.opened) {
+          ref.opened = true;
           showPanel(activeRole, ref.projIdx);
-          updateRecordsHUD(true);
+        } else if (!inSmallCircle && ref.opened) {
+          /* Closes immediately on stepping out — asked explicitly — not
+             waiting for fillT to finish decaying back down. */
+          ref.opened = false;
+          hidePanel();
         }
       });
-      /* End-cap powers on when the character nears the end of the avenue */
-      if (endcapRef && !endcapRef.lit && Math.abs(endcapRef.bz - charZ) < 8) {
-        endcapRef.lit = true;
-        flickerOn(endcapRef.mesh.material);
-        endcapRef.edges.material.color.setHex(0x5ee7aa);
-      }
     }
 
-    /* Ground rings pulse under discovered boards */
+    /* Boards face the camera every frame (yaw only, stay upright) instead of
+       a fixed angle. Once the character has walked past a board, hide it
+       instead of leaving it re-orienting toward the camera indefinitely. */
     roleBillRefs.forEach(ref => {
-      const tgt = ref.lit ? 0.28 + Math.sin(t * 2.2) * 0.08 : 0;
-      ref.ring.material.opacity += (tgt - ref.ring.material.opacity) * 0.08;
-    });
-
-    /* Chevron flow — arrows on the asphalt from the character toward the
-       next undiscovered board; hidden when everything is lit */
-    const nxt = roleBillRefs.find(r => !r.lit) ?? null;
-    chevrons.forEach((c, j) => {
-      /* No target, or target behind the character → fade out */
-      if (!nxt || nxt.bz > charZ - 2) {
-        c.material.opacity += (0 - c.material.opacity) * 0.1;
-        return;
-      }
-      const cz = charZ - 3 - j * 2.4;
-      if (cz < nxt.bz + 2) {   /* past the target board — hide the tail */
-        c.material.opacity += (0 - c.material.opacity) * 0.3;
-        return;
-      }
-      /* Drift toward the board's side of the street near the end of the path */
-      const f = (charZ - cz) / Math.max(1, charZ - (nxt.bz + 2));
-      c.position.set(nxt.bx * 0.35 * f, 0.03, cz);
-      /* Subordinado al encendido de board, que es el evento principal. */
-      const targetOp = reduced ? 0.16 : 0.05 + 0.19 * Math.max(0, Math.sin(t * 2.6 - j * 0.8));
-      c.material.opacity += (targetOp - c.material.opacity) * 0.15;
+      const passed = charZ < ref.bz - 1.5;
+      ref.mesh.visible = !passed;
+      ref.frame.visible = !passed;
+      ref.edges.visible = !passed;
+      if (passed) return;
+      const angle = Math.atan2(camera.position.x - ref.bx, camera.position.z - ref.bz);
+      ref.mesh.rotation.y = angle;
+      ref.frame.rotation.y = angle;
+      ref.edges.rotation.y = angle;
+      ref.hit.rotation.y = angle;
     });
 
     /* Minimap redraw — every 3rd frame is plenty for a schematic */
-    /* La shadow camera sigue al personaje, en el mismo throttle que el chequeo
-       de proximidad de los carteles — no por frame. */
-    if (keyLight && frameCount % 4 === 0) {
-      keyLight.position.set(charX + 8, 20, charZ + 6);
-      keyLight.target.position.set(charX, 0, charZ);
-      keyLight.target.updateMatrixWorld();
-
-      /* Las 8 farolas más cercanas al personaje. Se ordena por |z| porque la
-         avenida corre sobre z: la distancia radial dejaría la vereda opuesta
-         sin luz, que es el mismo error de la lección 21. */
-      const near = lampPosts
-        .slice()
-        .sort((a, b) => Math.abs(a.z - charZ) - Math.abs(b.z - charZ))
-        .slice(0, LAMP_POOL_SIZE);
-      for (let i = 0; i < lampPool.length; i++) {
-        if (near[i]) lampPool[i].position.copy(near[i]);
-      }
-    }
-
     frameCount++;
     if (minimapCtx && frameCount % 3 === 0) drawMinimap();
 
@@ -1602,6 +1951,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
       if (introT >= 1) introActive = false;
     } else {
       camera.position.set(camTgtX * 0.3, 4.0, camTgtZ + 9);
+      /* Camera shake on death — decaying random jitter, skipped under
+         reduced-motion (this is a reactive jolt from user-caused state, not
+         ambient motion, but a violent shake is exactly the kind of thing
+         reduced-motion users want suppressed). */
+      if (shakeT > 0 && !reduced) {
+        const mag = SHAKE_MAG * (shakeT / SHAKE_DUR);
+        camera.position.x += (Math.random() - 0.5) * mag;
+        camera.position.y += (Math.random() - 0.5) * mag;
+        shakeT = Math.max(0, shakeT - (delta || 0.016));
+      }
       camera.lookAt(camTgtX * 0.2, 1.8, camTgtZ - 6);
     }
 
@@ -1696,78 +2055,6 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     pointer-events: none;
   }
 
-  .ps-hint {
-    position: absolute;
-    bottom: 1.2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.52rem;
-    letter-spacing: 0.2em;
-    color: var(--sand-dim);
-    animation: hint-pulse 3s ease-in-out infinite;
-  }
-
-  @keyframes hint-pulse {
-    0%, 100% { opacity: 0.5; }
-    50%       { opacity: 1; }
-  }
-
-  .ps-zone-id {
-    position: absolute;
-    top: 0.8rem;
-    left: 1rem;
-    font-size: 0.55rem;
-    letter-spacing: 0.14em;
-    color: var(--accent-bright);
-    background: rgba(13, 15, 20, 0.82);
-    padding: 0.2rem 0.45rem;
-  }
-
-  /* Discovery counter (G6) — sits right of the zone label */
-  .ps-records {
-    position: absolute;
-    top: 0.8rem;
-    left: 12rem;
-    font-size: 0.55rem;
-    letter-spacing: 0.14em;
-    color: var(--sand-muted);
-    background: rgba(13, 15, 20, 0.82);
-    padding: 0.2rem 0.45rem;
-  }
-
-  .ps-records.flash {
-    animation: rec-flash 0.5s ease;
-  }
-
-  @keyframes rec-flash {
-    0%   { color: var(--bg-void); background: var(--accent-bright); }
-    100% { color: var(--sand-dim); background: transparent; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ps-records.flash { animation-duration: 0.01s; }
-  }
-
-  .ps-back {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    pointer-events: auto;
-    background: var(--bg-panel);
-    border: 1px solid var(--ink-mid);
-    color: var(--sand-muted);
-    font-family: var(--font-mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.12em;
-    padding: 0.35rem 0.8rem;
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  .ps-back:hover {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
 
   /* ── Minimap HUD — display puro. El frame se dibuja in-canvas (corner
      cut). No es clickeable: el personaje se mueve sólo con WASD. ── */
@@ -1783,38 +2070,32 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     display: block;
   }
 
-  /* ── Arrival banner ── */
-  .ps-banner {
+  /* ── Right projects drawer — slide-out panel only.
+     The trigger button (.os-projects-btn, #ps-projects-tab) moved to
+     Base.astro's top identity bar — asked explicitly ("mejor ponelo arriba
+     a la derecha, en el nav bar superior"). Its styling lives there now. */
+  .ps-projects-drawer {
     position: absolute;
-    top: 18%;
-    left: 0;
-    width: 100%;
-    padding: 0.55rem 0;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    letter-spacing: 0.35em;
-    color: var(--accent-bright);
-    background: linear-gradient(90deg, transparent, rgba(18,21,28,0.92) 18%, rgba(18,21,28,0.92) 82%, transparent);
-    border-top: 1px solid rgba(94,231,170,0.25);
-    border-bottom: 1px solid rgba(94,231,170,0.25);
-    opacity: 0;
-    pointer-events: none;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100%;
+    background: rgba(13, 15, 20, 0.96);
+    border-left: 1px solid rgba(94, 231, 170, 0.18);
+    box-shadow: -12px 0 40px rgba(13, 15, 20, 0.6);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    pointer-events: auto;
+    overflow-y: auto;
+    padding: 3.2rem 0.8rem 1rem;
+    /* Above .ps-panel (z-index:10) — they can be open at once now (asked
+       explicitly), and the drawer, just summoned by clicking PROJECTS,
+       should be the one that's actually visible where they overlap. */
+    z-index: 11;
   }
 
-  .ps-banner.sweep {
-    animation: banner-sweep 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  }
-
-  @keyframes banner-sweep {
-    0%   { opacity: 0; transform: translateX(-40px); }
-    12%  { opacity: 1; transform: translateX(0); }
-    78%  { opacity: 1; transform: translateX(0); }
-    100% { opacity: 0; transform: translateX(40px); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ps-banner.sweep { animation-duration: 0.01s; }
+  .ps-projects-drawer.open {
+    transform: translateX(0);
   }
 
   /* ── Project dossier panel ── */
@@ -1838,41 +2119,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
 
   .ps-panel.open { transform: translateX(0); }
 
-  .ps-panel-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.85rem 1.1rem;
-    border-bottom: 1px solid var(--ink);
-    background: color-mix(in srgb, var(--bg-void) 80%, black);
-    flex-shrink: 0;
+  /* Opens on the opposite side from the player, so it never covers the
+     board/circle they're standing at — projects drawer stays right always. */
+  .ps-panel.left {
+    right: auto;
+    left: 0;
+    border-left: none;
+    border-right: 1px solid rgba(94, 231, 170, 0.18);
+    box-shadow: 12px 0 40px rgba(13, 15, 20, 0.6);
+    transform: translateX(-100%);
   }
 
-  .dossier-sysrow {
-    display: flex;
-    align-items: baseline;
-    gap: 0.8rem;
-  }
-
-  .panel-sys {
-    font-size: 0.62rem;
-    letter-spacing: 0.16em;
-    color: var(--sand-dim);
-  }
-
-  .dossier-count {
-    font-size: 0.62rem;
-    letter-spacing: 0.16em;
-    color: var(--accent-bright);
-  }
-
-  .dossier-titlebox {
-    padding: 1.1rem 1.1rem 0.9rem;
-    border-bottom: 1px solid var(--ink);
-    flex-shrink: 0;
-  }
-
-  .dossier-status { margin-bottom: 0.55rem; min-height: 1.1em; }
+  .ps-panel.left.open { transform: translateX(0); }
 
   .panel-title {
     font-family: var(--font-mono);
@@ -1883,24 +2141,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     color: var(--sand);
     margin: 0;
     min-height: 1.4em;
-  }
-
-  .ps-panel-close {
-    background: none;
-    border: 1px solid var(--ink-mid);
-    color: var(--sand-dim);
-    font-family: var(--font-mono);
-    font-size: 0.58rem;
-    letter-spacing: 0.1em;
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
+    padding: 1.1rem 1.1rem 0.9rem;
+    border-bottom: 1px solid var(--ink);
     flex-shrink: 0;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  .ps-panel-close:hover {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
   }
 
   .panel-cards {
@@ -2038,6 +2281,54 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
      Astro scoped styles never match JS-created nodes (no scoping attribute),
      so these MUST be global — anchored to #ps-panel to avoid leaking. -->
 <style is:global>
+  /* Rows are runtime-created (document.createElement in populateProjectsDrawer)
+     — component-scoped <style> never matches JS-injected DOM, so these live
+     here, anchored to #ps-projects-drawer (lesson 22 in this repo's own
+     CLAUDE.md — same reason #ps-panel's rows are global too, right below). */
+  #ps-projects-drawer .pd-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    color: var(--sand-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-align: left;
+    padding: 0.6rem 0.3rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  #ps-projects-drawer .pd-row:hover,
+  #ps-projects-drawer .pd-row:focus-visible {
+    color: var(--accent-bright);
+  }
+
+  #ps-projects-drawer .pd-num {
+    color: var(--sand-dim);
+    font-size: 0.62rem;
+    padding-top: 0.1rem;
+  }
+
+  #ps-projects-drawer .pd-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    min-width: 0;
+  }
+
+  /* Description line under each project name — asked explicitly, smaller
+     and grayer than the name so it reads as secondary detail. */
+  #ps-projects-drawer .pd-desc {
+    font-family: var(--font-sans);
+    font-size: 0.66rem;
+    line-height: 1.4;
+    color: var(--sand-dim);
+  }
+
   #ps-panel .d-badge {
     font-family: var(--font-mono);
     font-size: 0.58rem;
@@ -2141,6 +2432,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, bannerFmt, dossier, endcap }
     color: var(--sand-muted);
     line-height: 1.65;
     margin: 0;
+  }
+
+  #ps-panel .d-wip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    color: var(--sand-dim);
+    border: 1px solid var(--ink-mid);
+    padding: 0.25rem 0.55rem;
+    margin-bottom: 1rem;
   }
 
   #ps-panel .d-metric {

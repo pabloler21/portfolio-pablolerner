@@ -27,6 +27,3 @@ pnpm-debug.log*
 # Librerias de sistema extraidas a mano para Playwright en WSL2 (ver CLAUDE.md).
 # Son binarios de la maquina, no del proyecto.
 .cache/
-
-# capturas de verificación visual de la escena 3D
-.captures/

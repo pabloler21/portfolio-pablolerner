@@ -1,0 +1,115 @@
+---
+import Base from '../../../layouts/Base.astro';
+
+const lang = 'en';
+---
+
+<Base title="Contact" lang={lang} activeTab="contact" description="Get in touch with Pablo Lerner." showTabs={false}>
+  <section class="contact-wrap">
+    <h1 class="contact-title">CONTACT</h1>
+    <p class="contact-sub sys-text">UNIT PROFILE · ACCESS LEVEL: OPEN</p>
+
+    <form id="contact-form" class="contact-form">
+      <label class="c-field">
+        <span class="c-label">NAME</span>
+        <input type="text" name="name" autocomplete="name" required />
+      </label>
+      <label class="c-field">
+        <span class="c-label">EMAIL</span>
+        <input type="email" name="email" autocomplete="email" required />
+      </label>
+      <label class="c-field">
+        <span class="c-label">MESSAGE</span>
+        <textarea name="message" rows="5" required></textarea>
+      </label>
+      <div class="c-actions">
+        <button type="submit" class="cta-btn cta-primary">[ SEND → ]</button>
+        <a class="cta-btn" href={`/${lang}/`}>[ ← STREET ]</a>
+      </div>
+      <p id="c-note" class="c-note sys-text" hidden>
+        This form isn't wired up yet — email directly:
+        <a href="mailto:lerner.pb@gmail.com">lerner.pb@gmail.com</a>
+      </p>
+    </form>
+  </section>
+</Base>
+
+<script>
+  document.getElementById('contact-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    document.getElementById('c-note')?.removeAttribute('hidden');
+  });
+</script>
+
+<style>
+  .contact-wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  .contact-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--sand);
+    margin: 0 0 0.4rem;
+  }
+
+  .contact-sub {
+    color: var(--sand-dim);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    margin: 0 0 2.2rem;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.3rem;
+  }
+
+  .c-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .c-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    color: var(--sand-dim);
+  }
+
+  input,
+  textarea {
+    background: var(--bg-panel);
+    border: var(--border-mid);
+    color: var(--sand);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    padding: 0.6rem 0.7rem;
+    resize: vertical;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--accent-bright);
+    outline-offset: 2px;
+  }
+
+  .c-actions {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.4rem;
+  }
+
+  .c-note {
+    color: var(--sand-dim);
+    font-size: 0.78rem;
+  }
+
+  .c-note a {
+    color: var(--accent-bright);
+  }
+</style>

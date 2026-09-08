@@ -13,6 +13,12 @@ interface Props {
   /* La ÚNICA condición que decide si existe la atmósfera. Default 'doc':
      una página nueva nace limpia y tiene que pedir atmósfera. */
   surface?: 'game' | 'doc';
+  /* Pedido explícito: la página de contacto (a la que el obelisco
+     teletransporta) no debe mostrar los tabs TERMINAL/DATA ANALYST/AI
+     ENGINEER — se llega ahí desde el juego, no es un destino más del nav
+     normal del sitio. Default true preserva el comportamiento de siempre
+     para el resto de las páginas 'doc'. */
+  showTabs?: boolean;
 }
 
 const {
@@ -21,6 +27,7 @@ const {
   lang = 'en',
   activeTab = 'projects',
   surface = 'doc',
+  showTabs = true,
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
@@ -62,38 +69,63 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     )}
 
     <div class="os-shell">
-      {surface === 'game' && (
-        <div class="os-title-row">
-          <span class="os-unit-id sys-text">UNIT::PL-7729</span>
-          <span class="os-page sys-text">{title}</span>
-          <span class="os-status sys-text">SYS:OK · {lang.toUpperCase()}</span>
-        </div>
-      )}
+      {/* ponytail: os-title-row apagada junto con el resto de la UI en surface="game" */}
 
+      {/* ponytail: identity strip vuelve a mostrarse también en surface="game" — pedido explícito ("la navbar con Pablo Lerner"). El resto de la UI (tabs/dots/footer) sigue apagado ahí. */}
       <!-- Identity strip — name, positioning, CTAs -->
       <div class="os-identity">
         <div class="identity-left">
-          <span class="id-name">Pablo Lerner</span>
+          <a class="id-name" href={`/${lang}/`}>Pablo Lerner</a>
           <span class="id-sep sys-text"> · </span>
           <span class="id-role">
             {lang === 'en'
-              ? 'Data Analyst & AI Engineer — from raw data to production decisions'
-              : 'Data Analyst & AI Engineer — de datos crudos a decisiones de negocio'}
+              ? 'Data Analyst & AI Engineer'
+              : 'Data Analyst & AI Engineer'}
           </span>
         </div>
-        <nav class="id-ctas" aria-label="Contact links">
-          <a href="https://github.com/pabloler21" class="cta-btn" target="_blank" rel="noopener noreferrer" data-scramble>[ GitHub ↗ ]</a>
-          <a href="https://www.linkedin.com/in/pablo-lerner-591180336" class="cta-btn" target="_blank" rel="noopener noreferrer" data-scramble>[ LinkedIn ↗ ]</a>
-          <a href="mailto:lerner.pb@gmail.com" class="cta-btn" data-scramble>[ Email ]</a>
-          <a href="/pablo-lerner-cv.pdf" class="cta-btn cta-primary" download data-scramble>[ CV ↓ ]</a>
-        </nav>
+        {/* STREET + PROJECTS + CONTACT, top-right of the identity bar —
+            asked explicitly ("arriba a la derecha, en el nav bar superior"),
+            and asked again to show on every page, not just the game
+            ("en la vista de Contact tendría que verse también los tres
+            botones"). #ps-projects-tab is PortfolioScene's existing trigger
+            id — its click handler and the drawer it opens only exist on the
+            game page, so PROJECTS is that live button there and a plain
+            link home everywhere else (there's nothing to open elsewhere). */}
+        <div class="id-ctas">
+          <a class="os-nav-btn" href={`/${lang}/`}>[ {lang === 'en' ? 'STREET' : 'CALLE'} ]</a>
+          {surface === 'game' ? (
+            <button type="button" class="os-nav-btn" id="ps-projects-tab" aria-expanded="false" aria-controls="ps-projects-drawer">[ PROJECTS ]</button>
+          ) : (
+            <a class="os-nav-btn" href={`/${lang}/`}>[ PROJECTS ]</a>
+          )}
+          <a class="os-nav-btn" href={`/${lang}/contact/`}>[ CONTACT ]</a>
+        </div>
       </div>
 
+      {/* Contact icon rail — GitHub/LinkedIn/email, fixed in the left margin
+          column. Moved here from PortfolioScene (asked explicitly — "que se
+          vean los links de LinkedIn, GitHub" on every page, not just the
+          game); the rain behind it is still game-only, this just always
+          renders in that same screen position. */}
+      <nav class="ps-icon-rail" aria-label="Contact links">
+        <a href="https://github.com/pabloler21" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.1 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55 0-.27-.01-1.16-.02-2.1-3.2.7-3.88-1.35-3.88-1.35-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.42.36.78 1.08.78 2.17 0 1.57-.01 2.83-.01 3.22 0 .3.2.66.79.55A10.53 10.53 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5Z"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/in/pablo-lerner-591180336" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.44-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45Z"/></svg>
+        </a>
+        <a href="mailto:lerner.pb@gmail.com" aria-label="Email">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h17A1.5 1.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 18.5v-13Zm2.2.5 7.3 5.47a.9.9 0 0 0 1 0L19.8 6H4.2Zm15.8 1.6-7.02 5.26a2.9 2.9 0 0 1-3.36 0L4.6 7.6v10.9h15.4V7.6Z"/></svg>
+        </a>
+      </nav>
+
       <!-- Navigation -->
+      {surface !== 'game' && showTabs && (
       <header class="os-header">
         <TabBar active={activeTab} lang={lang} />
         {surface === 'game' && <DotRow />}
       </header>
+      )}
 
       <!-- Main content -->
       <main class="os-main">
@@ -101,7 +133,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
       </main>
 
       <!-- Footer -->
+      {surface !== 'game' && (
       <StatusBar lang={lang} surface={surface} />
+      )}
     </div>
 
     {surface === 'game' && (
@@ -322,6 +356,13 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     letter-spacing: 0.12em;
     color: var(--sand);
     white-space: nowrap;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .id-name:hover,
+  .id-name:focus-visible {
+    color: var(--accent-bright);
   }
 
   .id-sep {
@@ -341,6 +382,36 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     gap: 0.4rem;
     flex-shrink: 0;
     flex-wrap: wrap;
+  }
+
+  /* PROJECTS/CONTACT, top-right of the identity bar (game surface only) —
+     white text+border, asked explicitly ("se tienen que ver blancos"); the
+     brightest token this palette allows is --sand, never pure #fff. One is
+     a <button>, the other an <a> — asked explicitly to look identical
+     ("que se vean iguales como botones"), so this resets the <button>'s
+     UA chrome (appearance/line-height/box-sizing) rather than relying on
+     each element's own default rendering. */
+  .os-nav-btn {
+    appearance: none;
+    box-sizing: border-box;
+    display: inline-block;
+    line-height: normal;
+    background: none;
+    border: 1px solid var(--sand);
+    color: var(--sand);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-decoration: none;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .os-nav-btn:hover,
+  .os-nav-btn:focus-visible {
+    color: var(--accent-bright);
+    border-color: var(--accent-bright);
   }
 
   /* ── Navigation header ── */
@@ -370,6 +441,36 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pabloler
     .id-sep { display: none; }
 
     .id-ctas { gap: 0.3rem; }
+  }
+
+  /* ── Left icon rail — GitHub/LinkedIn/Email as icons ──
+     Same fixed column the Matrix rain draws in (only nonzero above the
+     1400px shell breakpoint) — renders on every page now, not just the
+     game (asked explicitly), so it also shows with plain dark background
+     behind it on 'doc' pages where the rain itself doesn't render. */
+  .ps-icon-rail {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    width: max(0px, calc((100vw - 1400px) / 2));
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: auto;
+    z-index: 5;
+  }
+
+  .ps-icon-rail a {
+    color: var(--sand);   /* the brightest token this palette allows — no pure #fff */
+    transition: color 0.15s ease, transform 0.15s ease;
+  }
+
+  .ps-icon-rail a:hover,
+  .ps-icon-rail a:focus-visible {
+    color: var(--accent-bright);
+    transform: translateY(-1px);
   }
 
   /* ── Margin chrome — NieR chrome panels in browser margins beyond 1200px ── */

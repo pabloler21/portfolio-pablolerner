@@ -4,7 +4,7 @@
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
@@ -224,57 +224,6 @@ record('C5', 'Sin movimiento por puntero', pointerMove.length === 0,
 const plain = await grepSrc(/data-plain|iron-dust-plain|plain-toggle/);
 record('C9', 'Sin restos de plain mode', plain.length === 0,
   plain.length ? `${plain.length} refs: ${plain.slice(0, 4).join(', ')}…` : 'limpio');
-
-/* ── spec 2026-09-06 mundo PBR §13 ─────────────────────────────── */
-
-// Ojo: concept/city.astro YA usa ACESFilmicToneMapping con exposición 1.1,
-// así que grepear el tone mapping solo daría verde antes de implementar nada.
-// Lo que identifica a la escena real es la exposición 1.25 de la calibración A2.
-const tone = await grepSrc(/toneMappingExposure\s*=\s*1\.25/);
-record('A1', 'Tone mapping ACES @ exposición A2', tone.length === 1,
-  tone.length ? tone.join(', ') : 'no se encontró toneMappingExposure = 1.25');
-
-const hdri = await grepSrc(/RGBELoader|scene\.environment|loadHDRI/);
-const hdriDir = existsSync(path.join(ROOT, 'public/hdri'));
-record('A2', 'HDRI eliminado', hdri.length === 0 && !hdriDir,
-  hdri.length ? `${hdri.length} refs: ${hdri.slice(0, 3).join(', ')}` :
-  hdriDir ? 'public/hdri/ todavía existe' : 'sin refs ni carpeta');
-
-const pbr = await grepSrc(/function atmosphereMaterial/);
-record('A5', 'Atmósfera con MeshStandardMaterial', pbr.length > 0,
-  pbr.length ? pbr.join(', ') : 'no existe atmosphereMaterial()');
-
-// La información NO se ilumina: carteles, anillos, chevrons y glows siguen
-// self-lit. Si alguno pasara a Standard, se apagaría.
-const infoBasic = await grepSrc(/drawBillboardCanvas|RingGeometry|ShapeGeometry/);
-const infoStandard = await grepSrc(/MeshStandardMaterial[^)]*map:/);
-record('A6', 'La información sigue plana', infoBasic.length > 0 && infoStandard.length === 0,
-  infoStandard.length ? `pantalla convertida a PBR: ${infoStandard.join(', ')}` : 'información intacta');
-
-const lightCasters = await grepSrc(/keyLight\.castShadow\s*=\s*true/);
-record('A7', 'Exactamente una luz proyecta sombra', lightCasters.length === 1,
-  lightCasters.length ? lightCasters.join(', ') : 'ninguna luz con castShadow');
-
-// Cambiar la cantidad de luces en runtime recompila el shader de todos los
-// materiales iluminados. El pool se crea en init y sólo se reposiciona.
-const poolCreate = await grepSrc(/lampPool\.push\(/);
-const poolInTick = await grepSrc(/new THREE\.PointLight[\s\S]{0,80}frameCount/);
-record('A4', 'Pool de luces de tamaño fijo', poolCreate.length === 1 && poolInTick.length === 0,
-  poolCreate.length !== 1 ? `lampPool.push en ${poolCreate.length} lugares (debe ser 1)` :
-  poolInTick.length ? 'se crean luces dentro del tick' : 'pool fijo, sólo se reposiciona');
-
-const charLight = await grepSrc(/charGroup\.add\(\s*fillLight|new THREE\.PointLight\(0xcfd8e6/);
-record('A3', 'El personaje no tiene luz propia', charLight.length === 0,
-  charLight.length ? charLight.join(', ') : 'sin PointLight colgado del personaje');
-
-const modelsDir = path.join(DIST, 'models');
-let modelsMB = 0;
-if (existsSync(modelsDir)) {
-  for (const f of readdirSync(modelsDir)) {
-    modelsMB += statSync(path.join(modelsDir, f)).size / 1048576;
-  }
-}
-record('A8', 'dist/models ≤ 8 MB', modelsMB <= 8, `${modelsMB.toFixed(1)} MB`);
 
 const pad = s => String(s).padEnd(40);
 let failed = 0;

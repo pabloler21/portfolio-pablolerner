@@ -89,7 +89,6 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - **os-shell border**: `1px solid rgba(94,231,170,0.18)` + `box-shadow` glow — not `var(--border)`
 - **Plain mode is GONE.** It existed because the default state failed AA; the default now passes. Never reintroduce `[data-plain]`, `iron-dust-plain` or a legibility toggle — legibility is the default, not a mode.
 - **Surface rule** (`surface: 'game' | 'doc'` prop on `Base.astro`, reflected as `<html data-surface>`): atmosphere exists ONLY where the visitor can walk. `doc` gets no AmbientCanvas, no margin rain, no scanlines/grain, no game footer. Default is `'doc'` — a new page is born clean and must ASK for atmosphere.
-- **Regla de luz en la escena 3D**: *la luz es del mundo, la interfaz no se ilumina*. Atmósfera (asfalto, veredas, edificios, postes, líneas) → `MeshStandardMaterial`, recibe y proyecta sombra. Información (carteles, end-cap, anillos, chevrons, glows, ventanas, neones, skyline) → `MeshBasic` self-lit, siempre. Es la doctrina de `surface: 'game' | 'doc'` aplicada adentro de la escena.
 - **Never use `opacity` to dim text.** It composited to 2.17:1 and is what broke the AA floor. Dim with colour (`--sand-dim`). Minimum rendered text size: **11px** (`0.7rem`).
 - **`--accent` teal (3.80:1) and `--accent-flag` (4.30:1 on `--bg-surface`) must NEVER carry text** — borders, rims, ◆ and DotRow only. Flagship text uses `--accent-flag-bright`.
 
@@ -132,11 +131,12 @@ src/
 public/
   models/
     remy.glb                 # CURRENT: Remy de Mixamo (7.2MB, 114 huesos, Running/Walking/Idle)
+    android.glb              # PREVIO: UAL2_Standard.glb (7.7MB, 65 joints, 43 animations sin correr)
+    android_backup.glb       # PERMANENT BACKUP: original 9S Sketchfab model — never overwrite
+  hdri/
+    cobblestone_street_night_1k.hdr
   favicon.svg
   favicon.ico
-assets/
-  models/
-    android_backup.glb       # PERMANENT BACKUP: 9S original — fuera de public/, NO se despliega
 ```
 
 ---
@@ -202,17 +202,9 @@ Billboard k (walk order) sits at `x = ±6.5` (alternating, k even → left), `z 
 **El personaje conserva SUS materiales.** No hay override de paleta: el que había
 (`M_Joints` en mint, el resto en `0x181b22`) pintaba el cuerpo casi del color del fondo
 `0x0d0f14` y era la causa de que el personaje desapareciera — la forma quedaba a cargo de
-la luz y sólo se veían las articulaciones. Nunca reintroducirlo. **Tampoco lleva luz
-propia**: el `PointLight` que colgaba de `charGroup` era una prótesis para un personaje que
-vivía en una ciudad de `MeshBasic`. Desde la fase 3.20 lo iluminan la hemisférica, la luna y
-las farolas reales, como a todo lo demás.
-
-**Presupuesto de farolas**: pool fijo de 8 `PointLight` creadas una sola vez en
-`buildCityDressing()` y reposicionadas a los postes más cercanos cada 4 frames.
-**Nunca crear ni destruir luces en runtime.**
-
-**Shadow map**: una sola luz proyecta (`keyLight`). Su cámara ortográfica es una caja de
-28u que sigue al personaje, no la avenida entera.
+la luz y sólo se veían las articulaciones. Nunca reintroducirlo. Lo único que se le suma es
+un `PointLight(0xcfd8e6, 0.85, 8)` colgado del grupo: el renderer no tiene tone mapping, así
+que a más intensidad los altos recortan y el personaje lee naranja fluorescente.
 
 **El GLB viene normalizado** (escala y centrado en su nodo raíz) y el tick pisa
 `position`/`rotation` del grupo en cada frame, así que va **envuelto en un `THREE.Group`**:
@@ -323,7 +315,6 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 | 3.17 — Visual overhaul (blue-void + dossier + intro) | **DONE** | 3D scene migrated from old olive-green palette to blue-void NieR Reforged (bg/fog 0x0d0f14, buildings 0x12151c, windows 0x4d8f75). Dossier panel (REC counter, MISSION section, metric box, big CTAs, numbered other-records rows → click walks to board). Cinematic intro (first visit: high camera pan + hero title, PersonaSelector waits 2.4s via `.wait` class). Role pages master-detail + global micro-interactions (hover scramble via `data-scramble`, page sweep, `:focus-visible` mint). |
 | 3.18 — Gameplay + flagship amber (G1–G11) | **DONE** | Sprint (Shift ×1.8), click-to-move (asphalt raycast), world bounds clamp, smooth heading lerp. City dressing (streetlamps+cones, neon signs, skyline, stars). Avenue end-cap screen (click → role page). Minimap 2.0 (heading arrow, click fast-travel, next-objective pulse, corner-cut frame). Dossier 2.0 (stack chips, PREV/NEXT, DISCOVERED blocks). RECORDS HUD counter with flash. Flagship amber treatment (Deus Ex, `--accent-flag: #9a7b2d` / bright `#c9a94f` / bg `#14110a`) across 3D board, dossier, selector preview, role pages — NEVER interactive. PersonaSelector boot-build sequence (~950ms, skippeable, `animationend`-gated). Unified button system: `[ LABEL ↗ ]` mono + identical hover/active/focus. All 10 goals E2E-verified PASS. |
 | 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
-| 3.20 — Mundo PBR | **DONE** | La atmósfera pasa a PBR con sombras y la interfaz queda plana: *la luz es del mundo, la interfaz no se ilumina*. Tone mapping ACES (exposición 1.25, calibración A2), shadow map con cámara que sigue al personaje, pool fijo de 8 farolas con presupuesto rotativo, bloom recalibrado a (0.45, 0.35, 0.62). Se elimina el HDRI de calle empedrada —iluminaba sólo al personaje, con luz de otro mundo— y la luz propia que colgaba de `charGroup`. Deploy −49.3 MB. Arnés a 17/17. Spec: `docs/superpowers/specs/2026-09-06-mundo-pbr-design.md` |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **pending** | Custom domain, Cloudflare Pages deploy |
@@ -366,9 +357,8 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 
 **Assets:**
 - `public/models/remy.glb` (7.2MB) — **CURRENT**: Remy de Mixamo, 114 huesos, `Running` / `Walking` / `Idle`
-- `assets/models/android_backup.glb` (6.2MB) — **PERMANENT BACKUP**: original 9S Sketchfab, no animations — never overwrite. Vive fuera de `public/` desde la fase 3.20: se conserva en el repo pero no se despliega
-- Los otros cinco GLBs (`android.glb`, `android_previous.glb`, `android_pre_bake.glb`, `android_broken_spider.glb`, `320a534d…glb`) se borraron en la fase 3.20 — recuperables del historial de git
-- El HDRI `cobblestone_street_night_1k.hdr` se borró en la fase 3.20: iluminaba únicamente al personaje, con luz de una calle real que no es la que se ve
+- `public/models/android.glb` (7.7MB) — PREVIO: UAL2_Standard.glb, 65 joints, 43 animations (ninguna de correr)
+- `public/models/android_backup.glb` (6.2MB) — **PERMANENT BACKUP**: original 9S Sketchfab, no animations — never overwrite
 - `Universal Animation Library 2[Standard].zip` (project root) — CC0, 43 animations, UAL2 rig
 
 ---
@@ -398,9 +388,3 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 31. **Mixamo entrega FBX y le pone `mixamo.com` de nombre a TODOS los clips.** Bajar tres animaciones y cargarlas juntas hace que se pisen entre sí: hay que renombrarlas por archivo. Además, sin tildar *In Place* el clip trae su propio desplazamiento (`Running` traía 739 unidades) y el personaje se va caminando solo peleando contra WASD — se anula la pista de posición horizontal de la cadera conservando el rebote vertical.
 32. **Convertir FBX → GLB sin Blender**: cargar los FBX con `FBXLoader` en una página headless, juntar los clips y exportar con `GLTFExporter({ binary: true, animations })`. Dos trampas: exportar con un override de materiales activo lo hornea dentro del GLB, y `GLTFExporter` embebe las texturas sin comprimir — las de Mixamo vienen en 2048 y el archivo pasaba de 7 a 41 MB. Reescalarlas a 256 antes de exportar lo deja en 7.2 MB.
 33. **`astro check` OOMea con el heap por defecto de Node en este proyecto.** Usar `npm run verify:check` (`--max-old-space-size=8192`). Baseline a 2026-08-20: 347 errores, 0 warnings, 118 hints.
-34. **Un environment map sobre una escena de `MeshBasic` ilumina exactamente un objeto: el único que usa materiales que reciben luz.** El personaje no estaba mal iluminado, estaba iluminado por otro mundo — un HDRI de calle empedrada real de noche, cargado para él y para nadie más. Antes de retocar un material, preguntarse qué luces lo alcanzan y de dónde vienen.
-35. **Cambiar la CANTIDAD de luces de la escena recompila el shader de todos los materiales iluminados.** Un presupuesto dinámico de luces no se implementa creando y destruyendo: se implementa con un pool de tamaño fijo que se reposiciona.
-36. **Con `EffectComposer`, `RenderPass` entrega lineal y el tone mapping lo aplica `OutputPass`.** El umbral del bloom se calibra contra la luz de escena, no contra `toneMappingExposure`: subir la exposición no cambia qué objetos hacen bloom.
-37. **Un preview descartable puede convertir materiales por `traverse`; el código que queda, no.** La conversión post-hoc es el antipatrón de la lección 17. Para comparar direcciones sobre la escena real sirve un parche temporal por query param que se revierte; para producción, los materiales se construyen desde el origen.
-38. **Un timeout fijo en un arnés headless mide la máquina, no el producto.** `shot-scene.mjs` esperaba 26s a que el personaje caminara hasta el primer cartel; la caminata avanza POR FRAME, así que al pasar los materiales a PBR entraron menos frames en esos 26s y las capturas empezaron a salir con el personaje parado en el origen. Esperar por condición observable (`#ps-panel.open`), nunca por reloj.
-39. **En SwiftShader el costo dominante de esta escena son los materiales PBR, no las luces ni las sombras.** Medición relativa: main 5.44 fps, PBR completo 2.69 (2.02×). Bajar a 4 farolas da 3.05 y sacar el shadow map da 2.45 — que "sin sombras" mida más lento que "con sombras" acota el ruido en ~10%, así que ninguna de las dos palancas mueve la aguja. Es justo el costo que un rasterizador por software exagera y una GPU absorbe: el número headless **sobreestima** el impacto real. Verificar en GPU antes de degradar la calibración.
