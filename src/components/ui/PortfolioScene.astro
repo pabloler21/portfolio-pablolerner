@@ -147,6 +147,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   let walkAction = null;
   let runAction = null;
   let idleAction = null;
+  let jumpAction = null;
+  let jumpClipDur = 0;
   let moveAction = null;          /* la acción de locomoción activa: walk, run o idle — nunca null una vez cargado el mixer */
   let locoState = 'idle';         /* 'idle' | 'walk' | 'run' — tracked separately from moveAction since idle reuses walkAction */
   /* Stand-in pose for the broken Idle clip: the "passing" frame of the 1.0333s
@@ -168,18 +170,27 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   let prevMoving = false;
   let animClock = null;
   let jumping = false; let jumpT = 0;   /* salto procedural — no hay clip Jump en el GLB (sólo Running/Walking/Idle) */
-  /* JUMP_H es SÓLO estética: la compuerta del charco es booleana sobre
-     `jumping` (ver CRATER_ZS abajo), así que la altura no decide nada. Quien
-     decide es JUMP_DUR × la velocidad horizontal — 11.58u de alcance, contra
-     un charco de 3.6u.
-     Historia de la altura, para que no se revierta sola: primero se pidió un
-     salto plano ("flatter leap, not a high hop") y quedó en 1.3; después se
-     pidió más altura porque el salto "se queda corto" y subió a 1.8 (= la
-     altura del personaje); ahí se pidió bajarlo en dos pasos ("apenas", y
-     después "un poco menos") hasta 1.45. El que se quedaba corto igual era el
-     alcance, no la altura; se arregló aparte en tick(). */
-  const JUMP_DUR = 1.4, JUMP_H = 1.45;
-  const JUMP_SPEED_MULT = 1.5;
+  /* Calibración del salto. Los tres números están atados a la geometría del
+     nivel, no elegidos por gusto:
+
+       spawn z=0 · charco z ∈ (−6.8, −3.2) · 1er cartel z=−10
+
+     JUMP_DUR = 0.9 es EXACTAMENTE la duración del clip `Jump` del GLB, así
+     que la animación entra una vez, a velocidad natural, sin estirar.
+     `jumpT` avanza en segundos reales, o sea que esto son segundos.
+
+     El alcance horizontal = JUMP_DUR × WALK_SPEED × SPRINT_MULT ×
+     JUMP_SPEED_MULT × 60 = 5.72u. Saltando desde el borde del charco (−3.2)
+     se cae en −8.9: cruzados los 3.6u de líquido y a menos de un metro del
+     cartel. Y crea la dificultad que antes no existía — con los 11.58u de
+     alcance anteriores se cruzaba saltando desde cualquier lado, incluso
+     parado en el spawn. Ahora saltar demasiado temprano cae ADENTRO.
+
+     JUMP_H es lo que se le suma al arco: poco, porque el clip ya levanta la
+     cadera 0.437u por su cuenta. El 1.45 de antes era un arco procedural
+     entero encima de eso, y por eso se veía altísimo. */
+  const JUMP_DUR = 0.9, JUMP_H = 0.2;
+  const JUMP_SPEED_MULT = 1.2;
   const keys = {};
   const WALK_SPEED = 0.042;
   const SPRINT_MULT = 2.1;   /* was 1.8, then 2.0 — +5% again to cut foot-sliding, asked explicitly */
@@ -406,6 +417,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       const walkClip = pick(/^walking$/i) ?? pick(/walk/i);
       const runClip  = pick(/^running$/i) ?? pick(/run|sprint|jog/i);
       const idleClip = pick(/^idle$/i) ?? pick(/idle/i);
+      const jumpClip = pick(/^jump$/i) ?? pick(/jump|leap/i);
       const loopIt = clip => {
         const a = mixer.clipAction(clip);
         a.setLoop(THREE.LoopRepeat, Infinity);
@@ -422,6 +434,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
          primera, así que el `animations[0]` de entonces se llevó la vacía.
          Se rehornea con `node scripts/build-character-glb.mjs`. */
       if (idleClip && idleClip.tracks.length > 0) idleAction = loopIt(idleClip);
+      /* El salto NO se repite: dura lo que dura y se queda en su último frame
+         si sobrara algún frame de aire. */
+      if (jumpClip && jumpClip.tracks.length > 0) {
+        jumpAction = mixer.clipAction(jumpClip);
+        jumpAction.setLoop(THREE.LoopOnce, 1);
+        jumpAction.clampWhenFinished = true;
+        jumpClipDur = jumpClip.duration;
+      }
       startIdlePose();
       locoState = 'idle';
     } catch (_) { /* placeholder stays on load failure */ }
@@ -1362,7 +1382,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       next.play();                                  /* activar ANTES de parar */
       if (time !== undefined) next.time = time;
     }
-    for (const a of [idleAction, walkAction, runAction]) {
+    for (const a of [idleAction, walkAction, runAction, jumpAction]) {
       if (a && a !== next) a.stop();
     }
     moveAction = next;
@@ -1815,11 +1835,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
         if (state === 'idle') {
           startIdlePose();
         } else if (state === 'jump') {
-          /* Measured from the GLB: the time in Running (0.633s) where
-             mixamorigLeftUpLeg/RightUpLeg are furthest apart — the widest
-             running stride. Paused (timeScale 0), so it never advances. */
-          const pose = runAction ?? walkAction;
-          switchAction(pose, 0, pose === runAction ? JUMP_POSE_TIME : WALK_NEUTRAL_TIME);
+          if (jumpAction) {
+            /* El clip se escala para entrar exacto en la ventana de aire: si
+               algún día JUMP_DUR deja de coincidir con su duración, se estira
+               o se comprime en vez de terminar antes y dejar al personaje
+               congelado a mitad de vuelo. Con 0.9 = 0.9 el factor es 1. */
+            switchAction(jumpAction, jumpClipDur / JUMP_DUR);
+          } else {
+            /* Respaldo de cuando no había clip de salto: un frame congelado
+               del punto más abierto de la zancada de Running. */
+            const pose = runAction ?? walkAction;
+            switchAction(pose, 0, pose === runAction ? JUMP_POSE_TIME : WALK_NEUTRAL_TIME);
+          }
         } else {
           const real = state === 'run' ? runAction : walkAction;
           switchAction(real, state === 'run' ? RUN_TIMESCALE : WALK_TIMESCALE);
@@ -1848,7 +1875,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
          decoración: la lección 8 del CLAUDE.md dice que el guard de
          reduced-motion nunca va sobre la entrada del usuario, sólo sobre lo
          visual (acá, la altura del arco unas líneas más abajo). */
-      jumpT += 0.016 * dtScale;
+      jumpT += delta;   /* segundos reales: JUMP_DUR se lee en segundos */
       const p = jumpT / JUMP_DUR;
       if (p >= 1) {
         jumping = false;

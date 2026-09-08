@@ -25,6 +25,7 @@ const PICKS = [
   { key: 'walk', res: ['^walking$', 'walk'] },
   { key: 'run',  res: ['^running$', 'run|sprint|jog'] },
   { key: 'idle', res: ['^idle$', 'idle'] },
+  { key: 'jump', res: ['^jump$', 'jump|leap'] },
 ];
 /* Huesos del torso: si el idle es una respiración, tienen que moverse. */
 const TORSO = ['mixamorigSpine1', 'mixamorigSpine2'];
@@ -122,7 +123,7 @@ const srv = createServer(async (req, res) => {
 });
 await new Promise(r => srv.listen(PORT, '127.0.0.1', r));
 
-const results = [];
+const results = [];  /* se imprimen en orden de insercion */
 const record = (id, name, pass, detail) => results.push({ id, name, pass, detail });
 const browser = await chromium.launch({ executablePath: resolveChrome(), env: browserEnv(), args: ['--no-sandbox'] });
 let r;
@@ -137,8 +138,10 @@ try {
   srv.close();
 }
 
+const sceneSrc = await readFile(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
+
 const missing = Object.entries(r.picked).filter(([, v]) => !v).map(([k]) => k);
-record('A1', 'La escena encuentra sus 3 clips', missing.length === 0,
+record('A1', `La escena encuentra sus ${PICKS.length} clips`, missing.length === 0,
   missing.length ? `sin resolver: ${missing.join(', ')}` : Object.entries(r.picked).map(([k, v]) => `${k}→${v.name}`).join(' '));
 
 const empty = Object.entries(r.picked).filter(([, v]) => v && v.tracks === 0).map(([k]) => k);
@@ -160,15 +163,23 @@ record('A5', 'Cadera sin desplazamiento propio', drift.length === 0,
   drift.length ? `SE MUEVE: ${drift.map(([k, v]) => `${k}=${v}u`).join(' ')}`
                : Object.entries(r.inPlace).map(([k, v]) => `${k} ${v}u`).join(' · '));
 
+/* A7 — el asset y el código tienen que coincidir. JUMP_DUR es la ventana de
+   aire y el clip se escala para entrar en ella: si dejan de coincidir la
+   animación se estira o se comprime, y nadie se entera hasta verlo. */
+const jumpDur = parseFloat(sceneSrc.match(/const JUMP_DUR = ([\d.]+)/)[1]);
+const clipDur = r.picked.jump ? r.picked.jump.dur : null;
+const match = clipDur !== null && Math.abs(clipDur - jumpDur) < 0.02;
+record('A7', 'JUMP_DUR coincide con el clip Jump', match,
+  clipDur === null ? 'sin clip Jump' : `clip ${clipDur}s · JUMP_DUR ${jumpDur}s${match ? ' (factor 1, sin estirar)' : ' <-- SE ESTIRA'}`);
+
 /* A6 — invariante de código, no del asset: todo cambio de acción tiene que
    pasar por switchAction(), que arranca la entrante ANTES de parar la
    saliente. Si una rama vuelve a parar primero, el mixer restaura la bind
    pose del GLB (una T-pose) y se dibuja un frame entero así en la transición
    de respirar a correr. */
-const scene = await readFile(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
-const stops = [...scene.matchAll(/^.*\.stop\(\).*$/gm)].map(m => m[0].trim())
+const stops = [...sceneSrc.matchAll(/^.*\.stop\(\).*$/gm)].map(m => m[0].trim())
   .filter(l => !l.includes('stopAllAction'));
-const helper = scene.match(/function switchAction[\s\S]*?\n  \}/);
+const helper = sceneSrc.match(/function switchAction[\s\S]*?\n  \}/);
 const playsFirst = !!helper && helper[0].indexOf('.play()') < helper[0].indexOf('.stop()');
 record('A6', 'El cambio de acción no pasa por bind pose', stops.length === 1 && playsFirst,
   stops.length !== 1 ? `${stops.length} llamadas a .stop() sueltas: ${stops.slice(0, 3).join(' | ')}`

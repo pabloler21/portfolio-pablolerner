@@ -292,17 +292,34 @@ que a más intensidad los altos recortan y el personaje lee naranja fluorescente
 `position`/`rotation` del grupo en cada frame, así que va **envuelto en un `THREE.Group`**:
 el wrapper es lo que maneja la escena, el nodo interno conserva su transform.
 
-**Salto y charcos de ácido**: `Space` dispara un salto procedural (no hay clip
-de salto en el GLB). Dos cráteres con líquido tóxico cortan la avenida en
-`CRATER_ZS = [-5, -35]`, `CRATER_HALF_W 1.8` → bandas de 3.6u. La compuerta de
-`tick()` es **booleana sobre `jumping`**: en el aire se cruza siempre y la
-altura del arco **no participa** — `JUMP_H` es puramente estético. Lo que
-decide es el alcance horizontal, `JUMP_DUR` × velocidad × `JUMP_SPEED_MULT` =
-11.58u. En el piso, corriendo se cae y se respawnea en la entrada; caminando
-(Shift) se choca contra el borde. `jumpT` avanza con `dtScale`, nunca por
-frame (lección 34), y el arco **no** se achata bajo `prefers-reduced-motion`:
-es feedback de una tecla del jugador, no animación ambiente. Cubierto por
-`npm run verify:jump`.
+**Salto y charcos de ácido**: `Space` dispara el clip `Jump` del GLB (0.9s).
+Dos cráteres con líquido tóxico cortan la avenida en `CRATER_ZS = [-5, -35]`,
+`CRATER_HALF_W 1.8` → bandas de 3.6u. La compuerta de `tick()` es **booleana
+sobre `jumping`**: en el aire se cruza siempre y la altura del arco **no
+participa** — `JUMP_H` es puramente estético. Lo que decide es el alcance
+horizontal.
+
+**La calibración está atada a la geometría del nivel, no elegida por gusto**
+(spawn z=0 · charco z ∈ −6.8…−3.2 · 1er cartel z=−10):
+
+| | |
+|---|---|
+| `JUMP_DUR 0.9` | exactamente la duración del clip → entra una vez, sin estirarse |
+| `JUMP_SPEED_MULT 1.2` | alcance **5.72u** |
+| `JUMP_H 0.2` | poco: el clip ya levanta la cadera 0.437u por su cuenta |
+
+Saltando desde el borde (−3.15) se cae en **−8.89**, a 1.1u del cartel. Y hay
+**dificultad**: la ventana de despegue es de 2.15u sobre 3.2u de pista, así
+que saltar apenas se aparece cae adentro del charco. Antes el alcance era de
+11.58u y se cruzaba desde cualquier lado, incluso parado en el spawn.
+
+`jumpT` avanza en **segundos reales** (`+= delta`), así que `JUMP_DUR` se lee
+en segundos y el alcance no depende de los Hz del monitor (lección 34). El
+arco **no** se achata bajo `prefers-reduced-motion`: es feedback de una tecla
+del jugador, no animación ambiente. En el piso, corriendo se cae y se
+respawnea en la entrada; caminando (Shift) se choca contra el borde. Cubierto
+por `npm run verify:jump` (alcance, punto de caída, tamaño de la ventana) y
+`verify:character` A7 (que `JUMP_DUR` siga coincidiendo con el clip).
 
 **Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8**, con crossfade
 entre `Walking` (timeScale 1.8) y `Running` (timeScale 1.3) — los clips de Mixamo son *in

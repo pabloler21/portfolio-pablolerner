@@ -25,6 +25,7 @@ const SOURCES = [
   { clip: 'Walking', file: 'Walking.fbx' },
   { clip: 'Running', file: 'Running.fbx' },
   { clip: 'Idle',    file: 'Breathing Idle.fbx' },
+  { clip: 'Jump',    file: 'Running Jump.fbx' },
 ];
 const TEX_SIZE = 256;   // Mixamo las manda en 2048: sin esto el GLB pasa de 7 a 41 MB
 
