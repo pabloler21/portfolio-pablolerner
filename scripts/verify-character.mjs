@@ -160,6 +160,21 @@ record('A5', 'Cadera sin desplazamiento propio', drift.length === 0,
   drift.length ? `SE MUEVE: ${drift.map(([k, v]) => `${k}=${v}u`).join(' ')}`
                : Object.entries(r.inPlace).map(([k, v]) => `${k} ${v}u`).join(' · '));
 
+/* A6 — invariante de código, no del asset: todo cambio de acción tiene que
+   pasar por switchAction(), que arranca la entrante ANTES de parar la
+   saliente. Si una rama vuelve a parar primero, el mixer restaura la bind
+   pose del GLB (una T-pose) y se dibuja un frame entero así en la transición
+   de respirar a correr. */
+const scene = await readFile(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
+const stops = [...scene.matchAll(/^.*\.stop\(\).*$/gm)].map(m => m[0].trim())
+  .filter(l => !l.includes('stopAllAction'));
+const helper = scene.match(/function switchAction[\s\S]*?\n  \}/);
+const playsFirst = !!helper && helper[0].indexOf('.play()') < helper[0].indexOf('.stop()');
+record('A6', 'El cambio de acción no pasa por bind pose', stops.length === 1 && playsFirst,
+  stops.length !== 1 ? `${stops.length} llamadas a .stop() sueltas: ${stops.slice(0, 3).join(' | ')}`
+  : !playsFirst ? 'switchAction para antes de arrancar'
+  : 'un solo .stop(), dentro de switchAction y después del play()');
+
 console.log(`\n  GLB DEL PERSONAJE — public/models/${GLB}\n`);
 console.log('  clips en el archivo: ' + r.all.map(c => `${c.name}(${c.tracks}p/${c.dur}s)`).join(' · ') + '\n');
 let failed = 0;

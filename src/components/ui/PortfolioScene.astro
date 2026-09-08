@@ -1342,28 +1342,38 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     shakeT = SHAKE_DUR;   /* camera shake on death, asked explicitly */
   }
 
+  /* Cambio de acción SIN pasar por la bind pose.
+     AnimationMixer lleva un useCount por hueso y, cuando la última acción que
+     lo usaba se detiene y ese contador llega a 0, RESTAURA el valor original
+     —la bind pose— en el acto. Parar la saliente antes de arrancar la
+     entrante hacía justo eso, y como `play()` sólo marca la acción activa (la
+     pose recién se escribe en el próximo `mixer.update`), quedaba un frame
+     entero dibujado en bind pose. En el GLB viejo eso no se veía porque su
+     reposo era una pose de caminata horneada; el GLB rehorneado tiene la bind
+     pose de verdad, que es una T-POSE, y el defecto se volvió visible al
+     pasar de respirar a correr.
+     Arrancando la entrante PRIMERO el contador nunca toca 0: en el frame del
+     cambio se sigue viendo la pose anterior, que es una pose real. */
+  function switchAction(next, timeScale, time) {
+    if (next) {
+      next.reset();
+      next.setEffectiveWeight(1);
+      next.setEffectiveTimeScale(timeScale);
+      next.play();                                  /* activar ANTES de parar */
+      if (time !== undefined) next.time = time;
+    }
+    for (const a of [idleAction, walkAction, runAction]) {
+      if (a && a !== next) a.stop();
+    }
+    moveAction = next;
+  }
+
   /* Entrar en idle: se reproduce el clip de respiración. Si el GLB llegara
      sin él (o vacío, como estuvo un tiempo) se cae al plan viejo — un frame
      congelado de Walking, quieto pero no deformado. */
   function startIdlePose() {
-    runAction?.stop();
-    if (idleAction) {
-      walkAction?.stop();
-      idleAction.reset();
-      idleAction.setEffectiveWeight(1);
-      idleAction.setEffectiveTimeScale(1);
-      idleAction.play();
-      moveAction = idleAction;
-      return;
-    }
-    if (walkAction) {
-      walkAction.reset();
-      walkAction.setEffectiveWeight(1);
-      walkAction.setEffectiveTimeScale(0);   /* pausado — un frame fijo, no un ciclo */
-      walkAction.play();
-      walkAction.time = WALK_NEUTRAL_TIME;
-    }
-    moveAction = walkAction;
+    if (idleAction) switchAction(idleAction, 1);
+    else switchAction(walkAction, 0, WALK_NEUTRAL_TIME);
   }
 
   /* Teleport straight to a project's board — a deliberate, narrow exception
@@ -1808,29 +1818,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
           /* Measured from the GLB: the time in Running (0.633s) where
              mixamorigLeftUpLeg/RightUpLeg are furthest apart — the widest
              running stride. Paused (timeScale 0), so it never advances. */
-          walkAction?.stop();
-          idleAction?.stop();
           const pose = runAction ?? walkAction;
-          if (pose) {
-            pose.reset();
-            pose.setEffectiveWeight(1);
-            pose.setEffectiveTimeScale(0);
-            pose.play();
-            pose.time = pose === runAction ? JUMP_POSE_TIME : WALK_NEUTRAL_TIME;
-          }
-          if (pose !== runAction) runAction?.stop();
-          moveAction = pose;
+          switchAction(pose, 0, pose === runAction ? JUMP_POSE_TIME : WALK_NEUTRAL_TIME);
         } else {
           const real = state === 'run' ? runAction : walkAction;
-          (state === 'run' ? walkAction : runAction)?.stop();
-          idleAction?.stop();
-          if (real) {
-            real.reset();
-            real.setEffectiveWeight(1);
-            real.setEffectiveTimeScale(state === 'run' ? RUN_TIMESCALE : WALK_TIMESCALE);
-            real.play();
-          }
-          moveAction = real;
+          switchAction(real, state === 'run' ? RUN_TIMESCALE : WALK_TIMESCALE);
         }
       }
     } else if (charGroup) {
