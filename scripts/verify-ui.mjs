@@ -12,7 +12,8 @@ const DIST = path.join(ROOT, 'dist');
 const PORT = 4399;
 const BASE = `http://127.0.0.1:${PORT}`;
 
-const DOC_PAGES = ['/en/risk/', '/en/ai/', '/es/risk/', '/es/ai/'];
+/* Las dos paginas de rol se fundieron en una sola de records. */
+const DOC_PAGES = ['/en/projects/', '/es/projects/'];
 const GAME_PAGE = '/en/';
 
 const MIME = {
@@ -256,8 +257,9 @@ try {
       await pg.close();
       await c.close();
     }
+    const combos = (DOC_PAGES.length + 2) * 2;
     record('C13', 'El rail de contacto no pisa el contenido (320/390)', choques.length === 0,
-      choques.length ? choques.slice(0, 6).join(' · ') : 'sin solapamiento en 12 combinaciones');
+      choques.length ? choques.slice(0, 6).join(' · ') : `sin solapamiento en ${combos} combinaciones`);
   }
 
   await page.goto(BASE + GAME_PAGE, { waitUntil: 'load' });
@@ -297,7 +299,7 @@ record('C10', 'El mail personal no se publica', correos.length === 0,
 /* C11 — el cambio de idioma tiene que estar en TODAS las paginas construidas y
    NO puede perder la pagina. Antes vivia en el StatusBar, que solo se renderiza
    en surface="doc": en la home —la escena, la puerta de entrada del sitio— no
-   habia ninguno. Y sus links eran fijos a /en/ y /es/, asi que desde /en/risk/
+   habia ninguno. Y sus links eran fijos a /en/ y /es/, asi que desde /en/projects/
    te dejaba en la home española.
    Se mira el HTML CONSTRUIDO y se comprueba que el destino EXISTE como archivo:
    /en/concept/* solo esta en ingles, y un toggle ciego manda a un 404. */
@@ -325,6 +327,28 @@ record('C11', 'Cambio de idioma en toda pagina con chrome', sinToggle.length ===
   sinToggle.length ? `sin toggle: ${sinToggle.join(', ')}` : 'todas las paginas con barra de identidad lo tienen');
 record('C12', 'El cambio de idioma no pierde la pagina', malDestino.length === 0,
   malDestino.length ? malDestino.slice(0, 3).join(' · ') : 'cada una apunta a su hermana (o a la home si no existe)');
+
+/* C14 — las rutas viejas no mueren. /ai/ y /risk/ se fundieron en /projects/,
+   pero hay links repartidos afuera (CV, LinkedIn, postulaciones) que apuntan a
+   las dos: borrarlas a secas convertia cada uno de esos links en un 404. Se
+   comprueba sobre el arbol construido que las cuatro existen y que apuntan a la
+   pagina nueva del MISMO idioma — un redirect cruzado seria peor que el 404. */
+{
+  const rotas = [];
+  for (const [vieja, destino] of [
+    ['/en/ai/', '/en/projects'], ['/en/risk/', '/en/projects'],
+    ['/es/ai/', '/es/projects'], ['/es/risk/', '/es/projects'],
+  ]) {
+    const f = path.join(DIST, vieja.slice(1), 'index.html');
+    if (!existsSync(f)) { rotas.push(`${vieja} no existe`); continue; }
+    const html = await readFile(f, 'utf8');
+    const m = html.match(/http-equiv="refresh" content="0;url=([^"]+)"/);
+    if (!m) rotas.push(`${vieja} sin redirect`);
+    else if (m[1] !== destino) rotas.push(`${vieja} → ${m[1]} (esperaba ${destino})`);
+  }
+  record('C14', 'Las rutas de rol viejas redirigen', rotas.length === 0,
+    rotas.length ? rotas.join(' · ') : '/ai/ y /risk/ → /projects/ en los dos idiomas');
+}
 
 const pad = s => String(s).padEnd(40);
 let failed = 0;

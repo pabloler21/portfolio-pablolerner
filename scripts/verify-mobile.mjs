@@ -86,24 +86,52 @@ try {
   record('M2', 'Canvas visible y fallback oculto', canvasVisible && fallbackHidden,
     `canvas=${canvasVisible} fallback oculto=${fallbackHidden}`);
 
-  /* Con el selector de perfil abierto los controles NO tienen que estar: es un
-     overlay de z-index 9000 y el dedo le pegaria a el, no al joystick. */
-  const stickAntes = await page.locator('.tc-stick').count();
-  record('M3', 'Ocultos con el selector abierto', stickAntes === 0,
-    stickAntes ? 'VISIBLES debajo del overlay — el dedo no los alcanza' : 'ocultos');
-
-  /* Se elige un rol, que es lo que pone al personaje a caminar. Se espera a
-     `.boot-done` y no a un reloj: los listeners de saltear-el-boot del
-     selector se comen el primer click mientras la secuencia sigue viva
-     (leccion 23 del CLAUDE.md), asi que tocar antes de tiempo no hace nada y
-     el test falla de a ratos. */
-  await page.waitForSelector('#persona-overlay.boot-done', { timeout: 30000 });
-  await page.locator('.persona-opt').first().tap();
+  /* M3 se fue con el selector: media el caso "controles debajo del overlay de
+     z-index 9000, el dedo le pega al overlay". Ese overlay ya no existe, asi
+     que el test no tenia nada que medir. Lo que queda es que los controles
+     esten apenas la escena esta viva, SIN ningun toque previo — antes habia
+     que elegir un rol primero. */
   await page.waitForSelector('.tc-stick', { timeout: 20000 }).catch(() => {});
   const hasStick = await page.locator('.tc-stick').count();
   const hasJump = await page.locator('.tc-jump').count();
-  record('M3b', 'Aparecen al elegir rol', hasStick === 1 && hasJump === 1,
+  record('M3b', 'Aparecen apenas la escena esta lista', hasStick === 1 && hasJump === 1,
     `stick=${hasStick} salto=${hasJump}`);
+
+  /* M21 — la calle esta poblada sin que el visitante haga nada. Antes los
+     carteles se construian recien al elegir rol; ahora salen en init(). Se
+     mira `data-boards`, un atributo que el producto ya escribe (mismo criterio
+     que `data-audio`), no un gancho de test. */
+  const boards = Number(await page.evaluate(() => document.documentElement.dataset.boards ?? '0'));
+  record('M21', 'Los carteles salen sin ningun gesto', boards === 10,
+    `${boards} carteles al cargar`);
+
+  /* M22 — el ultimo cartel entra en el mundo. La avenida crecio a 10 carteles
+     (z=-100) y hubo que correr el fondo del mundo; esto es lo que atrapa la
+     regresion si manana se suma un cartel 11 sin estirar la calle otra vez. */
+  const ultimoZ = await page.evaluate(() => {
+    try {
+      const d = JSON.parse(document.getElementById('ps-data').textContent);
+      if (!Array.isArray(d.boards) || !d.boards.length) return null;
+      return -10 - (d.boards.length - 1) * 10;   /* misma formula que buildBillboards */
+    } catch (_) { return null; }
+  });
+  const BOUND_Z_MIN = -117, OBELISK_Z = -114;
+  record('M22', 'El ultimo cartel entra en el mundo',
+    ultimoZ !== null && ultimoZ > BOUND_Z_MIN && ultimoZ > OBELISK_Z,
+    ultimoZ === null ? 'no pude leer los carteles de ps-data'
+                     : `ultimo cartel z=${ultimoZ} · obelisco ${OBELISK_Z} · bound ${BOUND_Z_MIN}`);
+
+  /* M17 — la musica se arma SOLA, sin ningun gesto. Antes la disparaba el
+     click de rol, que era el gesto que el navegador exige; ahora startAmbient()
+     corre en init() y deja armado un pointerdown/keydown de un solo uso para
+     despertar el contexto. Se lee ACA, antes del primer toque del arnes: mas
+     abajo ya se arrastro el joystick y se toco el salto, y cualquiera de los
+     dos habria disparado el camino viejo tambien.
+     Ojo con el alcance: que SALGA SONIDO lo mide verify:audio renderizando el
+     motor en un OfflineAudioContext. Aca se mide el cableado. */
+  const audioAlCargar = await page.evaluate(() => document.documentElement.dataset.audio);
+  record('M17', 'La musica se arma sin ningun gesto', audioAlCargar === 'on',
+    `data-audio=${audioAlCargar} antes de tocar nada`);
 
   /* Espia de teclas: el puente real con la escena. */
   await page.evaluate(() => {
@@ -287,17 +315,12 @@ try {
   record('M16', 'Tactil camina mas rapido, salta igual', mm > 1 && soloPiso,
     `MOVE_MULT ${mm || '(no lo encontre)'} · en el aire manda JUMP_SPEED_MULT=${soloPiso}`);
 
-  /* ── Musica ambiente (M17-M19) ────────────────────────────────────────
-     Ojo con el alcance: que SALGA SONIDO lo mide verify:audio, renderizando
-     el motor en un OfflineAudioContext. Lo que se mide aca es el cableado, que
-     es lo que verify:audio no puede ver: que arranque al elegir rol, que el
-     boton la corte, y que apagarla se recuerde. `<html data-audio>` dice si
-     hay musica sonando de verdad (existe el handle); el boton dice la
-     preferencia. Son dos hechos distintos y por eso se miran los dos. */
-  const audioOn = await page.evaluate(() => document.documentElement.dataset.audio);
-  record('M17', 'La musica arranca al elegir rol', audioOn === 'on',
-    `data-audio=${audioOn} (el rol se eligio en M3b)`);
-
+  /* ── Musica ambiente (M18-M19) ────────────────────────────────────────
+     M17 (que se arma sola) se mide arriba, antes del primer toque. Aca queda
+     el resto del cableado: que el boton la corte y que apagarla se recuerde.
+     `<html data-audio>` dice si hay musica sonando de verdad (existe el
+     handle); el boton dice la preferencia. Son dos hechos distintos y por eso
+     se miran los dos. */
   const btnAntes = await page.locator('#ps-audio-toggle').getAttribute('aria-pressed').catch(() => null);
   await page.locator('#ps-audio-toggle').tap().catch(() => {});
   await page.waitForTimeout(300);
@@ -321,7 +344,7 @@ try {
   record('M19a', 'Apagarla se guarda', tras.guardado === 'off', `localStorage nier-audio=${tras.guardado}`);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(SCENE_READY, null, { timeout: 90000 }).catch(() => {});
-  await page.waitForTimeout(2500);   /* el rol se re-despacha solo desde sessionStorage */
+  await page.waitForTimeout(2500);   /* que la escena termine de armarse */
   const trasRecarga = await page.evaluate(() => ({
     data: document.documentElement.dataset.audio,
     pressed: document.getElementById('ps-audio-toggle')?.getAttribute('aria-pressed'),
