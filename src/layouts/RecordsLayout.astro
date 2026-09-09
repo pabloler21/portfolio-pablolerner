@@ -475,7 +475,9 @@ const term = {
 
   .dossier-row {
     display: grid;
-    grid-template-columns: 0.8rem minmax(0, 1fr) auto;   /* cursor · nombre · badge — la columna del número se fue con la numeración */
+    /* numero · cursor · nombre · badge. Son CUATRO items: con tres columnas el
+       badge caia a un segundo renglon y la fila salia de dos lineas. */
+    grid-template-columns: 1.35rem 0.8rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.4rem;
     padding: 0.52rem 0.55rem;

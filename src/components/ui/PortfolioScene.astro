@@ -40,7 +40,6 @@ const dossier = {
   next:       lang === 'en' ? 'NEXT ▶' : 'SIG ▶',
   code:    'CODE ↗',
   live:    'LIVE ↗',
-  wip:     lang === 'en' ? 'WORK IN PROGRESS' : 'EN DESARROLLO',
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
@@ -1826,7 +1825,7 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     const body = document.createElement('div');
     body.className = 'dossier-body';
     body.innerHTML = `
-      ${heroIdx === projects.length - 1 ? `<div class="d-wip">${dossier.wip}</div>` : ''}
+      <div class="d-status">${hero.status}</div>
       <div class="d-section">
         <div class="d-label">${dossier.mission}</div>
         <p class="d-desc">${hero.desc}</p>
@@ -2851,7 +2850,12 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     margin: 0;
   }
 
-  #ps-panel .d-wip {
+  /* Chapa de estado del proyecto. Antes decia WORK IN PROGRESS y se mostraba
+     cuando `heroIdx === projects.length - 1`, o sea al ultimo del array de
+     datos — una posicion, no un hecho. Con el orden nuevo ese ultimo es el
+     flagship, asi que el proyecto desplegado salia anunciado como inacabado.
+     Ahora dice el `status` real, el mismo que imprime el cartel. */
+  #ps-panel .d-status {
     display: inline-block;
     font-family: var(--font-mono);
     font-size: 0.62rem;
