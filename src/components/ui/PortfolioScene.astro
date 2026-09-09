@@ -13,7 +13,10 @@ const mapProj = (p: typeof streetProjects[0], l: 'en' | 'es') => ({
   github:   p.github,
   demo:     p.demo ?? '',
   featured: p.featured ?? false,
-  track:    p.track,
+  /* El cartel imprime UNA sola mitad del perfil, asi que toma la principal.
+     FraudSense es de las dos y su principal es 'data': en la calle sigue
+     diciendo DATA ANALYST, igual que antes de que las etiquetas fueran lista. */
+  track:    p.tracks[0],
   stack:    p.stack.slice(0, 6),
 });
 

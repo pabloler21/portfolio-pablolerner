@@ -18,6 +18,7 @@ export interface DossierProject {
   outcome?: string;
   stack: readonly string[];
   status: string;
+  tracks: readonly ('ai' | 'data')[];
   featured?: boolean;
   github: string;
   demo?: string;
@@ -31,25 +32,34 @@ interface Props {
   badge?: string;          // "UNIT PROFILE"
   subline?: string;        // sys-text line under the heading
   stats?: StatBox[];       // compact HUD stat grid
-  /* Los records van en DOS bloques. El orden del documento no es el orden de
-     la avenida: el paseo es una decisión de ritmo de juego, la página la lee
-     alguien evaluando candidatos y ahí gana el agrupamiento por especialidad. */
-  ai?: DossierProject[];
-  data?: DossierProject[];
+  /* UNA sola lista. Antes eran dos bloques (`ai` y `data`) con un divisor en el
+     medio; con etiquetas por fila ese agrupamiento decía lo mismo dos veces, y
+     además no tenía dónde poner a un proyecto que es de las dos mitades. El
+     orden del documento sigue sin ser el de la avenida: el paseo es ritmo de
+     juego, la página la lee alguien evaluando candidatos. */
+  projects?: DossierProject[];
 }
 
 const {
   title, lang, description,
   heading, badge, subline,
-  stats = [], ai = [], data = [],
+  stats = [], projects = [],
 } = Astro.props;
 
-/* Una sola lista numerada 01..NN, con un divisor no seleccionable entre los
-   dos bloques. El divisor NO lleva la clase .dossier-row a propósito: el
-   controlador exige que haya tantas filas como paneles. */
-const projects = [...ai, ...data];
-const dividerAt = ai.length;
 const hasDossier = projects.length > 0;
+
+/* Etiquetas y filtro. El rótulo largo es el que se muestra en el filtro y en el
+   panel de detalle; el corto es el que entra en la fila de la lista, donde el
+   presupuesto es de ~60px (medido: la columna del nombre pasa de 115.8 a 236.8
+   al sacar el número y el estado, y ahí entran los 16 nombres completos).
+   Los dos rótulos van en inglés en los dos idiomas, como ya estaban los
+   encabezados de bloque que reemplazan: son los nombres del puesto. */
+const TRACKS = [
+  { id: 'ai',   label: 'AI ENGINEER',  short: 'AI' },
+  { id: 'data', label: 'DATA ANALYST', short: 'DATA' },
+] as const;
+
+const trackCount = (id: 'ai' | 'data') => projects.filter(p => p.tracks.includes(id)).length;
 
 // Short name for the master list rows ("Iris — Personal AI Assistant" → "Iris")
 const shortName = (n: string) => n.split(' — ')[0];
@@ -57,10 +67,6 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 
 // Flagship HUD stat box: explicit flag prop, or label match (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
 const isFlagStat = (s: StatBox) => s.flag ?? /flagship|estrella/i.test(s.label);
-
-const blockLabel = lang === 'en'
-  ? { ai: 'AI ENGINEER', data: 'DATA ANALYST' }
-  : { ai: 'AI ENGINEER', data: 'DATA ANALYST' };
 
 const L = lang === 'en'
   ? {
@@ -73,6 +79,9 @@ const L = lang === 'en'
       live:     '[ LIVE ↗ ]',
       listAria: 'Project files',
       hint:     '↑↓ SELECT · ENTER → CODE',
+      all:      'ALL',
+      filter:   'Filter by track',
+      profile:  'PROFILE',
     }
   : {
       files:    'ARCHIVOS DE PROYECTO',
@@ -84,7 +93,16 @@ const L = lang === 'en'
       live:     '[ LIVE ↗ ]',
       listAria: 'Archivos de proyecto',
       hint:     '↑↓ SELECCIONAR · ENTER → CODE',
+      all:      'TODOS',
+      filter:   'Filtrar por especialidad',
+      profile:  'PERFIL',
     };
+
+/* El "todos" primero y activo por defecto: sin filtro elegido se ven los 16. */
+const filters = [
+  { id: 'all', label: L.all, count: projects.length },
+  ...TRACKS.map(t => ({ id: t.id, label: t.label, count: trackCount(t.id) })),
+];
 
 /* Una sola terminal ambiente: el perfil lidera con AI Engineer. La variante
    PROC::DATA_PIPELINE se fue con la página de rol que la mostraba. */
@@ -110,7 +128,7 @@ const term = {
 
 <Base title={title} lang={lang} activeTab="projects" description={description} surface="doc">
   <div class="role-grid">
-    <DocNav lang={lang} aiCount={ai.length} dataCount={data.length} />
+    <DocNav lang={lang} />
 
     <section class="panel-center">
       {heading && (
@@ -137,10 +155,30 @@ const term = {
       <slot />
 
       {hasDossier && (
+        <>
+        {/* Va acá, pegado a lo que filtra, y NO en la columna izquierda: en un
+            teléfono esa columna se renderiza al principio de todo y el filtro
+            quedaría a una pantalla de distancia de la lista. Ocupa el ancho del
+            panel y no el de la columna maestra (265px) porque los tres rótulos
+            completos no entran ahí. */}
+        <div class="filter-bar" role="group" aria-label={L.filter}>
+          <span class="filter-label sys-text">{L.files}</span>
+          {filters.map((f, i) => (
+            <button
+              type="button"
+              class:list={['filter-chip', { 'is-on': i === 0 }]}
+              data-filter={f.id}
+              aria-pressed={i === 0 ? 'true' : 'false'}
+            >
+              <span>{f.label}</span>
+              <span class="chip-count">{pad2(f.count)}</span>
+            </button>
+          ))}
+        </div>
+
         <div class="dossier">
-          <!-- ── Master: numbered OS file list ── -->
+          <!-- ── Master: OS file list ── -->
           <div class="dossier-master">
-            <p class="master-label sys-text">{L.files} · {pad2(projects.length)}</p>
             <div
               class="dossier-list"
               role="listbox"
@@ -149,22 +187,25 @@ const term = {
               aria-activedescendant="pf-0"
             >
               {projects.map((p, i) => (
-                <>
-                  {i === 0 && <p class="dossier-divider sys-text" role="presentation">{blockLabel.ai}</p>}
-                  {i === dividerAt && <p class="dossier-divider sys-text" role="presentation">{blockLabel.data}</p>}
-                  <div
-                    class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
-                    role="option"
-                    id={`pf-${i}`}
-                    aria-selected={i === 0 ? 'true' : 'false'}
-                    data-idx={i}
-                  >
-                    <span class="row-num sys-text" aria-hidden="true">{pad2(i + 1)}</span>
-                    <span class="row-cursor" aria-hidden="true">◆</span>
-                    <span class="row-name">{shortName(p.name)}</span>
-                    <span class:list={['row-badge', { flag: p.featured }]}>{p.status}</span>
-                  </div>
-                </>
+                <div
+                  class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
+                  role="option"
+                  id={`pf-${i}`}
+                  aria-selected={i === 0 ? 'true' : 'false'}
+                  data-idx={i}
+                  data-tracks={p.tracks.join(' ')}
+                >
+                  <span class="row-cursor" aria-hidden="true">◆</span>
+                  <span class="row-name">{shortName(p.name)}</span>
+                  {/* El estado (DEPLOYED/BUILT/…) NO va acá: ya se muestra grande
+                      arriba del panel de detalle, y es lo que forzaba a cortar
+                      los nombres. */}
+                  <span class="row-tags">
+                    {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
+                      <span class="track-tag" title={t.label}>{t.short}</span>
+                    ))}
+                  </span>
+                </div>
               ))}
             </div>
             <p class="list-hint sys-text">{L.hint}</p>
@@ -176,7 +217,14 @@ const term = {
               <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${i}`}>
                 <div class="detail-top">
                   <span class:list={['detail-badge', { flag: p.featured }]}>{p.status}</span>
-                  <span class="detail-file sys-text">{L.file} {pad2(i + 1)}/{pad2(projects.length)} · ID: {p.id.toUpperCase()}</span>
+                  {/* Acá sí van los rótulos completos: hay ancho, y es donde se
+                      lee qué es el proyecto. */}
+                  <span class="detail-tracks">
+                    {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
+                      <span class="track-tag">{t.label}</span>
+                    ))}
+                  </span>
+                  <span class="detail-file sys-text">ID: {p.id.toUpperCase()}</span>
                 </div>
 
                 <h3 class="detail-title" data-text={p.name}>{p.name}</h3>
@@ -211,6 +259,7 @@ const term = {
             ))}
           </div>
         </div>
+        </>
       )}
     </section>
 
@@ -292,14 +341,36 @@ const term = {
       revealPane(pane, fromPointer);
     }
 
-    /* DocNav: sus dos entradas saltan al primer archivo de cada bloque
-       reusando este mismo select(), en vez de hacer scroll a un ancla. Viven
-       fuera de .dossier, así que se buscan en el documento. */
-    document.querySelectorAll<HTMLElement>('[data-jump]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = Number(btn.dataset.jump);
-        if (Number.isInteger(idx) && idx >= 0 && idx < rows.length) select(idx, true);
+    /* ── Filtro por especialidad ──────────────────────────────────
+       Las filas se ocultan con `hidden` y no con una clase: así salen también
+       del árbol de accesibilidad, que es lo correcto para una opción que en
+       este momento no se puede elegir. Ojo que hace falta una regla explícita
+       (`.dossier-row[hidden] { display: none }`): el `display: grid` de la fila
+       le gana al `[hidden]` de la hoja del navegador.
+
+       La lista sale COMPLETA del build. Si el JS no corre, se ven los 16 y los
+       chips no hacen nada: el filtro agrega, no condiciona. */
+    const chips = Array.from(document.querySelectorAll<HTMLElement>('[data-filter]'));
+
+    const visibles = () => rows.reduce<number[]>((acc, r, i) => (r.hidden ? acc : (acc.push(i), acc)), []);
+
+    function applyFilter(id: string) {
+      chips.forEach(c => {
+        const on = c.dataset.filter === id;
+        c.classList.toggle('is-on', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
+      rows.forEach(r => {
+        r.hidden = id !== 'all' && !(r.dataset.tracks || '').split(' ').includes(id);
+      });
+      /* Si el proyecto abierto quedó fuera del filtro hay que abrir otro: dejar
+         el detalle de algo que ya no está en la lista es mentirle al que filtra. */
+      const quedan = visibles();
+      if (quedan.length > 0 && rows[active].hidden) select(quedan[0]);
+    }
+
+    chips.forEach(c => {
+      c.addEventListener('click', () => applyFilter(c.dataset.filter || 'all'));
     });
 
     rows.forEach((row, i) => {
@@ -313,11 +384,17 @@ const term = {
       const k = e.key;
       if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Home' || k === 'End') {
         e.preventDefault();
+        /* El teclado se mueve sobre las filas VISIBLES, no sobre los índices:
+           con un filtro puesto, ↓ desde la última visible no puede caer en una
+           oculta. */
+        const vis = visibles();
+        if (vis.length === 0) return;
+        const pos = Math.max(0, vis.indexOf(active));
         const next =
-          k === 'ArrowDown' ? Math.min(active + 1, rows.length - 1) :
-          k === 'ArrowUp'   ? Math.max(active - 1, 0) :
-          k === 'Home'      ? 0 :
-          rows.length - 1;
+          k === 'ArrowDown' ? vis[Math.min(pos + 1, vis.length - 1)] :
+          k === 'ArrowUp'   ? vis[Math.max(pos - 1, 0)] :
+          k === 'Home'      ? vis[0] :
+          vis[vis.length - 1];
         select(next);
       } else if (k === 'Enter') {
         e.preventDefault();
@@ -328,21 +405,58 @@ const term = {
 </script>
 
 <style>
-  /* Divisor de bloque: NO es una fila del listbox (no lleva .dossier-row), así
-     que ni el teclado ni el controlador lo ven — sólo separa a la vista. */
-  .dossier-divider {
-    padding: 0.7rem 0.85rem 0.35rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.22em;
-    color: var(--sand-dim);
-    border-bottom: var(--border);
+  /* ── Barra de filtro ──────────────────────────────────
+     Chips, no botones con corchetes: los corchetes de este sitio enmarcan una
+     ACCIÓN ([ VIEW CODE ↗ ]), y esto es un estado. Mint sólo en el activo, que
+     es un estado interactivo y por lo tanto el único acento que corresponde. */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
   }
 
-  .row-num {
+  .filter-label {
     font-size: 0.7rem;
-    color: var(--sand-dim);
-    flex-shrink: 0;
+    margin-right: 0.2rem;
   }
+
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.6rem;
+    background: transparent;
+    border: 1px solid var(--ink-mid);
+    color: var(--sand-dim);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .filter-chip .chip-count { color: var(--sand-dim); }
+
+  .filter-chip:hover {
+    border-color: var(--accent-bright);
+    color: var(--sand);
+  }
+
+  .filter-chip:focus-visible {
+    outline: 1px solid var(--accent-bright);
+    outline-offset: 2px;
+  }
+
+  /* Después del :hover a propósito: misma especificidad, gana el último
+     (lección 40). Sin esto el chip activo se ve apagado mientras el puntero
+     está encima, que es justo cuando se lo acaba de elegir. */
+  .filter-chip.is-on {
+    border-color: var(--accent-bright);
+    color: var(--accent-bright);
+    background: var(--bg-panel);
+  }
+  .filter-chip.is-on .chip-count { color: var(--accent-bright); }
 
   .role-grid {
     display: grid;
@@ -447,7 +561,18 @@ const term = {
   /* ── Dossier: master-detail ───────────────────────── */
   .dossier {
     display: grid;
-    grid-template-columns: 265px minmax(0, 1fr);
+    /* 320 y no 265: sacar el número y el estado de la fila libera ~96px, pero
+       no alcanzan para el nombre más largo ("Adventure Works Financial
+       Dashboard", 235px con la fuente real). La cuenta de la columna maestra es
+       ancho − 2 del borde − 17.6 de padding − 12.8 del cursor − 12.8 de gaps
+       − 42 de la etiqueta DATA (la más ancha) = nombre. El nombre más largo NO
+       es el inglés: "Optimización de Inventario E-commerce" pide 248px contra
+       los 235 de "Adventure Works Financial Dashboard", así que el corte se
+       mide en los DOS idiomas. Para 248 hacen falta 335.4; 344 deja 8px.
+       El proyecto de DOS etiquetas es FraudSense y su nombre corto mide poco,
+       así que no es el que manda. Los 75px salen del panel de detalle, que a
+       1440 pasa de ~600 a ~525 y sigue sobrado para prosa. */
+    grid-template-columns: 344px minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
     flex: 1;
@@ -475,9 +600,10 @@ const term = {
 
   .dossier-row {
     display: grid;
-    /* numero · cursor · nombre · badge. Son CUATRO items: con tres columnas el
-       badge caia a un segundo renglon y la fila salia de dos lineas. */
-    grid-template-columns: 1.35rem 0.8rem minmax(0, 1fr) auto;
+    /* cursor · nombre · etiquetas. Tres columnas para tres items: si sobra o
+       falta una, el último cae a un segundo renglón y la fila sale de dos
+       líneas (ya pasó al agregar el número). */
+    grid-template-columns: 0.8rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.4rem;
     padding: 0.52rem 0.55rem;
@@ -487,6 +613,10 @@ const term = {
     user-select: none;
     transition: background 0.12s, border-color 0.12s;
   }
+  /* `display: grid` le gana al `[hidden]` de la hoja del navegador, así que la
+     fila filtrada seguiría a la vista sin esta regla. */
+  .dossier-row[hidden] { display: none; }
+
   .dossier-row + .dossier-row { border-top: var(--border); }
   .dossier-row:hover { background: var(--bg-panel); }
   .dossier-row:hover .row-name { color: var(--sand); }
@@ -523,16 +653,31 @@ const term = {
   }
   .dossier-row.is-active .row-name { color: var(--sand); }
 
-  .row-badge {
-    font-size: 0.7rem;
-    letter-spacing: 0.14em;
-    color: var(--sand-dim);
+  /* ── Etiquetas de especialidad ────────────────────────
+     Van en --sand-dim y no en un color propio por track: el teal (3.80:1) no
+     puede llevar texto, el ámbar es sólo del flagship y el mint sólo de lo
+     interactivo. Una etiqueta no es ninguna de las tres cosas. */
+  .row-tags {
+    display: inline-flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
   }
-  .row-badge.flag {
-    color: var(--accent-flag-bright);
-    border: 1px solid var(--accent-flag);
-    background: var(--accent-flag-bg);
-    padding: 0.08rem 0.35rem;
+
+  .track-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--sand-dim);
+    border: 1px solid var(--ink-mid);
+    padding: 0.05rem 0.3rem;
+    white-space: nowrap;
+  }
+
+  .dossier-row.is-active .track-tag { color: var(--sand-muted); }
+
+  .detail-tracks {
+    display: inline-flex;
+    gap: 0.3rem;
   }
 
   .list-hint { font-size: 0.7rem; }
@@ -675,18 +820,23 @@ const term = {
   }
 
   /* ── Responsive ───────────────────────────────────── */
+  /* La terminal ambiente se retira ACÁ y no a 1024: con la columna maestra en
+     310px, a 1100 el panel de detalle quedaba en 232px —ilegible para prosa—
+     mientras 220px de la pantalla los ocupaba una animación decorativa. Lo que
+     se sacrifica cuando falta ancho es el adorno, no el contenido. */
   @media (max-width: 1200px) {
-    .dossier { grid-template-columns: 235px minmax(0, 1fr); }
-  }
-
-  @media (max-width: 1024px) {
     .role-grid { grid-template-columns: 280px 1fr; }
     .panel-terminal { display: none; }
   }
 
-  @media (max-width: 900px) {
+  /* Y debajo de 1024 se apilan: dos columnas de contenido no entran, y apilado
+     el nombre completo entra siempre. */
+  @media (max-width: 1024px) {
     .dossier { grid-template-columns: 1fr; gap: 0.8rem; }
     .dossier-master { position: static; }
+  }
+
+  @media (max-width: 900px) {
     .list-hint { display: none; }
     .detail-title { font-size: 1.3rem; }
   }

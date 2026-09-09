@@ -6,9 +6,14 @@
  *   - github / demo: links (use '' for no link)
  *   - stack: tech tags shown on the card
  *   - status: EN badge label (shown as-is; override per locale below if needed)
- *   - track: which half of the profile this project is evidence for. NOT
- *       derivable downstream — the 3D scene receives a flat mapped object, not
- *       the array it came from, and each billboard prints its own track header.
+ *   - tracks: which half (or halves) of the profile this project is evidence
+ *       for. Es una LISTA y no un valor: FraudSense es de las dos —SQL sobre
+ *       1.85M transacciones, EDA, modelo y Power BI de un lado; una API con
+ *       Claude desplegada en FastAPI del otro— y la página de records lo
+ *       muestra bajo los dos filtros. La PRIMERA es la principal: es la que
+ *       imprime el cartel de la calle, que tiene lugar para una sola.
+ *       NOT derivable downstream — the 3D scene receives a flat mapped object,
+ *       not the array it came from, and each billboard prints its own header.
  *   - featured: flagship. EXACTLY ONE project site-wide (see the invariant at
  *       the bottom of this file). Drives the amber treatment everywhere.
  *   - en / es: localized content (name, problem, outcome)
@@ -28,16 +33,22 @@ export interface ProjectData {
   stack: readonly string[];
   status: string;
   statusEs?: string;
-  track: 'ai' | 'data';
+  tracks: readonly ('ai' | 'data')[];
   featured?: boolean;
   en: { name: string; problem: string; outcome: string };
   es: { name: string; problem: string; outcome: string };
 }
 
-// ────────────────────────────────────────────────────────────────
-// AI ENGINEER — document order (flagship first)
-// ────────────────────────────────────────────────────────────────
-export const aiProjects: ProjectData[] = [
+/* ────────────────────────────────────────────────────────────────
+   ORDEN DEL DOCUMENTO — flagship primero, después el resto de AI Engineer,
+   después Data Analyst. NO es el orden de la calle (eso es streetProjects).
+
+   Era DOS arrays exportados, `aiProjects` y `dataProjects`, y la página los
+   concatenaba. Con `tracks` como lista eso se rompía solo: un proyecto de las
+   dos mitades habría que escribirlo en los dos arrays y saldría DOS VECES en
+   la lista. Ahora es una sola lista y la pertenencia la declara cada proyecto.
+   ──────────────────────────────────────────────────────────────── */
+export const projects: ProjectData[] = [
   {
     id: 'bot-curriculum',
     github: 'https://github.com/pabloler21/bot_curriculum',
@@ -45,7 +56,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['FastAPI', 'LangChain', 'Claude AI', 'Python', 'Pydantic', 'SlowAPI', 'Caddy'],
     status: 'DEPLOYED',
     statusEs: 'DEPLOYED',
-    track: 'ai',
+    tracks: ['ai'],
     featured: true,
     en: {
       name: 'CV Evaluator',
@@ -64,7 +75,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'LangChain', 'Qdrant', 'Discord', 'FastAPI', 'systemd'],
     status: 'ACTIVE',
     statusEs: 'ACTIVO',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Iris — Personal AI Assistant',
       problem: '24/7 personal AI on homelab Linux: Discord interface, RAG over personal docs, automated weekly AI news digest from 8+ RSS feeds.',
@@ -82,7 +93,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'LangChain', 'BullMQ', 'Redis', 'Discord', 'MCP'],
     status: 'DEPLOYED',
     statusEs: 'DEPLOYED',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Team Agent Ops — Hermes',
       problem: 'Multi-agent team bot replacing fragile n8n workflows: Hermes LLM + BullMQ/Redis durable task queue + Discord + GitHub MCP integration.',
@@ -101,7 +112,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'Playwright', 'Claude CLI', 'Langfuse', 'pytest', 'uv'],
     status: 'DEPLOYED',
     statusEs: 'DEPLOYED',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Tarnish — LLM Red Teaming',
       problem: 'Autonomous red teaming for LLM apps: attacks a target through its own input surface, proposes a fix for every finding, and re-runs the campaign to prove the fix closed it.',
@@ -119,7 +130,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'FastAPI', 'Pydantic', 'OpenAI', 'pytest', 'uv'],
     status: 'ACTIVE',
     statusEs: 'ACTIVO',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Support JSON — Ticket Triage',
       problem: 'Support assistant that turns a free-text ticket into structured JSON: one model call classifies it, drafts the reply and recommends the next action.',
@@ -137,7 +148,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'LlamaIndex', 'ChromaDB', 'OpenAI', 'pytest'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'LlamaRAG — FAQ Retrieval',
       problem: 'RAG over an HR SaaS FAQ fielding 200+ repeated questions a day: sentence-level chunking, vector search, and answers with source attribution instead of manual doc lookup.',
@@ -155,7 +166,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'LangChain', 'Gradio'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Python TutorBot',
       problem: 'Agentic Python tutor with tool-calling: on-demand Stack Overflow search, persistent conversational memory, Gradio chat interface.',
@@ -173,7 +184,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Python', 'AI Agents', 'Computer Vision'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Second Brain Challenge',
       problem: 'AI agent that parses WhatsApp bank-transfer receipt images into structured records — agentic document parsing pipeline built for Galo\'s workshop.',
@@ -191,7 +202,7 @@ export const aiProjects: ProjectData[] = [
     stack: ['Claude Code', 'Markdown', 'Obsidian'],
     status: 'TOOLING',
     statusEs: 'HERRAMIENTA',
-    track: 'ai',
+    tracks: ['ai'],
     en: {
       name: 'Obsidian Job Tracker',
       problem: 'Claude Code slash commands for structured job-search tracking inside Obsidian vaults — AI-powered workflow tooling for personal knowledge management.',
@@ -203,19 +214,15 @@ export const aiProjects: ProjectData[] = [
       outcome: '',
     },
   },
-];
 
-// ────────────────────────────────────────────────────────────────
-// DATA ANALYST — document order (strongest first)
-// ────────────────────────────────────────────────────────────────
-export const dataProjects: ProjectData[] = [
+  // ── DATA ANALYST — document order (strongest first) ──
   {
     id: 'fraudsense',
     github: 'https://github.com/pabloler21/fraud-risk-analytics',
     stack: ['Python', 'PostgreSQL', 'scikit-learn', 'Power BI', 'FastAPI', 'Claude API'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data', 'ai'],   // las dos: pipeline analitico + API con Claude
     en: {
       name: 'FraudSense AI — Fraud Risk Analytics',
       problem: 'End-to-end fraud detection pipeline: SQL pattern mining on 1.85M transactions → EDA → ML modeling → Power BI dashboard → AI explanation API.',
@@ -233,7 +240,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['Python', 'scikit-learn', 'XGBoost', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'Credit Scoring — Credit Risk Assessment',
       problem: 'Credit default probability model on 150K+ records: full EDA, feature engineering, multiple ML model evaluation, and classification precision improved via decision threshold optimization.',
@@ -251,7 +258,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['Python', 'BigQuery', 'Power BI', 'Streamlit', 'scikit-learn', 'Pandas'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'E-commerce Inventory Optimization',
       problem: 'Inventory optimization solution: ETL/EDA in Python, 500K+ records centralized in BigQuery, Power BI dashboards for real-time support, and a Random Forest overstock risk model integrated into Streamlit.',
@@ -269,7 +276,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['Power BI', 'DAX', 'Data Modeling'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'Adventure Works Financial Dashboard',
       problem: 'Interactive financial KPI dashboard on Adventure Works data: revenue, costs, margins, and commercial performance across product lines.',
@@ -287,7 +294,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['SQL', 'T-SQL', 'Data Modeling'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'SQL Fast Food Data Analysis',
       problem: 'Relational database design and analytical queries for a fast food ordering system — data modeling, multi-table JOINs, aggregation and window functions.',
@@ -305,7 +312,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['Python', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'Byogenesis Lab Location Analysis',
       problem: 'Geospatial analysis to determine optimal countries for biotech lab expansion using 2021 COVID-19 case data and vaccination correlation modeling.',
@@ -323,7 +330,7 @@ export const dataProjects: ProjectData[] = [
     stack: ['Google Sheets', 'Data Viz', 'Formulas'],
     status: 'BUILT',
     statusEs: 'COMPLETADO',
-    track: 'data',
+    tracks: ['data'],
     en: {
       name: 'Google Sheets Sales Analysis',
       problem: 'Automated sales reporting and trend analysis built entirely in Google Sheets: live KPI dashboard, formulas, and dynamic charting.',
@@ -350,9 +357,7 @@ export const dataProjects: ProjectData[] = [
    FraudSense sits at 8 and not at the end of a "data block" because it is the
    only data board on the street — buried among the lighter ones it does not
    read as what it is. */
-const byId = new Map<string, ProjectData>(
-  [...aiProjects, ...dataProjects].map(p => [p.id, p])
-);
+const byId = new Map<string, ProjectData>(projects.map(p => [p.id, p]));
 
 const pick = (id: string): ProjectData => {
   const p = byId.get(id);
@@ -377,6 +382,17 @@ export const streetProjects: ProjectData[] = [
    convention ("index 0 is the flagship, walk order is [1..N-1, 0]") is gone.
    Checked here, at module evaluation, so a mismatch fails the build instead of
    shipping as perfectly valid HTML that a harness would never flag. */
+/* Un proyecto sin `tracks` no falla en ningún lado: sale igual en la lista y
+   simplemente no aparece bajo NINGÚN filtro, que es un dato invisible. Se
+   comprueba acá, al evaluarse el módulo, por lo mismo que el invariante de
+   abajo: un dato mal cargado sale como HTML perfectamente válido. */
+const sinTrack = projects.filter(p => p.tracks.length === 0);
+if (sinTrack.length > 0) {
+  throw new Error(
+    `projects: todo proyecto necesita al menos un track (sin ninguno: ${sinTrack.map(p => p.id).join(', ')})`
+  );
+}
+
 const flagships = streetProjects.filter(p => p.featured);
 if (flagships.length !== 1 || !streetProjects[streetProjects.length - 1].featured) {
   throw new Error(

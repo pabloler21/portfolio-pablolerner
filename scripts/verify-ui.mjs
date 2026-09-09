@@ -389,6 +389,92 @@ try {
         : `fov ${medido[1440].toFixed(0)}° de 1440 a 3440 · columnas 0px hasta 1400, 60px desde 1520`);
   }
 
+  /* C19 — el filtro de la pagina de records.
+     Cinco hechos, porque son cinco maneras distintas de que quede roto y todas
+     salen como HTML perfectamente valido: que no quede ningun numero de fila,
+     que toda fila declare al menos una etiqueta (una sin ninguna no aparece
+     bajo NINGUN filtro y se vuelve invisible), que cada chip deje visible
+     exactamente lo que dice su contador, que un proyecto de las dos mitades
+     aparezca en los dos filtros, y que el teclado no caiga nunca en una fila
+     oculta — que es el modo de falla clasico de filtrar un listbox por indice.
+     Se prueba por el CAMINO REAL (clic en el chip, teclas sobre la lista) y no
+     forzando estado: un test que fuerza el estado pasa en verde con el bug
+     adentro (leccion 48). */
+  {
+    const fallas = [];
+    for (const url of DOC_PAGES) {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      await pg.waitForSelector('.dossier-row');
+
+      const base = await pg.evaluate(() => {
+        const filas = [...document.querySelectorAll('.dossier-row')];
+        return {
+          numeros: document.querySelectorAll('.row-num').length,
+          sinTag: filas.filter(r => !(r.dataset.tracks || '').trim()).length,
+          chips: [...document.querySelectorAll('[data-filter]')].map(c => ({
+            id: c.dataset.filter,
+            dice: Number((c.querySelector('.chip-count') || {}).textContent),
+          })),
+        };
+      });
+      if (base.numeros > 0) fallas.push(`${url}: quedan ${base.numeros} numeros de fila`);
+      if (base.sinTag > 0) fallas.push(`${url}: ${base.sinTag} filas sin ninguna etiqueta`);
+
+      /* Cada chip deja visible lo que promete su contador. Si no hay ni un
+         chip no hay nada que ejercitar: se anota la falta y se sigue, en vez
+         de dejar que un click contra un selector inexistente tumbe el arnes
+         entero con un timeout. */
+      const porFiltro = {};
+      if (base.chips.length === 0) fallas.push(`${url}: la pagina no tiene ningun filtro`);
+      for (const chip of base.chips) {
+        await pg.click(`[data-filter="${chip.id}"]`);
+        const v = await pg.evaluate(() => [...document.querySelectorAll('.dossier-row')]
+          .filter(r => !r.hidden).map(r => r.id));
+        porFiltro[chip.id] = v;
+        if (v.length !== chip.dice) fallas.push(`${url} chip ${chip.id}: dice ${chip.dice} y deja ver ${v.length}`);
+      }
+
+      /* Un proyecto de las dos mitades tiene que estar en los dos filtros. */
+      const dobles = await pg.evaluate(() => [...document.querySelectorAll('.dossier-row')]
+        .filter(r => (r.dataset.tracks || '').split(' ').filter(Boolean).length > 1).map(r => r.id));
+      if (dobles.length === 0) fallas.push(`${url}: ningun proyecto con las dos etiquetas`);
+      for (const id of dobles) {
+        for (const f of ['ai', 'data']) {
+          if (!porFiltro[f] || !porFiltro[f].includes(id)) fallas.push(`${url}: ${id} tiene las dos etiquetas pero no sale en el filtro ${f}`);
+        }
+      }
+
+      /* Con un filtro puesto, ni ↓ ni ↑ pueden dejar seleccionada una fila
+         oculta. Se exagera a proposito con mas teclas que filas. */
+      if (base.chips.length > 0) {
+      await pg.click('[data-filter="data"]');
+      await pg.click('.dossier-list');
+      await pg.keyboard.press('Home');
+      for (let i = 0; i < 20; i++) await pg.keyboard.press('ArrowDown');
+      let mal = await pg.evaluate(() => {
+        const a = document.querySelector('.dossier-row.is-active');
+        const pane = [...document.querySelectorAll('.detail-pane')].find(p => !p.hidden);
+        return { oculta: !a || a.hidden, sinPanel: !pane, id: a && a.id };
+      });
+      if (mal.oculta) fallas.push(`${url}: tras 20×↓ con filtro, la fila seleccionada esta oculta (${mal.id})`);
+      if (mal.sinPanel) fallas.push(`${url}: tras 20×↓ con filtro no queda ningun panel abierto`);
+      for (let i = 0; i < 25; i++) await pg.keyboard.press('ArrowUp');
+      mal = await pg.evaluate(() => {
+        const a = document.querySelector('.dossier-row.is-active');
+        return { oculta: !a || a.hidden, id: a && a.id };
+      });
+      if (mal.oculta) fallas.push(`${url}: tras 25×↑ con filtro, la fila seleccionada esta oculta (${mal.id})`);
+      }
+
+      await pg.close();
+      await ctx.close();
+    }
+    record('C19', 'El filtro de records filtra de verdad', fallas.length === 0,
+      fallas.length ? fallas.join(' · ') : 'sin numeros · toda fila etiquetada · contadores exactos · doble etiqueta en los dos filtros · teclado sin filas ocultas');
+  }
+
 } finally {
   await browser.close();
   srv.close();

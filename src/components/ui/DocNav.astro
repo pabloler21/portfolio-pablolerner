@@ -1,26 +1,19 @@
 ---
-/* Antes era RoleNav y su menú elegía entre dos páginas de rol. Con una sola
-   página de records ese menú ya no navega a ningún lado: pasa a saltar a los
-   dos bloques del listbox que la página ya renderiza (data-jump → select(idx)
-   en el controlador de RecordsLayout). Se reusa la máquina de selección que ya
-   existe en vez de un scroll a un ancla. */
+/* Antes era RoleNav (elegía entre dos páginas de rol) y después un menú que
+   saltaba a los dos bloques del listbox. Los bloques se fueron: con etiquetas
+   por fila y un filtro arriba de la lista, esas dos entradas eran un SEGUNDO
+   control para lo mismo, y encima uno que en un teléfono queda a una pantalla
+   de distancia de la lista que gobierna. Queda lo que sí es navegación: volver
+   a la calle, y el estado. */
 interface Props {
   lang: 'en' | 'es';
-  aiCount: number;
-  dataCount: number;
 }
 
-const { lang, aiCount, dataCount } = Astro.props;
+const { lang } = Astro.props;
 const base = `/${lang}`;
-const pad2 = (n: number) => String(n).padStart(2, '0');
-
-const blocks = [
-  { jump: 0,       label: 'AI ENGINEER',  count: aiCount },
-  { jump: aiCount, label: 'DATA ANALYST', count: dataCount },
-];
 
 const t = {
-  panelLabel: lang === 'en' ? 'RECORD BLOCKS'          : 'BLOQUES',
+  panelLabel: lang === 'en' ? 'RECORDS'                : 'REGISTROS',
   back:       lang === 'en' ? 'STREET'                 : 'CALLE',
   available:  lang === 'en' ? 'OPEN TO WORK'           : 'DISPONIBLE',
 };
@@ -33,16 +26,6 @@ const t = {
     <span class="arr">◀</span>
     <span>{t.back}</span>
   </a>
-
-  <nav class="role-menu">
-    {blocks.map(b => (
-      <button type="button" class="role-item" data-jump={b.jump}>
-        <span class="cursor">◆</span>
-        <span>{b.label}</span>
-        <span class="block-count sys-text">{pad2(b.count)}</span>
-      </button>
-    ))}
-  </nav>
 
   {/* LAT/LON/UNIT ID es atrezzo del juego, no información. En un documento
       sólo queda el dato que un evaluador realmente usa. */}

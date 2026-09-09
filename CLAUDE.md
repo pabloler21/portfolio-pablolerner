@@ -214,7 +214,7 @@ src/
     ambient.ts          # motor de musica generativa (3 variantes; se despacha 'terminal')
   layouts/
     Base.astro          # YoRHa OS chrome — identity strip + AmbientCanvas + margin rain panels
-    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px). Owns the records-page UI: props {heading, badge, subline, stats[], ai[], data[]} → stats HUD grid + master-detail dossier (numbered listbox 01–16 with a non-selectable block divider, pre-rendered detail panes, ↑↓ keyboard, scramble transition). Pages are thin wrappers.
+    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px, la terminal se retira debajo de 1200). Owns the records-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (UNA lista de 16 sin numerar, con etiquetas de especialidad por fila, barra de filtro arriba, paneles de detalle pre-renderizados, teclado ↑↓ sobre las filas VISIBLES, scramble transition). Pages are thin wrappers.
   components/
     ui/
       AmbientCanvas.astro     # Three.js perspective-grid background (lazy, z-index:0)
@@ -222,7 +222,7 @@ src/
       TabBar.astro            # top nav tabs; props: active, lang
       DotRow.astro            # 40-dot animated row
       StatusBar.astro         # bottom bar: hints de juego (sólo surface="game") · toggle EN|ES · fecha. NO lleva CV (vive en la franja de identidad) ni CLEAR MODE (plain mode se eliminó)
-      DocNav.astro            # left-panel nav for the records page: STREET back-link + two [data-jump] entries that select the first file of each block
+      DocNav.astro            # left-panel nav for the records page: STREET back-link + OPEN TO WORK. Las dos entradas [data-jump] a los bloques se fueron con los bloques: con etiquetas y filtro eran un segundo control para lo mismo
       TerminalWindow.astro    # animated live-coding terminal panel (sólo la página de records)
       PortfolioScene.astro    # 3D interactive home scene (Three.js city street)
       TouchControls.tsx       # ÚNICA isla React del sitio: joystick + botón de salto, client:media
@@ -270,14 +270,23 @@ public/
 }
 ```
 
-Exported: `aiProjects` (9), `dataProjects` (7) y **`streetProjects`** (10) — este último
+Exported: `projects` (16, orden de documento) y **`streetProjects`** (10) — este último
 compuesto por id sobre los otros dos, y **es** el orden de caminata de la avenida con el
 flagship último. El orden vive ahí y en ningún otro lado. Un invariante al final del módulo
 **falla el build** si hay más de un `featured` o si no va último: se comprueba al evaluarse
 y no en un arnés, porque un dato mal ordenado sale igual como HTML perfectamente válido.
 
-`track: 'ai' | 'data'` no es derivable río abajo: a la escena le llega un objeto plano
+`tracks: ('ai' | 'data')[]` no es derivable río abajo: a la escena le llega un objeto plano
 mapeado, no el array de origen, y cada cartel imprime su propia mitad del perfil.
+**Es una LISTA y no un valor**: FraudSense es de las dos mitades (pipeline analítico +
+API con Claude) y la página de records lo muestra bajo los dos filtros. La **primera es
+la principal** y es la que imprime el cartel de la calle, que tiene lugar para una sola —
+por eso FraudSense va `['data', 'ai']` y su cartel sigue diciendo `DATA ANALYST`.
+Antes eran dos arrays exportados (`aiProjects` / `dataProjects`) y la página los
+concatenaba; con `tracks` como lista eso se rompía solo, porque un proyecto de las dos
+habría que escribirlo en los dos arrays y saldría **dos veces** en la lista. Un invariante
+al final del módulo falla el build si algún proyecto se queda sin ningún track: sin
+ninguno no aparece bajo ningún filtro, o sea que se vuelve invisible.
 `status` describe el ESTADO del proyecto y `featured` el RANGO — son independientes a
 propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho más fuerte).
 
@@ -663,14 +672,16 @@ apenas se entra, y `/{lang}/projects/` es la unica pagina de registros.
 | Ruta | Que es |
 |---|---|
 | `/{lang}/` | La calle. 10 carteles, flagship al final |
-| `/{lang}/projects/` | Records: 16 (AI 9 + DATA 7), agrupados por especialidad |
+| `/{lang}/projects/` | Records: 16 en una sola lista, con etiquetas por fila y filtro (`ALL 16` · `AI ENGINEER 10` · `DATA ANALYST 07`) |
 | `/{lang}/ai/` · `/{lang}/risk/` | Redirect a `/projects/`. **No se borran**: hay links repartidos afuera |
 | `/{lang}/contact/` | Formulario |
 
 **El orden del documento NO es el orden de la calle**, a proposito. El paseo es una
 decision de ritmo de juego (los tres proyectos nuevos abren, los tres sin metrica quedan
 en el medio, la caminata sube Hermes → FraudSense → Iris → flagship). La pagina la lee
-alguien que evalua candidatos, y ahi gana el agrupamiento por especialidad.
+alguien que evalua candidatos: arranca por el flagship y sigue por especialidad, pero
+**ya no hay bloques con encabezado** — eso lo dicen las etiquetas de cada fila, y quien
+quiere ver una sola mitad usa el filtro.
 
 **Data Scientist sigue retirado** (PRODUCT.md): sin paginas, sin opcion, sin estado
 COMING SOON.
@@ -862,3 +873,27 @@ COMING SOON.
     60, que el shell se quede con todo el resto, que debajo de 1400 no aparezca ninguna
     columna nueva, y que **el `fov` no crezca al crecer el monitor**, que es lo que de
     verdad se reportó.
+
+56. **El presupuesto de una fila es de suma cero: para que entre algo, tiene que salir
+    algo.** La fila del listbox de records mostraba número, cursor, nombre y estado en
+    265px, y la columna del nombre quedaba en **115.8px** contra los 235 que pide
+    "Adventure Works Financial Dashboard": seis de los dieciséis nombres salían cortados
+    con puntos suspensivos, y eso se leía como "esta página tiene demasiada información".
+    Agregar etiquetas de especialidad encima habría dejado el nombre en ~78px. Lo que lo
+    resolvió no fue achicar la fuente ni truncar mejor: fue notar que **el estado
+    (DEPLOYED/BUILT/…) ya se muestra grande arriba del panel de detalle**, o sea que en la
+    fila era un duplicado ocupando 74px. Sacándolo entran las etiquetas Y los nombres
+    completos. Antes de pelear por píxeles, buscar qué dato de los que están ya se dice en
+    otro lado.
+    Dos trampas al medir esto. La primera: **el nombre más largo no es el inglés.**
+    "Optimización de Inventario E-commerce" pide 248px contra los 235 del inglés, así que
+    la columna se mide en los DOS idiomas — misma disciplina que el rail de contacto, que
+    corta a 360 porque `CORREO` es más largo que `EMAIL`. La segunda: la etiqueta `DATA`
+    mide 42px y `AI` 26.8, así que la cuenta se hace con la más ancha, no con la primera
+    que uno mira.
+    Y el `[hidden]` de una fila filtrada **no oculta nada** si la fila es `display: grid`:
+    la regla de autor le gana a la de la hoja del navegador. Hace falta
+    `.dossier-row[hidden] { display: none }` explícito. Cubierto por `verify:ui` **C19**,
+    que ejercita el camino real (clic en el chip, teclas sobre la lista) y comprueba, entre
+    otras cosas, que ↑↓ nunca deje seleccionada una fila oculta — el modo de falla clásico
+    de filtrar un listbox que navega por índice.
