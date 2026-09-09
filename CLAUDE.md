@@ -11,7 +11,10 @@ npm run preview       # serve production build locally
 npm run astro check   # TypeScript / Astro type-checking
 
 npm run verify        # los cinco arneses: salto + personaje + audio + contacto + UI
+npm run verify:mobile # NO entra en `verify`: emula un telefono real y mide el cableado
+                      #   tactil (joystick, ✕, musica, carteles). Correlo aparte.
 npm run verify:audio  # renderiza la musica offline y mide la señal (--wav deja previews)
+npm run verify:check  # astro check con heap de 8 GB (con el de fabrica OOMea)
 npm run deploy:dry    # build + simulacro del rsync, no toca el server
 npm run deploy        # build + rsync al VPS + verificacion en vivo
 npm run deploy:contact # instala/actualiza el endpoint de contacto en el VPS
@@ -29,7 +32,7 @@ npm run deploy:contact # instala/actualiza el endpoint de contacto en el VPS
 
 ## Project overview
 
-Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent specializations in AI Engineering (LLM systems, RAG, multi-agent) and Data Science. Target audience: AI startups, senior engineers, founders — skim-first readers.
+Personal portfolio for **Pablo**. **Un solo perfil: AI Engineer & Data Analyst**, en ese orden — es lo que PRODUCT.md declara como el trabajo del sitio (*"get Pablo Lerner hired as an AI Engineer"*), con el análisis de datos como alcance de apoyo y no como titular. Data Science está retirado: sin páginas, sin proyectos, sin estado COMING SOON. Target audience: AI startups, senior engineers, founders — skim-first readers.
 
 ---
 
@@ -37,7 +40,7 @@ Personal portfolio for **Pablo** — primary role **Data Analyst**, adjacent spe
 
 - **Astro 7** (static output, TypeScript strict)
 - **CSS custom properties** for all theming — no UI library
-- **Vanilla JS** for role selector, keyboard navigation, terminal animation
+- **Vanilla JS** for keyboard navigation, the records listbox and the terminal animation
 - **React** — SOLO para `TouchControls.tsx`, los controles táctiles de la escena 3D. Es la
   única isla React del sitio; entra con `client:media`, así que en escritorio se descargan
   **0 KB** de React
@@ -180,7 +183,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - `prefers-reduced-motion`: boot screen → `display: none`; stagger reveal → `animation-duration: 0.01s` (never `animation: none` — kills `fill-mode`)
 - `--accent` (teal `#3d7a64`): decorative only — ◆ cursor, DotRow, badge/tab borders
 - `--accent-bright` (mint `#5ee7aa`): interactive only — CTAs, active states, hover
-- `--accent-flag*` (amber): flagship marking only — badge, board frame, list row, selector chip. NEVER on anything clickable. A flagship row that is ALSO selected shows both: mint border-left (interactive state) + amber badge (identity)
+- `--accent-flag*` (amber): flagship marking only — badge, board frame, list row, HUD stat box. NEVER on anything clickable. A flagship row that is ALSO selected shows both: mint border-left (interactive state) + amber badge (identity)
 - `--accent-alert` (rojo `#e05a4f`): **sólo para salir** — la ✕ que cierra un panel (`.ps-close`), nada más. Mint dice "seguir", ámbar dice "destacado"; ninguno podía decir "salí de acá", que es lo que hacía falta cuando en táctil el panel tapa la pantalla entera. No se usa para errores de formulario, badges ni estados: si aparece un segundo uso, discutirlo antes
 - No pure black (#000); no pure white (#fff)
 - Prose: `--font-sans` ≥ 0.8rem; labels/badges/nav: `--font-mono`
@@ -213,20 +216,22 @@ src/
       BootScreen.astro        # one-time OS-boot overlay (sessionStorage flag)
       TabBar.astro            # top nav tabs; props: active, lang
       DotRow.astro            # 40-dot animated row
-      StatusBar.astro         # bottom bar: hints · CLEAR MODE · lang · CV link
+      StatusBar.astro         # bottom bar: hints de juego (sólo surface="game") · toggle EN|ES · fecha. NO lleva CV (vive en la franja de identidad) ni CLEAR MODE (plain mode se eliminó)
       DocNav.astro            # left-panel nav for the records page: STREET back-link + two [data-jump] entries that select the first file of each block
-      ProjectCard.astro       # (unused since master-detail role pages — kept for reference)
-      TerminalWindow.astro    # animated live-coding terminal panel (role pages only)
+      TerminalWindow.astro    # animated live-coding terminal panel (sólo la página de records)
       PortfolioScene.astro    # 3D interactive home scene (Three.js city street)
-      SceneCanvas.astro       # (legacy — was 9S viewer, superseded by PortfolioScene)
+      TouchControls.tsx       # ÚNICA isla React del sitio: joystick + botón de salto, client:media
   pages/
     index.astro         # root → redirects to /en/
     en/
       index.astro       # home EN: PortfolioScene (la escena arranca sola)
       projects/index.astro  # records — 16 (AI 9 + DATA 7). /ai/ y /risk/ redirigen acá
-      concept/          # INTERNAL decision pages (not in nav): index+city (phase 3),
-                        # flagship.astro (accent direction comparison, option A shipped)
-    es/                 # mirrors EN structure
+      contact/index.astro   # formulario → POST /api/contact
+      concept/          # INTERNAL decision pages (not in nav, sólo EN): index + city
+                        # (fase 3), flagship.astro (comparación de acentos, ganó la A),
+                        # audio.astro (las 3 variantes de música; se eligió 'terminal')
+    es/                 # index, projects/, contact/ — NO tiene concept/ (por eso el
+                        # toggle de idioma verifica la hermana contra el árbol de páginas)
 public/
   models/
     remy.glb                 # CURRENT: Remy de Mixamo (7.2MB, 114 huesos, Running/Walking/Idle)
@@ -341,7 +346,7 @@ iconos caian sobre las etiquetas NAME/EMAIL del formulario (leccion 49). Cubiert
 **Margin chrome panels** (visible only on viewports > 1400px):
 - `position: fixed; width: max(0px, calc((100vw - 1400px) / 2))` — no `max-width` cap
 - Left (`#margin-rain-left`) + Right (`#margin-rain-right`): Matrix character rain via canvas RAF loop
-- Script in Base.astro: `makeRain(id)` factory, `RAIN_CHARS`, `ResizeObserver`, always starts RAF (no `prefers-reduced-motion` guard on rain)
+- Script in Base.astro: `makeRain(id)` factory, `GLYPHS` pool + `pick()`, `CHAR_PX 11` / `GAP_PX 30`, `ResizeObserver`, always starts RAF (no `prefers-reduced-motion` guard on rain)
 
 ---
 
@@ -383,8 +388,10 @@ del sitio.
   sobre `document`, que es donde ya se escuchan WASD y Space. El joystick recorre
   exactamente el mismo camino que el teclado en vez de abrir una segunda puerta que
   después se desincroniza.
-- **Aparecen recién al elegir rol.** El overlay del selector tiene `z-index: 9000`:
-  mostrados antes quedaban debajo y el dedo le pegaba al overlay.
+- **Aparecen apenas la escena está viva** (`nier:scene-ready`), sin ningún toque previo.
+  Hubo un tercer pestillo (`personaChosen`) que los hacía esperar a que se eligiera un
+  rol, porque el overlay del selector tenía `z-index: 9000` y el dedo le pegaba al
+  overlay. Ese overlay ya no existe y el pestillo se fue con él.
 - **`client:media`, nunca `client:only`**: con `client:only` Astro baja los 184 KB del
   runtime de React en toda visita, escritorio incluido, para que el componente devuelva
   `null`.
@@ -509,10 +516,11 @@ justificaba.
 - `scrambleIn(el, text)` — cancel-safe scramble-settle text reveal (replaces old typeOut; stores interval in `el._scrambleTimer`)
 - **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range **[6,−120]** — tiene que pasar SIEMPRE a `BOUND_Z_MIN`, o los carteles de más allá computan un `py` negativo y se dibujan fuera del borde de arriba del canvas; ya pasó dos veces al crecer la avenida). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18
-- **Dossier panel 2.0**: `showPanel(projIdx)` renders ONE project as a record — `#panel-count` REC nn/NN, `#dossier-status` badge (amber `.d-badge-flag` when featured), big `#panel-title` (scrambleIn), `.d-progress` DISCOVERED blocks (one per board, amber for flagship), MISSION section, `.d-metric` box (`.d-metric-flag` amber variant), `.d-chips` stack chips, `.d-cta-primary/.d-cta-ghost`, `.d-nav` PREV/NEXT (wraps, walks to board), `.d-row` numbered rows for other projects (click → `showPanel` + `walkToBoard`)
+- **Dossier panel** (simplificado — sólo qué ES el proyecto): `showPanel(projIdx)` arma `#panel-title` (scrambleIn), `.d-status` con el `status` real del proyecto, sección MISSION (`.d-section` + `.d-label` + `.d-desc`), caja de métrica `.d-metric` (variante ámbar `.d-metric-flag` en el flagship) y `.d-ctas` con `.d-cta-primary` / `.d-cta-ghost`. Al pie, `#panel-all` → `/{lang}/projects/`, y `#panel-close` es la ✕ roja.
+  **Se retiraron** (y no hay que volver a documentarlos como si estuvieran): el contador REC nn/NN, los bloques DISCOVERED, los chips de stack, la navegación PREV/NEXT y la lista de otros registros — el cajón `[ PROJECTS ]` ya cubre saltar a otro proyecto y el panel no necesita duplicarlo.
+  **La ✕ necesita DOS pestillos.** `opened` es el one-shot que evita que el panel se reabra en cada frame; `dismissed` es el segundo, porque al seleccionar un proyecto el teleport te deja parado en el centro del anillo y cerrar a mano dejaba `fillT >= 1` con `opened` en false. Se marca por condición geométrica (`SPINNER_R`), o sea sobre el cartel en cuyo círculo está el jugador, y se rearma al salir del círculo
 - **Cinematic intro** (primera visita): **son DOS hechos, no uno.** `introActive` es que la placa "Pablo Lerner / ACCESS TERMINAL" está en pantalla, y va **siempre**; `introCam` es que además baja la cámara de (0,17,34) al nivel de calle (easeOutCubic en el tick), y **sólo corre sin reduced-motion**. Estaban pegados detrás de un `!reduced`, y como Windows trae el ajuste encendido de fábrica (lección 8), la mayoría de los visitantes de escritorio no veía ninguna presentación. El punto final del barrido es idéntico al arranque de la cámara normal (`camX, 4.0, camTgtZ+9`), así que el empalme no salta. `INTRO_DUR` es `reduced ? 2.2 : 3.7` **segundos** — `introT` avanza con `delta`, no por frame (antes duraba 223 frames: 1.55s en un monitor de 144Hz); `#ps-hero` overlay fades at introT>0.72. **Se queda a propósito**: es la única puerta de entrada que le queda al sitio ahora que no hay selector, y sin ella el visitante cae de golpe en una calle sin contexto. La marca la escribe la escena (`sessionStorage['nier-visited']`) al terminar la intro — antes la escribía PersonaSelector al elegir rol
 - **3D palette = blue-void** (matches site tokens): clearColor/fog 0x0d0f14, buildings 0x12151c + edges 0x2a3040, windows 0x4d8f75, asphalt 0x10131a, sidewalks 0x161a22, dashes/poles 0x232a38, char body 0x181b22. NEVER reintroduce the old olive-green (0x1b1e1a etc.)
-- `returnToCenter()` only closes panel (does NOT teleport character)
 - Unit tag: HTML `<div id="unit-tag-hud">` projected via `Vector3.project(camera)` each tick
 - Particles: 800 pts, `BufferGeometry`, `pos.setXYZ(i,x,y,z)` + `pos.needsUpdate = true` per tick
 - Fog: `FogExp2(0x0d0f14, 0.0086)` — bajada al crecer la avenida para conservar la misma extinción óptica sobre el skyline, que pasó de z=−96 a z=−126
@@ -658,6 +666,7 @@ COMING SOON.
 | 3.18 — Gameplay + flagship amber (G1–G11) | **DONE** | Sprint (Shift ×1.8), click-to-move (asphalt raycast), world bounds clamp, smooth heading lerp. City dressing (streetlamps+cones, neon signs, skyline, stars). Avenue end-cap screen (click → role page). Minimap 2.0 (heading arrow, click fast-travel, next-objective pulse, corner-cut frame). Dossier 2.0 (stack chips, PREV/NEXT, DISCOVERED blocks). RECORDS HUD counter with flash. Flagship amber treatment (Deus Ex, `--accent-flag: #9a7b2d` / bright `#c9a94f` / bg `#14110a`) across 3D board, dossier, selector preview, role pages — NEVER interactive. PersonaSelector boot-build sequence (~950ms, skippeable, `animationend`-gated). Unified button system: `[ LABEL ↗ ]` mono + identical hover/active/focus. All 10 goals E2E-verified PASS. |
 | 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
 | 3.20 — Perfil único | **DONE** | Se retira PersonaSelector: la calle arranca sola, sin selección de rol. 10 carteles fijos construidos en `init()` (`streetProjects`), con support-json, LlamaRAG y Tarnish sumados y CV Evaluator como flagship. `/ai/` + `/risk/` → `/projects/` (RoleLayout→RecordsLayout, RoleNav→DocNav) con redirects. Avenida de −70 a −100 moviendo el fondo del mundo. Audio armado en `init()` en vez del click de rol. Arneses: C14, M21, M22 nuevos; M3 retirado, M17 reescrito. Spec: `docs/superpowers/specs/2026-09-09-perfil-unico-design.md` |
+| 3.21 — Intro y click del cartel | **DONE** | La placa "Pablo Lerner / ACCESS TERMINAL" se separa del barrido de cámara: la placa va siempre, el barrido sólo sin reduced-motion (Windows lo trae encendido de fábrica, así que la mayoría de escritorio no veía ninguna presentación). `introT` pasa a segundos reales. Y clickear un cartel ya no abre el dossier: sólo teletransporta, y el anillo queda como único camino que lo abre — antes se dibujaba dos veces. Arneses: C15 y C16 |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
@@ -682,7 +691,7 @@ COMING SOON.
 14. **`visible: false` prevents raycasting.** Use `{ transparent: true, opacity: 0, depthWrite: false }` for invisible hitbox meshes.
 15. **`define:vars` in Astro forces `is:inline`**, which skips Vite bundling. `await import('three')` fails silently. Pass data via `<script type="application/json" id="...">` + `JSON.parse()` instead.
 16. **Register event listeners BEFORE a long `await`.** *(El caso concreto —`nier:zone`—
-    ya no existe: ver lección 51. La regla sí.)* PersonaSelector dispatches at 600ms page load. If the 7.8MB GLB takes longer, the listener isn't registered yet and the event is silently lost. Always register event listeners as early as possible in `init()`, immediately after the data they depend on (`zoneBillRefs`) is populated.
+    ya no existe: ver lección 51. La regla sí.)* PersonaSelector dispatches at 600ms page load. If the 7.8MB GLB takes longer, the listener isn't registered yet and the event is silently lost. Always register event listeners as early as possible in `init()`, immediately after the data they depend on is populated.
 17. **When per-mode content keeps leaking across modes, stop patching draw state — make the objects' existence mode-scoped.** The static 9-billboard system needed 3 rounds of fixes (texture redraws, OFFLINE ghosts, click guards) and still felt wrong. The definitive fix was build-on-demand/dispose-on-change: role-scoped objects can't show the wrong role's content because they don't exist. Prefer this pattern over state-swapping a fixed set of scene objects.
 18. **Multiple event-dispatch fallbacks WILL double-fire — always dedupe in the handler.**
     *(El caso concreto ya no existe: ver lección 51. La regla sí.)* PersonaSelector re-dispatches `nier:zone` at 600ms AND PortfolioScene's sessionStorage fallback dispatches at 200ms; both run on every reload. Concurrent `setInterval`/`setTimeout` text animations on the same element interleave characters. Fix: idempotence guard in the handler (`if (zone === activeRole) return`) + cancel-safe animations (store the timer on the element, clear before restarting).
@@ -690,7 +699,7 @@ COMING SOON.
 20. **The backgrounded dev server dies after ~90s in the Bash sandbox.** Budget ONE Playwright flow per server start; restart server + run flow in the same call. Headless walking is ~10× slower: 100s of held `KeyW` ≈ 10s of real gameplay.
 21. **Proximity triggers on a street need a z-band, not just radial distance.** Walking down the middle keeps the far sidewalk at ~10u — radial-only (8u) never fires. Trigger: `dist² < 64 || |bz − charZ| < 4.5`.
 22. **Astro scoped styles NEVER match runtime-injected DOM.** Elements created via `document.createElement`/`innerHTML` lack the scoping attribute, so component `<style>` rules silently don't apply (this was why the 3D panel always looked broken/unstyled). Styles for JS-injected markup must live in a `<style is:global>` block, anchored to a container id (e.g. `#ps-panel .d-row`) to avoid leaking.
-23. **Gate JS-timed UI states on `animationend`, not `setTimeout`, when heavy work runs in parallel.** CSS animations run on the compositor's wall-clock; JS timers stall under main-thread jank (7.8MB GLB parse). The selector's boot-skip listeners outlived the *visible* boot end and ate the user's first click — fixed by making `animationend` of the last-animating element the primary end signal (timeout kept as fallback only).
+23. **Gate JS-timed UI states on `animationend`, not `setTimeout`, when heavy work runs in parallel.** CSS animations run on the compositor's wall-clock; JS timers stall under main-thread jank (7.8MB GLB parse). The selector's boot-skip listeners outlived the *visible* boot end and ate the user's first click — fixed by making `animationend` of the last-animating element the primary end signal (timeout kept as fallback only). *(El componente del caso —PersonaSelector— ya no existe, ver lección 51. La regla sí.)*
 
 ---
 
