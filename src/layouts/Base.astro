@@ -391,6 +391,22 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     z-index: 1;
   }
 
+  /* La escena es el viewport y no scrollea, asi que en surface="game" el shell
+     necesita una altura DEFINIDA y no un minimo: con `min-height` sola, lo que
+     ocupa la escena tiene que salir de una constante (y de ahi venia la franja
+     negra al pie, ver el comentario de `.ps-shell`). Con `height` el reparto lo
+     hace el propio flex: la franja de identidad mide lo que mide —una linea en
+     escritorio, dos en un telefono angosto— y `.ps-shell` se queda con el resto.
+
+     `100svh` y no `100vh`: en un telefono `vh` es el viewport GRANDE (sin la
+     barra del navegador), asi que con `vh` la pagina quedaria mas alta que lo
+     visible y aparecerian unos pixeles de scroll en una pantalla que no
+     scrollea. Hay que pisar tambien `min-height`, que si no gana ella. */
+  html[data-surface='game'] .os-shell {
+    height: 100svh;
+    min-height: 0;
+  }
+
   /* diagonal corner cut top-right */
   .os-shell::before {
     content: '';

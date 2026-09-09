@@ -295,6 +295,52 @@ try {
     await ctx.close();
   }
 
+  /* C17 — la escena llega hasta el pie del shell, sin franja muerta debajo.
+     `.ps-shell` se dimensionaba con `calc(100svh - 148px)`, y esos 148px eran
+     la cabecera del build original (titulo + identidad + tabs + dots). La fase
+     3.19 apago tres de las cuatro en surface="game" y la constante quedo, asi
+     que la escena venia 104px corta en escritorio y 70 en un telefono: ese
+     sobrante se veia abajo como una banda del color del fondo, o sea la imagen
+     cortada antes de tiempo.
+     Se mide la franja REAL —lo que va del pie del canvas al pie de <main>— y
+     no la altura del shell, que es justo el numero que estaba mal. Van cuatro
+     combinaciones porque la cabecera NO mide lo mismo en todas: en un telefono
+     angosto la franja de identidad envuelve a dos lineas, y en español el rol
+     es mas largo. Y se controla que la pagina siga sin scroll: estirar la
+     escena con `100vh` en vez de `100svh` taparia la franja con unos pixeles
+     de scroll en el telefono. */
+  {
+    const huecos = [];
+    for (const [url, w, h, movil] of [
+      [GAME_PAGE, 1440, 900, false],
+      [GAME_PAGE, 1280, 720, false],
+      [GAME_PAGE,  390, 844, true],
+      ['/es/',     390, 844, true],
+    ]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: movil, hasTouch: movil });
+      const pg = await ctx.newPage();
+      /* No hace falta esperar a que la escena arranque: la franja es de CSS,
+         y cargar el GLB de 7.2MB cuatro veces cuesta minutos. */
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      const m = await pg.evaluate(() => {
+        const s = document.querySelector('.ps-shell')?.getBoundingClientRect();
+        const p = document.querySelector('.os-main')?.getBoundingClientRect();
+        if (!s || !p) return null;
+        return {
+          franja: +(p.bottom - s.bottom).toFixed(1),
+          scroll: document.documentElement.scrollHeight - window.innerHeight,
+        };
+      });
+      if (!m) huecos.push(`${url} ${w}x${h}: no encontre .ps-shell`);
+      else if (m.franja > 1) huecos.push(`${url} ${w}x${h}: franja ${m.franja}px`);
+      else if (m.scroll > 1) huecos.push(`${url} ${w}x${h}: scroll ${m.scroll}px`);
+      await pg.close();
+      await ctx.close();
+    }
+    record('C17', 'La escena llega al pie, sin franja negra', huecos.length === 0,
+      huecos.length ? huecos.join(' · ') : '4 combinaciones sin franja ni scroll');
+  }
+
 } finally {
   await browser.close();
   srv.close();

@@ -294,6 +294,13 @@ propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho 
 
 Max-width: **1400px**. os-shell border: mint glow `rgba(94,231,170,0.18)` not `var(--border)`.
 
+**En `surface="game"` se renderiza SÓLO la franja de identidad**: la de título, el
+`TabBar` y el `DotRow` están apagados ahí. Por eso el shell del juego lleva
+`height: 100svh` (no `min-height`) y la escena se queda con lo que sobra vía `flex: 1`:
+la cabecera mide distinto en escritorio (una línea) que en un teléfono angosto (dos), y
+cualquier constante que la suplante nace vieja — ver lección 54. `100svh` y no `100vh`
+porque en un teléfono `vh` es el viewport GRANDE y la página quedaría con scroll.
+
 **Cambio de idioma (`.os-lang-btn`)**: vive en la franja de identidad, al final de la
 linea del nombre. Antes estaba SOLO en el `StatusBar`, que se renderiza unicamente en
 `surface="doc"` — o sea que en la home, que es la escena y la puerta de entrada del
@@ -786,3 +793,23 @@ COMING SOON.
     pasa por cualquier visitante de escritorio. Antes de poner un `!reduced` delante de
     un bloque, separar qué parte de ese bloque **se mueve**: el ajuste suprime
     movimiento, no contenido.
+54. **Una constante que mide otro elemento no se entera cuando ese elemento cambia.**
+    `.ps-shell` se dimensionaba con `calc(100svh - 148px)`, y esos 148px eran la
+    cabecera completa del build original: franja de título + franja de identidad +
+    TabBar + DotRow. La fase 3.19 apagó las tres primeras en `surface="game"` —ahí
+    queda SÓLO la franja de identidad— y nadie tocó el `148`, así que desde entonces
+    la escena venía corta por la diferencia: **104px en escritorio y 70 en un teléfono
+    de 390** (la franja envuelve a dos líneas). Ese sobrante quedaba al pie de `<main>`
+    como una banda vacía, y como es del mismo color que el fondo de la escena
+    (`--bg-void` = el clear color del renderer) no se leía como "falta espacio" sino
+    como **"la imagen está cortada"**, que es exactamente como se reportó. En el
+    teléfono no se veía: el joystick es fijo y caía justo encima de la banda muerta.
+    Dos cosas: (a) el comentario que estaba ahí —"flex:1 inside min-height parent
+    collapses to 0"— era la explicación equivocada; `flex: 1` no colapsaba, lo que
+    faltaba era que el shell tuviera una altura **definida** (`height: 100svh` en
+    `html[data-surface='game'] .os-shell`) en vez de `min-height`; (b) reemplazar 148
+    por el número nuevo habría sido el mismo error otra vez, porque la cabecera no mide
+    lo mismo en escritorio que en un teléfono ni en inglés que en español. Si un
+    elemento se dimensiona contra otro, que lo mida el layout. `verify:ui` **C17** mide
+    la franja REAL (del pie del canvas al pie de `<main>`) en cuatro combinaciones, y
+    no la altura del shell, que es justo el número que estaba mal.

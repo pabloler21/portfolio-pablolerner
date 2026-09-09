@@ -2279,8 +2279,24 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
   .ps-shell {
     position: relative;
     width: 100%;
-    /* flex:1 inside min-height parent collapses to 0 — use explicit calc instead */
-    height: calc(100svh - 148px);
+    /* Ocupa lo que sobra del shell, medido por el layout.
+
+       Antes era `calc(100svh - 148px)`, y esos 148px eran la cabecera completa
+       del build original: franja de titulo + franja de identidad + TabBar +
+       DotRow. La fase 3.19 apago las tres primeras en surface="game" —ahi
+       queda SOLO la franja de identidad— y la constante quedo igual, asi que
+       la escena venia midiendo 148 menos la cabecera que de verdad hay: 104px
+       de menos en escritorio y 70 en un telefono de 390 (la franja envuelve a
+       dos lineas). Ese sobrante quedaba abajo como una banda vacia del color
+       del fondo, o sea la imagen cortada antes de tiempo.
+
+       `flex: 1` no colapsaba a 0 como decia el comentario que estaba aca:
+       `.os-main` ya es `display: flex; flex-direction: column` y reparte bien.
+       Lo que faltaba era que el shell tuviera una altura DEFINIDA en vez de
+       `min-height` — lo pone `html[data-surface='game'] .os-shell` en
+       Base.astro. Una constante nueva seria el mismo error otra vez: la
+       cabecera no mide lo mismo en escritorio que en un telefono. */
+    flex: 1 1 auto;
     min-height: 400px;
     overflow: hidden;
     background: var(--bg-void);
