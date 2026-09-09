@@ -363,6 +363,26 @@ try {
   const parejas = new Set(alturas).size === 1;
   record('M20', 'Los botones de la barra miden lo mismo', parejas, alturas.join(' / '));
 
+  /* M23 — el buffer del render tiene el mismo aspecto que la caja.
+     `renderer.setSize(W, H, false)` NO toca el estilo del canvas: si el buffer
+     y la caja no coinciden, el navegador estira el render para meterlo adentro.
+     init() y onResize() calculaban W con un piso de 400px, y en un telefono de
+     390 la caja mide 388: se rendereaba a 400 de ancho y se metia a la fuerza
+     en 388, o sea la escena achatada un 3% en horizontal. Un piso ahi no tenia
+     sentido —la caja no puede valer 0, es 100% de ancho con min-height— y era
+     invisible: nada falla, solo sale mal dibujado.
+     Se compara el ASPECTO y no los pixeles porque el buffer va multiplicado
+     por el devicePixelRatio, que es otra cosa. */
+  const buf = await page.evaluate(() => {
+    const c = document.getElementById('ps-canvas');
+    const b = c.getBoundingClientRect();
+    return { cajaW: +b.width.toFixed(1), cajaH: +b.height.toFixed(1), bufW: c.width, bufH: c.height };
+  });
+  const aspCaja = buf.cajaW / buf.cajaH, aspBuf = buf.bufW / buf.bufH;
+  const estira = Math.abs(aspBuf / aspCaja - 1);
+  record('M23', 'El render no sale estirado', estira < 0.005,
+    `caja ${buf.cajaW}x${buf.cajaH} (${aspCaja.toFixed(3)}) · buffer ${buf.bufW}x${buf.bufH} (${aspBuf.toFixed(3)}) · deformacion ${(estira * 100).toFixed(1)}%`);
+
   await phone.close();
 
   /* ── Escritorio: no tiene que bajar React ──────────────────────────── */

@@ -341,6 +341,54 @@ try {
       huecos.length ? huecos.join(' · ') : '4 combinaciones sin franja ni scroll');
   }
 
+  /* C18 — el juego ocupa el monitor, y las columnas de margen no se lo comen.
+     El shell topeaba en 1400px de ancho pero no de alto, asi que cuanto mas
+     grande el monitor mas cuadrado el cuadro; y como el fov se deriva del
+     aspecto, se abria para compensar. Abrir el fov es alejar la camara: en
+     2560 el personaje se veia ×0.63 contra una notebook de 1440. Agrandar el
+     monitor achicaba al personaje, que es exactamente al reves de lo que uno
+     espera. Lo que sobraba iba a las columnas: 580px por lado en 2560, 1020 en
+     un ultrawide (el 59% de la pantalla en lluvia decorativa).
+     Se miden las propiedades, no la formula del token —repetirla aca seria
+     tautologico—: que la columna no pase nunca de 60px, que a partir de 1520
+     valga 60 exactos, que debajo de 1400 valga 0 (o sea que en telefonos y
+     notebooks no cambio nada), que el shell se quede con TODO el resto, y que
+     el fov no crezca al crecer el monitor. */
+  {
+    const fovDe = (W, H) => Math.min(85, Math.max(52,
+      2 * Math.atan(Math.tan((76 * Math.PI / 180) / 2) / (W / H)) * 180 / Math.PI));
+    const fallas = [];
+    const medido = {};
+    for (const [w, h] of [[390, 844], [1366, 768], [1440, 900], [1920, 1080], [2560, 1440], [3440, 1440]]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 500, hasTouch: w < 500 });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + GAME_PAGE, { waitUntil: 'load' });
+      const m = await pg.evaluate(() => {
+        const r = sel => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return { w: +b.width.toFixed(1), h: +b.height.toFixed(1) }; };
+        return { shell: r('.os-shell'), escena: r('.ps-shell'), col: r('#margin-rain-left'), desborde: document.documentElement.scrollWidth - window.innerWidth };
+      });
+      const col = m.col ? m.col.w : 0;
+      medido[w] = fovDe(m.escena.w, m.escena.h);
+      if (col > 60.5) fallas.push(`${w}px: columna de ${col}px (techo 60)`);
+      if (w >= 1520 && Math.abs(col - 60) > 0.5) fallas.push(`${w}px: columna ${col}px, se esperaba 60 fija`);
+      if (w < 1400 && col > 0.5) fallas.push(`${w}px: columna ${col}px donde antes no habia ninguna`);
+      if (Math.abs(m.shell.w - (w - 2 * col)) > 1) fallas.push(`${w}px: el shell mide ${m.shell.w} y sobra pantalla (viewport ${w} − ${2 * col} de columnas)`);
+      if (m.desborde > 0) fallas.push(`${w}px: desborde horizontal de ${m.desborde}px`);
+      await pg.close();
+      await ctx.close();
+    }
+    /* Lo que de verdad se reporto: en un monitor mas grande el personaje se
+       veia mas chico. El fov es lo que lo decide. */
+    for (const w of [1920, 2560, 3440]) {
+      if (medido[w] > medido[1440] + 0.5) {
+        fallas.push(`${w}px: fov ${medido[w].toFixed(1)}° contra ${medido[1440].toFixed(1)}° en 1440 — el personaje se achica al agrandar el monitor`);
+      }
+    }
+    record('C18', 'El juego ocupa el monitor (columnas fijas)', fallas.length === 0,
+      fallas.length ? fallas.join(' · ')
+        : `fov ${medido[1440].toFixed(0)}° de 1440 a 3440 · columnas 0px hasta 1400, 60px desde 1520`);
+  }
+
 } finally {
   await browser.close();
   srv.close();

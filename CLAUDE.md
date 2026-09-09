@@ -175,6 +175,11 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 /* Layout */
 --border:     1px solid var(--ink);
 --border-mid: 1px solid var(--ink-mid);
+
+/* Columnas de margen (lluvia + rail de contacto). TOPEADAS en 60px:
+   antes eran todo lo que sobraba del shell y en un ultrawide se comían
+   el 59% de la pantalla — ver lección 55 */
+--chrome-col: min(60px, max(0px, (100vw - 1400px) / 2));
 ```
 
 **Hard constraints:**
@@ -292,7 +297,10 @@ propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Max-width: **1400px**. os-shell border: mint glow `rgba(94,231,170,0.18)` not `var(--border)`.
+Max-width **1400px, pero sólo en `surface="doc"`**: una columna de texto de 2560px no se
+lee. **En `surface="game"` el shell suelta el tope** y toma `margin-inline: var(--chrome-col)`,
+o sea que el juego ocupa el monitor menos las dos columnas de margen. os-shell border: mint
+glow `rgba(94,231,170,0.18)` not `var(--border)`.
 
 **En `surface="game"` se renderiza SÓLO la franja de identidad**: la de título, el
 `TabBar` y el `DotRow` están apagados ahí. Por eso el shell del juego lleva
@@ -332,7 +340,10 @@ paginas. **Tiene DOS disposiciones segun haya o no margen donde vivir**, y es el
 elemento en las dos (no hay copia en el HTML):
 
 - **Desde 1400px**: columna vertical `position: fixed` en el margen izquierdo, la misma
-  franja donde cae la lluvia. Solo iconos.
+  franja donde cae la lluvia, con su mismo ancho (`var(--chrome-col)`, tope 60px). Solo
+  iconos. El tope importa acá tanto como en la lluvia: sin él, en un monitor de 2560 eran
+  tres iconos de 18px centrados en una columna de 580px, que es como se ven ahora mismo
+  en la versión anterior.
 - **Debajo de 1400px, en `surface="doc"`**: deja de flotar. Pasa a `position: static`,
   fila horizontal al pie de la pagina, justo encima del `StatusBar`, con etiqueta
   (`GITHUB · LINKEDIN · EMAIL`, `CORREO` en español) y 44px de blanco de toque. Debajo de
@@ -351,7 +362,9 @@ iconos caian sobre las etiquetas NAME/EMAIL del formulario (leccion 49). Cubiert
 320 y 390 en las 6 paginas documento — no la posicion del rail, que no es lo que importa.
 
 **Margin chrome panels** (visible only on viewports > 1400px):
-- `position: fixed; width: max(0px, calc((100vw - 1400px) / 2))` — no `max-width` cap
+- `position: fixed; width: var(--chrome-col)` — el token topea en **60px**. Debajo de 1400
+  vale 0 y a 1440 vale 20, o sea que en teléfonos y notebooks no cambió nada; recién desde
+  ~1520 se planta en 60
 - Left (`#margin-rain-left`) + Right (`#margin-rain-right`): Matrix character rain via canvas RAF loop
 - Script in Base.astro: `makeRain(id)` factory, `GLYPHS` pool + `pick()`, `CHAR_PX 11` / `GAP_PX 30`, `ResizeObserver`, always starts RAF (no `prefers-reduced-motion` guard on rain)
 
@@ -405,7 +418,18 @@ del sitio.
 - **`JoystickShape.Square` de la librería NO es de esquina viva**: su `shapeFactory`
   devuelve `borderRadius: Math.sqrt(size)` como estilo inline. Se anula con `!important`
   (`verify:mobile` M7 lo controla).
-- `devicePixelRatio` se topea en **1.5** en táctil (2 en escritorio).
+- `devicePixelRatio` se topea en **1.5** en táctil (2 en escritorio), y además hay un
+  **presupuesto de píxeles** (`PIXEL_BUDGET`, `pixelRatioFor()`): ahora que la escena
+  ocupa el monitor, en 2560 el buffer pasa de 1398×1395 a 2438×1395 y multiplicado por
+  DPR 2 son 13.6 MPx por frame con bloom encima. El techo es el peor caso que el sitio
+  YA servía antes (1400 de ancho a DPR 2, ~7.8 MPx): nadie renderiza más pesado de lo
+  que ya venía renderizando. Sólo muerde en pantallas grandes **y** de alta densidad; a
+  DPR 1 no se activa nunca.
+- **El tamaño del render sale de la caja, no de constantes** (`measureShell()`, usado por
+  `init()` y por `onResize()` — antes eran dos fórmulas distintas). `setSize(W, H, false)`
+  no toca el estilo del canvas: si el buffer y la caja no coinciden, el navegador estira.
+  Con el piso de 400px que había, en un teléfono de 390 (caja 388) la escena salía
+  achatada un 3% en horizontal. `verify:mobile` **M23** lo mide.
 - **Los paneles tienen salida y van por encima del joystick.** `.ps-panel` (z 45) y
   `.ps-projects-drawer` (z 46) están arriba de `.tc-root` (z 40): con 11 y 10 el
   joystick se dibujaba SOBRE el cajón y en la mitad de abajo el dedo le pegaba al
@@ -813,3 +837,28 @@ COMING SOON.
     elemento se dimensiona contra otro, que lo mida el layout. `verify:ui` **C17** mide
     la franja REAL (del pie del canvas al pie de `<main>`) en cuatro combinaciones, y
     no la altura del shell, que es justo el número que estaba mal.
+
+55. **Topear el ancho y no el alto no desaprovecha el monitor: lo invierte.** El shell
+    tenía `max-width: 1400px`, así que la escena nunca pasaba de 1398px de ancho mientras
+    el alto sí crecía con la pantalla. El cuadro se iba poniendo cuadrado (aspecto 1.64 en
+    una notebook → **1.00** en 2560), y como el `fov` se deriva del aspecto —horizontal
+    fijo en 76°, vertical calculado— se abría para compensar: 52° → 60° → **76°**. Abrir
+    el `fov` es alejar la cámara. Medido: **el personaje se veía ×0.63 en un monitor de
+    2560 contra una notebook de 1440**. Agrandar el monitor achicaba al personaje, que es
+    exactamente al revés de lo que espera cualquiera. Y lo que sobraba iba a las columnas
+    de margen, que no tenían tope: 580px por lado en 2560, **1020 en un ultrawide** — el
+    59% de la pantalla en lluvia decorativa, con los tres iconos de contacto de 18px
+    flotando en el medio de una de ellas.
+    Se reportó como tres cosas distintas ("el personaje se ve chiquito", "los links se ven
+    perdidos", "que el juego ocupe la pantalla") y era **una sola**: el tope de ancho. Es
+    la lección 41 en el otro eje —allá el `fov` vertical fijo sacaba los carteles del
+    cuadro en un teléfono, acá el ancho topeado abre el `fov` en un monitor grande— y la
+    misma familia que la 54: una constante de layout decidiendo algo que tiene que salir
+    de la caja.
+    El arreglo va en un solo token, `--chrome-col`, elegido para **no mover nada donde ya
+    estaba bien**: debajo de 1400 vale 0 (idéntico a antes), a 1440 vale 20 —que es lo que
+    ya medía— y recién desde ~1520 se planta en 60. `verify:ui` **C18** mide las
+    propiedades y no la fórmula (repetirla sería tautológico): que la columna no pase de
+    60, que el shell se quede con todo el resto, que debajo de 1400 no aparezca ninguna
+    columna nueva, y que **el `fov` no crezca al crecer el monitor**, que es lo que de
+    verdad se reportó.

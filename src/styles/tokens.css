@@ -40,6 +40,26 @@
   --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
 
   /* ── Layout ── */
+
+  /* Ancho de las columnas de margen (la lluvia de datos, y el rail de
+     contacto que vive en la de la izquierda).
+
+     Antes era `max(0px, calc((100vw - 1400px) / 2))`: todo lo que sobraba del
+     shell de 1400px. En un monitor de 2560 eso son 580px POR LADO de columna
+     decorativa, con tres iconos de 18px flotando en el medio de una de ellas,
+     y en un ultrawide 1020 — el 59% de la pantalla. Peor: como el shell topea
+     el ancho pero NO el alto, cuanto mas grande el monitor mas cuadrado el
+     cuadro, y el fov de la escena (que se deriva del aspecto) se abre para
+     compensar. Abrir el fov es alejar la camara: medido, el personaje se veia
+     ×0.63 en 2560 contra una notebook de 1440. Agrandar el monitor achicaba
+     al personaje.
+
+     Con el tope de 60px las columnas dejan de comerse la pantalla y el juego
+     se queda con el resto. La formula esta elegida para no mover nada donde
+     hoy esta bien: debajo de 1400 vale 0 (identico a antes), a 1440 vale 20
+     —que es lo que ya media— y recien desde ~1520 se planta en 60. */
+  --chrome-col: min(60px, max(0px, (100vw - 1400px) / 2));
+
   --radius:     0px;
   --border:     1px solid var(--ink);
   --border-mid: 1px solid var(--ink-mid);

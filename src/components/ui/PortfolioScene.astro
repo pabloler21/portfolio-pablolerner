@@ -293,9 +293,48 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
   let craterMaterials = [];   // ShaderMaterial per pit, uTime advanced in tick()
   let carColliders = [];      // [{x, z, r}] simple circle colliders, built once in buildStreet
 
+  /* El tamaño del render sale de la CAJA, no de constantes. Antes init() y
+     onResize() usaban formulas DISTINTAS y las dos con un piso de 400px: en un
+     telefono de 390 la caja mide 388 y el buffer salia de 400, o sea que un
+     render de 400 de ancho se metia a la fuerza en 388 y la escena quedaba
+     achatada un 3% en horizontal (`setSize(W,H,false)` no toca el estilo: si
+     el buffer y la caja no coinciden, el navegador estira). Un piso solo tiene
+     sentido si la caja puede valer 0, y no puede: `.ps-shell` es 100% de ancho
+     y tiene min-height. Queda una guarda de 1px para no dividir por cero al
+     calcular el aspecto. */
+  function measureShell() {
+    const rect = document.getElementById('ps-shell').getBoundingClientRect();
+    return { W: Math.max(1, rect.width), H: Math.max(1, rect.height) };
+  }
+
+  /* Presupuesto de pixeles.
+
+     La escena dejo de estar topeada en 1400px de ancho, asi que en un monitor
+     grande el buffer crece: en 2560 pasa de 1398x1395 a 2438x1395, 1.75x los
+     pixeles, y encima va bloom. Multiplicado por un devicePixelRatio de 2 son
+     13.6 MPx por frame.
+
+     El techo es el peor caso que el sitio YA servia antes de este cambio
+     (1400 de ancho por un viewport alto, a DPR 2): asi nadie termina
+     renderizando mas pesado de lo que ya venia renderizando. Solo muerde en
+     pantallas grandes Y de alta densidad, que es justo donde se caerian los
+     frames; en un monitor comun a DPR 1 no se activa nunca.
+
+     No pude medir FPS reales acá: headless corre sobre SwiftShader (CPU) y
+     ese numero no dice nada del comportamiento en una GPU (leccion 3). El
+     presupuesto es lo que acota el riesgo sin depender de esa medicion. */
+  const PIXEL_BUDGET = 7.8e6;
+  function pixelRatioFor(W, H) {
+    /* Tope mas bajo en tactil: un telefono con DPR 3 renderizando a 2x paga
+       4x los pixeles de un 1x. A 1.5 la diferencia no se ve a la distancia a
+       la que se sostiene un telefono. */
+    const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    return Math.max(0.75, Math.min(devicePixelRatio, coarse ? 1.5 : 2,
+      Math.sqrt(PIXEL_BUDGET / (W * H))));
+  }
+
   async function init() {
     const canvas = document.getElementById('ps-canvas');
-    const shell  = document.getElementById('ps-shell');
 
     /* WebGL probe on a throwaway canvas — never call getContext on the real canvas
        before the renderer does, or a second call with different attributes fails */
@@ -317,19 +356,13 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     }
 
     /* Measure AFTER imports — layout is stable by now */
-    const rect = shell.getBoundingClientRect();
-    const W = Math.max(rect.width,  window.innerWidth  * 0.7, 400);
-    const H = Math.max(rect.height, window.innerHeight * 0.55, 400);
+    const { W, H } = measureShell();
     sceneW = W; sceneH = H;
 
     /* ── Renderer ── */
     renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true });
     renderer.setSize(W, H, false);
-    /* Tope mas bajo en tactil: un telefono con DPR 3 renderizando a 2x paga
-       4x los pixeles de un 1x, y la escena ya trae bloom. A 1.5 la diferencia
-       no se ve a la distancia a la que se sostiene un telefono. */
-    const coarse = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    renderer.setPixelRatio(Math.min(devicePixelRatio, coarse ? 1.5 : 2));
+    renderer.setPixelRatio(pixelRatioFor(W, H));
     renderer.setClearColor(0x0d0f14, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = false;
@@ -2256,10 +2289,7 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
   }
 
   function onResize() {
-    const shell = document.getElementById('ps-shell');
-    const rect = shell.getBoundingClientRect();
-    const W = Math.max(rect.width, 400);
-    const H = Math.max(rect.height, 400);
+    const { W, H } = measureShell();
     sceneW = W; sceneH = H;
     camera.aspect = W / H;
     /* Rotar el telefono cambia el aspecto de 0.46 a 2.16: sin recalcular, el
@@ -2268,6 +2298,9 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
       2 * Math.atan(Math.tan((76 * Math.PI / 180) / 2) / (W / H)) * 180 / Math.PI));
     camera.updateProjectionMatrix();
     renderer.setSize(W, H, false);
+    /* El presupuesto depende del tamaño, asi que se recalcula: agrandar la
+       ventana en un monitor grande puede cruzar el techo. */
+    renderer.setPixelRatio(pixelRatioFor(W, H));
     if (composer) composer.setSize(W, H);
   }
 

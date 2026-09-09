@@ -405,6 +405,14 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   html[data-surface='game'] .os-shell {
     height: 100svh;
     min-height: 0;
+
+    /* Y ocupa el ancho: el juego se queda con todo menos las dos columnas de
+       margen (ver --chrome-col). El tope de 1400 sigue valiendo en las paginas
+       documento —una columna de texto de 2560px no se lee— pero en la escena
+       era lo que la volvia cada vez mas cuadrada, y con eso mas alejada, a
+       medida que crecia el monitor. */
+    max-width: none;
+    margin-inline: var(--chrome-col);
   }
 
   /* diagonal corner cut top-right */
@@ -659,7 +667,9 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     position: fixed;
     top: 50%;
     left: 0;
-    width: max(0px, calc((100vw - 1400px) / 2));
+    /* La misma columna que la lluvia, y por eso el mismo token: tres iconos de
+       18px centrados en 580px se leen como restos, en 60px se leen como rail. */
+    width: var(--chrome-col);
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
@@ -762,7 +772,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     position: fixed;
     top: 0;
     bottom: 0;
-    width: max(0px, calc((100vw - 1400px) / 2));
+    width: var(--chrome-col);
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
