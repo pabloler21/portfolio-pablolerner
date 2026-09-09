@@ -76,6 +76,13 @@ first-glance pass from a phone.
   `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md`.
 - **The character is moved by WASD only.** No pointer-driven movement of any kind: no
   click-to-walk on the ground, no minimap fast-travel, no auto-walk from record rows.
+- **One profile, no role selection** (owner decision, 2026-09-09). The site presents
+  *AI Engineer & Data Analyst* as a single unit and the street is populated the moment the
+  visitor arrives. The fullscreen role selector is retired: it asked a skim-first reader
+  who gives the site under a minute to choose between two halves before seeing either one,
+  and it split the evidence across two symmetrical pages. Records live at
+  `/{lang}/projects/`; the old `/ai/` and `/risk/` URLs stay alive as redirects. See
+  `docs/superpowers/specs/2026-09-09-perfil-unico-design.md`.
 - Contact surface: GitHub `pabloler21`, LinkedIn `pablo-lerner-591180336`,
   email `lerner.pb@gmail.com`.
 

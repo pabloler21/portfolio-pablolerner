@@ -68,7 +68,8 @@ npm run deploy        # build + rsync --delete + verificación en vivo
   server.** El bloque del portfolio hace `try_files {path} {path}/ {path}.html /404.html`
   y marca `/_astro/*` como `immutable` — por eso los assets van con hash en el nombre y
   el HTML no se cachea agresivamente.
-- El script verifica después de subir: códigos HTTP de las 7 rutas reales + el 404, y
+- El script verifica después de subir: códigos HTTP de las 9 rutas (incluidos los dos
+  redirects de `/ai/` y `/risk/`, que no pueden dar 404) + el 404 real, y
   compara el **md5 del árbol servido contra el del build**. Si difieren, sale con error.
 - El VPS también corre otros proyectos (`aurea`, `starting`, `tarnish`) detrás del mismo
   Caddy, algunos con un esquema de *lazy wake*. El portfolio es estático a propósito:
@@ -205,7 +206,7 @@ src/
     ambient.ts          # motor de musica generativa (3 variantes; se despacha 'terminal')
   layouts/
     Base.astro          # YoRHa OS chrome — identity strip + AmbientCanvas + margin rain panels
-    RoleLayout.astro    # 3-col grid (RoleNav 280px · center · TerminalWindow 220px). Owns the role-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (numbered listbox + pre-rendered detail panes, ↑↓ keyboard, scramble transition). Pages are thin wrappers.
+    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px). Owns the records-page UI: props {heading, badge, subline, stats[], ai[], data[]} → stats HUD grid + master-detail dossier (numbered listbox 01–16 with a non-selectable block divider, pre-rendered detail panes, ↑↓ keyboard, scramble transition). Pages are thin wrappers.
   components/
     ui/
       AmbientCanvas.astro     # Three.js perspective-grid background (lazy, z-index:0)
@@ -213,18 +214,16 @@ src/
       TabBar.astro            # top nav tabs; props: active, lang
       DotRow.astro            # 40-dot animated row
       StatusBar.astro         # bottom bar: hints · CLEAR MODE · lang · CV link
-      RoleNav.astro           # left-panel nav for role pages
+      DocNav.astro            # left-panel nav for the records page: STREET back-link + two [data-jump] entries that select the first file of each block
       ProjectCard.astro       # (unused since master-detail role pages — kept for reference)
       TerminalWindow.astro    # animated live-coding terminal panel (role pages only)
       PortfolioScene.astro    # 3D interactive home scene (Three.js city street)
-      PersonaSelector.astro   # fullscreen role selector — 2-col layout: numbered options + live preview pane (records/flagship/stack from projects.ts), clock, footer hints, ~950ms boot-build sequence (skippeable)
       SceneCanvas.astro       # (legacy — was 9S viewer, superseded by PortfolioScene)
   pages/
     index.astro         # root → redirects to /en/
     en/
-      index.astro       # home EN: PortfolioScene + PersonaSelector
-      ai/index.astro    # AI Engineer — 6 projects
-      risk/index.astro  # Data Analyst — 7 projects
+      index.astro       # home EN: PortfolioScene (la escena arranca sola)
+      projects/index.astro  # records — 16 (AI 9 + DATA 7). /ai/ y /risk/ redirigen acá
       concept/          # INTERNAL decision pages (not in nav): index+city (phase 3),
                         # flagship.astro (accent direction comparison, option A shipped)
     es/                 # mirrors EN structure
@@ -261,7 +260,16 @@ public/
 }
 ```
 
-Exported: `aiProjects`, `riskProjects`, `dsProjects` (empty — pending Pablo's DS repos).
+Exported: `aiProjects` (9), `dataProjects` (7) y **`streetProjects`** (10) — este último
+compuesto por id sobre los otros dos, y **es** el orden de caminata de la avenida con el
+flagship último. El orden vive ahí y en ningún otro lado. Un invariante al final del módulo
+**falla el build** si hay más de un `featured` o si no va último: se comprueba al evaluarse
+y no en un arnés, porque un dato mal ordenado sale igual como HTML perfectamente válido.
+
+`track: 'ai' | 'data'` no es derivable río abajo: a la escena le llega un objeto plano
+mapeado, no el array de origen, y cada cartel imprime su propia mitad del perfil.
+`status` describe el ESTADO del proyecto y `featured` el RANGO — son independientes a
+propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho más fuerte).
 
 ---
 
@@ -271,9 +279,9 @@ Exported: `aiProjects`, `riskProjects`, `dsProjects` (empty — pending Pablo's 
 ┌─────────────────────────────────────────────────────────────┐
 │  UNIT::PL-7729  ·  [page title]  ·  SYS:OK · EN           │  ← os-title-row
 ├─────────────────────────────────────────────────────────────┤
-│  Pablo Lerner · Data Analyst & AI Engineer  [GH][LI][✉][CV]│  ← os-identity
+│  Pablo Lerner · AI Engineer & Data Analyst  [GH][LI][✉][CV]│  ← os-identity
 ├─────────────────────────────────────────────────────────────┤
-│  ⬡ PROFILE  ⬡ PROJECTS  ⬡ SKILLS  ⬡ ABOUT  ⬡ CONTACT     │  ← TabBar
+│  ⬡ STREET  ⬡ PROJECTS                                      │  ← TabBar
 ├─────────────────────────────────────────────────────────────┤
 │  ● ● ● ● ● ● ● ● ● ● ●  (40 animated dots)                │  ← DotRow
 └─────────────────────────────────────────────────────────────┘
@@ -448,48 +456,66 @@ respawnea en la entrada; caminando (Shift) se choca contra el borde. Cubierto
 por `npm run verify:jump` (alcance, punto de caída, tamaño de la ventana) y
 `verify:character` A7 (que `JUMP_DUR` siga coincidiendo con el clip).
 
-**Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×1.8**, con crossfade
+**Character control** (G1): **WASD/arrows ONLY** · **Shift = sprint ×2.1**, con crossfade
 entre `Walking` (timeScale 1.8) y `Running` (timeScale 1.3) — los clips de Mixamo son *in
-place*, así que su cadencia va atada a `WALK_SPEED` o los pies patinan · world clamp `BOUND_X 8.8 / z ∈ [−46, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
+place*, así que su cadencia va atada a `WALK_SPEED` o los pies patinan · world clamp `BOUND_X 8.8 / z ∈ [−117, 4.5]` applied every tick · heading is a shortest-arc lerp toward `targetRotY` (never snaps).
 
 **NO pointer-driven movement, ever** (PRODUCT.md brand commitment): no ground raycast, no minimap fast-travel, no auto-walk from dossier rows. Clicking a billboard SELECTS a record — selection is not displacement.
 
 **Project mapping** (frontmatter → JSON → JS via `ps-data` script tag):
-```
-zoneProjects.risk = [riskProjects[0], riskProjects[1], riskProjects[5], riskProjects[3]]
-  → FraudSense AI (hero/projIdx 0), Credit Scoring (projIdx 1), E-commerce Inventory (projIdx 2), SQL Fast Food (panel only)
-zoneProjects.ai   = [aiProjects[0], aiProjects[1], aiProjects[2]]
-  → Iris (hero/projIdx 0), CV Evaluator (projIdx 1), Hermes (projIdx 2)
-```
+`streetProjects` (projects.ts) → `boards` (10, ya en orden de caminata, con `track` y
+`featured`) + `trackLabels` + `allUrl` (`/{lang}/projects/`, un string, ya no un dict).
 
-**DYNAMIC BILLBOARD ARCHITECTURE — AVENUE (definitive):**
-Billboards are built ON role selection and destroyed on role change. Exactly N billboards exist for the N projects of the active role, spread ALONG the street (avenue). Cross-role mixing is impossible by construction.
-- `buildRoleBillboards(THREE, role)` — walk order = non-flagship first, flagship last (`order = [1..N-1, 0]`). Per board: pole, frame, dim edges (0x2a3040), canvas-textured board starting DARK (`color: 0x30343d`), ground ring (opacity 0), invisible hitbox. Plus role label sprite at avenue entrance and one PointLight at the flagship
-- `disposeRoleBillboards()` — removes group, disposes all geometries/materials/textures, clears `roleBillRefs` + `zoneMeshes`
-- **Proximity power-on** (tick, every 4th frame): board lights when radial dist² < 64 **OR `|bz − charZ| < 4.5`** (z-band trigger — CRITICAL: walking straight down the middle must discover BOTH sides; radial-only left the far side dark forever). On light: `flickerOn`, edges → borderColor, ground ring pulses on, `showPanel(activeRole, projIdx)`
-- **Chevrons**: pool of 8 ground arrows (`buildChevrons`, ShapeGeometry, additive blend) repositioned every tick from character toward the next UNLIT board; fade when none left or target behind
-- `nier:zone` handler: dedupe guard (`if (zone === activeRole) return`) → rebuild+`navigateTo` (walks to first board; panel opens via proximity, not onArrival)
-- At init the scene has NO billboards — they appear only when PersonaSelector fires `nier:zone`
-- **Flagship board** (G7): frame/edges amber `FLAG 0x9a7b2d`, hover `FLAG_BRIGHT 0xc9a94f`, amber ground ring, warm amber PointLight, and `drawBillboardCanvas` uses `AMBER` for its bar/badge/metric/CTA when `isHero`
-- **End-cap** (G3): 10×5 terminal screen at `flagshipZ − 11`, drawn by `drawEndcapCanvas` ("ALL RECORDS ACCESSED" + `[ VIEW FULL ARCHIVE → ]`). Starts dark, powers on at `|bz − charZ| < 8`, hitbox `userData.zone = '__endcap'` → `onCanvasClick` navigates to `allUrl[activeRole]`. Tracked in `endcapRef`, cleared by `disposeRoleBillboards`
-- **City dressing** (G2, `buildCityDressing`, built once at init): streetlamps every 9.5u on both sidewalks (pole + head + additive light cone + ground glow), 6 canvas neon signs on inner building faces, canvas skyline plane at z=−58, 180 static star points. All MeshBasic/additive — zero extra real lights
+**BILLBOARD ARCHITECTURE — AVENUE (definitiva):**
+Los carteles son FIJOS: uno por proyecto de `boards`, construidos **una vez en `init()`**,
+sin esperar ningún gesto. No hay rol que elegir, así que no hay nada que reconstruir ni
+que destruir — `disposeRoleBillboards` se borró junto con el cambio de rol que la
+justificaba.
+- `buildBillboards(THREE)` — recorre `boards` en orden; **el array ES el orden de caminata
+  y el flagship es el último** (se fue la convención `order = [1..N-1, 0]`). Por cartel:
+  frame, bordes apagados (0x2a3040), tablero con textura de canvas arrancando OSCURO
+  (`color: 0x30343d`), anillo de piso (opacity 0), hitbox invisible. Más un `PointLight`
+  ámbar en el flagship, marcado con `userData.flagship` (antes era `userData.zone`
+  comparado contra la zona activa)
+- **Geometría**: cartel k en `x = ±6.5` (alternando, k par → izquierda), `z = −10 − k*10`.
+  Con 10 carteles el último cae en **z = −100**. Flagship 6.0×4.0 vs 4.2×2.8
+- **La separación de 10u no se puede achicar.** La banda de proximidad mide 9u de ancho
+  (`|bz − charZ| < 4.5`): con menos de 10u de separación se encienden dos carteles en el
+  mismo frame y `showPanel` compite consigo mismo. Si hacen falta más carteles, se corre el
+  FONDO del mundo, no se acercan los carteles. `verify:mobile` **M22** lo controla
+- **Proximity power-on** (tick, cada 4 frames): se enciende con dist² radial < 64 **O
+  `|bz − charZ| < 4.5`** (el disparo por banda de z es CRÍTICO: caminando por el medio, el
+  radial solo dejaba el lado lejano oscuro para siempre). Al encender: `flickerOn`, bordes
+  → borderColor, pulso del anillo, `showPanel(projIdx)`
+- **Chevrons**: pool de 8 flechas de piso reubicadas cada tick hacia el próximo cartel
+  APAGADO; se desvanecen cuando no queda ninguno o el objetivo quedó atrás
+- **Cabecera del cartel**: `SYSTEM::PROJECT · ` + `trackLabels[proj.track]`, o sea
+  `AI ENGINEER` en nueve y `DATA ANALYST` en el de FraudSense. Es lo que mantiene las dos
+  mitades del perfil visibles EN LA CALLE, ahora que no hay selector que las nombre
+- **Flagship board** (G7): frame/bordes ámbar `FLAG 0x9a7b2d`, hover `FLAG_BRIGHT 0xc9a94f`,
+  anillo ámbar, PointLight cálido, y `drawBillboardCanvas` usa `AMBER` para barra/badge/
+  métrica/CTA cuando `isHero`
+- **El final de la avenida es el obelisco**, en `OBELISK_Z = -114`: tocarlo navega a
+  contacto (con `obeliskTouched` como pestillo de un solo disparo). El end-cap
+  `drawEndcapCanvas` que documentaba esta sección fue reemplazado por él hace tiempo
+- **City dressing** (G2, `buildCityDressing`, una vez en init): 9 carteles neón de canvas
+  en las caras interiores de los edificios (hasta z=−96, o la mitad de atrás queda desnuda),
+  skyline de canvas en z=−126, 180 estrellas estáticas, el obelisco y sus dos pozos. Todo
+  MeshBasic/aditivo — cero luces reales de más. **Las farolas se retiraron** (lección 26)
 
 **Key systems:**
 - WASD + arrow keys (no `prefers-reduced-motion` guard on input, only on visual effects)
-- Click billboard → `showPanel(hit.key, hit.projIdx)` — only active-role hitboxes exist, so any hit is valid
+- Click billboard → `showPanel(hit.projIdx)`
 - `scrambleIn(el, text)` — cancel-safe scramble-settle text reveal (replaces old typeOut; stores interval in `el._scrambleTimer`)
-- **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range [6,−56]). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), wide bar for the end-cap, expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
-- Arrival banner: `#ps-banner` + `.sweep` CSS animation, fired in `onArrival()` via `showBanner(zone)`; text from `bannerFmt` ('ACCESSING :: % RECORDS')
+- **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range **[6,−120]** — tiene que pasar SIEMPRE a `BOUND_Z_MIN`, o los carteles de más allá computan un `py` negativo y se dibujan fuera del borde de arriba del canvas; ya pasó dos veces al crecer la avenida). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18
-- **Dossier panel 2.0**: `showPanel(zone, projIdx)` renders ONE project as a record — `#panel-count` REC nn/NN, `#dossier-status` badge (amber `.d-badge-flag` when featured), big `#panel-title` (scrambleIn), `.d-progress` DISCOVERED blocks (one per board, amber for flagship), MISSION section, `.d-metric` box (`.d-metric-flag` amber variant), `.d-chips` stack chips, `.d-cta-primary/.d-cta-ghost`, `.d-nav` PREV/NEXT (wraps, walks to board), `.d-row` numbered rows for other projects (click → `showPanel` + `walkToBoard`)
-- **RECORDS HUD** (G6): `#ps-records` beside `#ps-zone-id`, updated by `updateRecordsHUD(flash)` on every proximity power-on; `.flash` class replays a 0.5s mint highlight (`void el.offsetWidth` to restart). Both HUD chips carry a `rgba(13,15,20,0.82)` background for contrast over lit windows
-- **Arrival gating**: `arrivalPending` is set only by `navigateTo` — click-to-move and fast-travel walks reach their target without firing the arrival banner
-- **Cinematic intro** (first visit, skipped on reduced-motion): `introActive/introT` blend camera from (0,17,34) down to street cam over ~3.7s (easeOutCubic in tick); `#ps-hero` overlay fades at introT>0.72; PersonaSelector holds `.wait` class 2.4s before fading in
+- **Dossier panel 2.0**: `showPanel(projIdx)` renders ONE project as a record — `#panel-count` REC nn/NN, `#dossier-status` badge (amber `.d-badge-flag` when featured), big `#panel-title` (scrambleIn), `.d-progress` DISCOVERED blocks (one per board, amber for flagship), MISSION section, `.d-metric` box (`.d-metric-flag` amber variant), `.d-chips` stack chips, `.d-cta-primary/.d-cta-ghost`, `.d-nav` PREV/NEXT (wraps, walks to board), `.d-row` numbered rows for other projects (click → `showPanel` + `walkToBoard`)
+- **Cinematic intro** (first visit, skipped on reduced-motion): `introActive/introT` blend camera from (0,17,34) down to street cam over ~3.7s (easeOutCubic in tick); `#ps-hero` overlay fades at introT>0.72. **Se queda a propósito**: es la única puerta de entrada que le queda al sitio ahora que no hay selector, y sin ella el visitante cae de golpe en una calle sin contexto. La marca la escribe la escena (`sessionStorage['nier-visited']`) al terminar la intro — antes la escribía PersonaSelector al elegir rol
 - **3D palette = blue-void** (matches site tokens): clearColor/fog 0x0d0f14, buildings 0x12151c + edges 0x2a3040, windows 0x4d8f75, asphalt 0x10131a, sidewalks 0x161a22, dashes/poles 0x232a38, char body 0x181b22. NEVER reintroduce the old olive-green (0x1b1e1a etc.)
 - `returnToCenter()` only closes panel (does NOT teleport character)
 - Unit tag: HTML `<div id="unit-tag-hud">` projected via `Vector3.project(camera)` each tick
 - Particles: 800 pts, `BufferGeometry`, `pos.setXYZ(i,x,y,z)` + `pos.needsUpdate = true` per tick
-- Fog: `FogExp2(0x0d0f14, 0.018)` — low enough for the far end of the avenue to read
+- Fog: `FogExp2(0x0d0f14, 0.0086)` — bajada al crecer la avenida para conservar la misma extinción óptica sobre el skyline, que pasó de z=−96 a z=−126
 
 **WebGL pattern (mandatory — never deviate):**
 ```js
@@ -500,11 +526,10 @@ const W = Math.max(shell.clientWidth, 400);       // measure AFTER import
 const renderer = new THREE.WebGLRenderer({ canvas });  // first real getContext
 ```
 
-**PersonaSelector ↔ PortfolioScene timing (all resolved 2026-07-02):**
-- `nier:zone` listener registered BEFORE GLB load (after `buildZoneBillboards`) — catches PersonaSelector's 600ms dispatch
-- Fallback: `sessionStorage.getItem('nier-persona')` → re-dispatches `nier:zone` at 200ms after listener registration
-- PersonaSelector re-dispatches with 600ms delay on page reload
-- **Both mechanisms fire on reload** → handler has a dedupe guard (`if (zone === activeRole) return`). Without it, `showPanel` runs twice and concurrent text animations interleave characters ("DATA ANALYST" → "DNAATLAY SATNALYST")
+**No hay handshake con nadie.** El evento `nier:zone`, su fallback por `sessionStorage`
+(`nier-persona`) y la guarda de dedupe del handler existían todos para coordinar la escena
+con el selector. Se fueron los tres con él: sin evento no hay carrera que desempatar
+(lección 18), y los carteles se construyen en `init()` sin esperar nada.
 
 ---
 
@@ -521,14 +546,12 @@ minutos — aca la gente se queda caminando la avenida un rato largo. El motor
 Las otras dos —`engine` (drone puro) y `lofi` (60 BPM con kick)— siguen en el modulo:
 son el material de esa decision y cambiar de una a otra es una linea.
 
-- **Arranca al elegir rol, NUNCA al cargar.** No es solo criterio de producto: el
-  navegador exige un gesto del usuario, y elegir perfil es un click. Entra con un fade
-  de 4s. En una recarga el evento `nier:zone` se re-despacha solo desde sessionStorage y
-  ahi NO hay gesto — el contexto queda `suspended`, asi que `startAmbient()` deja armado
-  un listener de un solo uso sobre el primer `pointerdown`/`keydown` real.
-- **`startAmbient()` va ANTES de la guarda de dedupe** del handler de `nier:zone` y
-  tiene la suya propia. Debajo del `return`, en una recarga el segundo evento (misma
-  zona) se descartaria junto con el arranque del audio.
+- **Se arma en `init()` y suena en el primer toque real.** Antes la disparaba el click de
+  rol, que era el gesto que el navegador exige; sin selector no hay gesto garantizado al
+  cargar. `startAmbient()` corre en `init()` y se apoya en el camino que ya existia para
+  las recargas: si el contexto queda `suspended`, arma un `pointerdown`/`keydown` de un
+  solo uso que lo despierta. Entra con un fade de 4s. **Consecuencia real**: quien mire la
+  escena sin tocar nada no escucha musica — es la politica del navegador, no un bug.
 - **Un solo `AudioContext`** para beeps y musica (`getAudioCtx()`). Dos suenan igual y
   se pagan dos veces; Safari ademas los cuenta contra un presupuesto por pestaña.
 - **Se apaga con el boton del parlante** en la barra de arriba —mismo precedente que `[ PROJECTS ]`,
@@ -540,7 +563,8 @@ son el material de esa decision y cambiar de una a otra es una linea.
   SONANDO (existe el handle) y el boton dice la PREFERENCIA. Antes de elegir rol no
   suena nada y el boton igual dice encendida, porque va a sonar: es un ajuste, no un
   indicador. `data-audio` es ademas lo que el arnes mira para saber que `startAmbient()`
-  corrio, sin meterle ganchos de test al producto.
+  corrio, sin meterle ganchos de test al producto — igual que `data-boards`, que dice
+  cuantos carteles construyo la escena.
 - **Se suspende el contexto con la pestaña oculta**, o la musica sigue sonando de fondo.
 - **El icono es un SVG inline, no un glifo.** `🔊`/`🔇` son emoji: salen en color, rompen
   la barra mono y cada sistema los dibuja distinto. El SVG hereda `currentColor`, asi que
@@ -574,8 +598,9 @@ nunca con `setTimeout` — offline el reloj de JS no avanza y no sonaria nada. E
 `runLive()` mantiene la ventana adelantada.
 
 El reparto de alcance importa: **`verify:audio` mide que salga sonido; `verify:mobile`
-M17-M19 miden el cableado** (que arranque al elegir rol, que el boton corte, que
-apagarla se recuerde tras recargar). Ninguno de los dos cubre lo del otro.
+M17-M19 miden el cableado** (que se arme sola sin ningun gesto —M17 se lee ANTES del
+primer toque del arnes—, que el boton corte, que apagarla se recuerde tras recargar).
+Ninguno de los dos cubre lo del otro.
 
 ---
 
@@ -583,25 +608,33 @@ apagarla se recuerde tras recargar). Ninguno de los dos cubre lo del otro.
 
 Props: `title: string`, `lines: readonly string[]`
 
-Role terminal content (in `RoleLayout.astro`):
-- `ai` → `PROC::AGENT_RUNTIME`: LangChain agent code
-- `risk` → `PROC::DATA_PIPELINE`: psql session + fraud query
-- `ds` → `PROC::ML_PIPELINE`: sklearn Pipeline + training epochs
+Contenido (en `RecordsLayout.astro`): una sola terminal, `PROC::AGENT_RUNTIME` (codigo de
+un agente LangChain) — el perfil lidera con AI Engineer. La variante `PROC::DATA_PIPELINE`
+se fue con la pagina de rol que la mostraba.
 
 Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 2.2s restart; stagger 500–2300ms.
 
 ---
 
-## Three roles
+## Un solo perfil
 
-| Role | URL slug | Primary |
-|---|---|---|
-| Data Analyst | `/risk/` | **YES** |
-| AI Engineer | `/ai/` | specialization |
+**AI Engineer & Data Analyst**, en ese orden. No hay seleccion de rol: el juego se ve
+apenas se entra, y `/{lang}/projects/` es la unica pagina de registros.
 
-`/risk/` slug kept for routing stability. **Data Scientist is retired** (PRODUCT.md): no pages, no selector option, no COMING SOON state.
+| Ruta | Que es |
+|---|---|
+| `/{lang}/` | La calle. 10 carteles, flagship al final |
+| `/{lang}/projects/` | Records: 16 (AI 9 + DATA 7), agrupados por especialidad |
+| `/{lang}/ai/` · `/{lang}/risk/` | Redirect a `/projects/`. **No se borran**: hay links repartidos afuera |
+| `/{lang}/contact/` | Formulario |
 
----
+**El orden del documento NO es el orden de la calle**, a proposito. El paseo es una
+decision de ritmo de juego (los tres proyectos nuevos abren, los tres sin metrica quedan
+en el medio, la caminata sube Hermes → FraudSense → Iris → flagship). La pagina la lee
+alguien que evalua candidatos, y ahi gana el agrupamiento por especialidad.
+
+**Data Scientist sigue retirado** (PRODUCT.md): sin paginas, sin opcion, sin estado
+COMING SOON.
 
 ## Phase status
 
@@ -624,6 +657,7 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 | 3.17 — Visual overhaul (blue-void + dossier + intro) | **DONE** | 3D scene migrated from old olive-green palette to blue-void NieR Reforged (bg/fog 0x0d0f14, buildings 0x12151c, windows 0x4d8f75). Dossier panel (REC counter, MISSION section, metric box, big CTAs, numbered other-records rows → click walks to board). Cinematic intro (first visit: high camera pan + hero title, PersonaSelector waits 2.4s via `.wait` class). Role pages master-detail + global micro-interactions (hover scramble via `data-scramble`, page sweep, `:focus-visible` mint). |
 | 3.18 — Gameplay + flagship amber (G1–G11) | **DONE** | Sprint (Shift ×1.8), click-to-move (asphalt raycast), world bounds clamp, smooth heading lerp. City dressing (streetlamps+cones, neon signs, skyline, stars). Avenue end-cap screen (click → role page). Minimap 2.0 (heading arrow, click fast-travel, next-objective pulse, corner-cut frame). Dossier 2.0 (stack chips, PREV/NEXT, DISCOVERED blocks). RECORDS HUD counter with flash. Flagship amber treatment (Deus Ex, `--accent-flag: #9a7b2d` / bright `#c9a94f` / bg `#14110a`) across 3D board, dossier, selector preview, role pages — NEVER interactive. PersonaSelector boot-build sequence (~950ms, skippeable, `animationend`-gated). Unified button system: `[ LABEL ↗ ]` mono + identical hover/active/focus. All 10 goals E2E-verified PASS. |
 | 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
+| 3.20 — Perfil único | **DONE** | Se retira PersonaSelector: la calle arranca sola, sin selección de rol. 10 carteles fijos construidos en `init()` (`streetProjects`), con support-json, LlamaRAG y Tarnish sumados y CV Evaluator como flagship. `/ai/` + `/risk/` → `/projects/` (RoleLayout→RecordsLayout, RoleNav→DocNav) con redirects. Avenida de −70 a −100 moviendo el fondo del mundo. Audio armado en `init()` en vez del click de rol. Arneses: C14, M21, M22 nuevos; M3 retirado, M17 reescrito. Spec: `docs/superpowers/specs/2026-09-09-perfil-unico-design.md` |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
@@ -647,9 +681,11 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 13. **BufferGeometry particles.** Update: `pos.setXYZ(i,x,y,z)` then `pos.needsUpdate = true` once after loop. Never replace the BufferAttribute.
 14. **`visible: false` prevents raycasting.** Use `{ transparent: true, opacity: 0, depthWrite: false }` for invisible hitbox meshes.
 15. **`define:vars` in Astro forces `is:inline`**, which skips Vite bundling. `await import('three')` fails silently. Pass data via `<script type="application/json" id="...">` + `JSON.parse()` instead.
-16. **Register `nier:zone` listener BEFORE the GLB `await`.** PersonaSelector dispatches at 600ms page load. If the 7.8MB GLB takes longer, the listener isn't registered yet and the event is silently lost. Always register event listeners as early as possible in `init()`, immediately after the data they depend on (`zoneBillRefs`) is populated.
+16. **Register event listeners BEFORE a long `await`.** *(El caso concreto —`nier:zone`—
+    ya no existe: ver lección 51. La regla sí.)* PersonaSelector dispatches at 600ms page load. If the 7.8MB GLB takes longer, the listener isn't registered yet and the event is silently lost. Always register event listeners as early as possible in `init()`, immediately after the data they depend on (`zoneBillRefs`) is populated.
 17. **When per-mode content keeps leaking across modes, stop patching draw state — make the objects' existence mode-scoped.** The static 9-billboard system needed 3 rounds of fixes (texture redraws, OFFLINE ghosts, click guards) and still felt wrong. The definitive fix was build-on-demand/dispose-on-change: role-scoped objects can't show the wrong role's content because they don't exist. Prefer this pattern over state-swapping a fixed set of scene objects.
-18. **Multiple event-dispatch fallbacks WILL double-fire — always dedupe in the handler.** PersonaSelector re-dispatches `nier:zone` at 600ms AND PortfolioScene's sessionStorage fallback dispatches at 200ms; both run on every reload. Concurrent `setInterval`/`setTimeout` text animations on the same element interleave characters. Fix: idempotence guard in the handler (`if (zone === activeRole) return`) + cancel-safe animations (store the timer on the element, clear before restarting).
+18. **Multiple event-dispatch fallbacks WILL double-fire — always dedupe in the handler.**
+    *(El caso concreto ya no existe: ver lección 51. La regla sí.)* PersonaSelector re-dispatches `nier:zone` at 600ms AND PortfolioScene's sessionStorage fallback dispatches at 200ms; both run on every reload. Concurrent `setInterval`/`setTimeout` text animations on the same element interleave characters. Fix: idempotence guard in the handler (`if (zone === activeRole) return`) + cancel-safe animations (store the timer on the element, clear before restarting).
 19. **`(npm run dev &)` inherits the shell's cwd** — a `cd` earlier in the same compound Bash command silently starts the server from the wrong directory ("Missing script: dev"). Always launch the dev server before any `cd`, or use absolute paths.
 20. **The backgrounded dev server dies after ~90s in the Bash sandbox.** Budget ONE Playwright flow per server start; restart server + run flow in the same call. Headless walking is ~10× slower: 100s of held `KeyW` ≈ 10s of real gameplay.
 21. **Proximity triggers on a street need a z-band, not just radial distance.** Walking down the middle keeps the far sidewalk at ~10u — radial-only (8u) never fires. Trigger: `dist² < 64 || |bz − charZ| < 4.5`.
@@ -675,7 +711,6 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 ## Pending from Pablo (content blockers)
 
 - [ ] LinkedIn About/bio text — paste directly (LinkedIn blocks scraping)
-- [ ] Data Scientist repos — none assigned yet (`src/data/projects.ts → dsProjects`)
 - [ ] CV PDF — place at `public/pablo-lerner-cv.pdf` (button already wired)
 - [x] LinkedIn URL — `https://www.linkedin.com/in/pablo-lerner-591180336`
 - [x] Domain — `site: 'https://pablolerner.dev'` set in `astro.config.mjs` (drives canonical + hreflang). Served by Caddy on `pablolerner.dev`, `www.pablolerner.dev` and `pablolerner.duckdns.org`
@@ -715,3 +750,20 @@ Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 
 48. **Un test que fuerza el estado en vez de recorrer el camino real pasa en verde con el bug adentro.** M15 abría el dossier con `classList.add('open')`, tocaba la ✕ y comprobaba que la clase se hubiera ido. Verde — y el botón estaba roto en el producto: por el camino real el jugador está parado adentro del círculo del cartel (ahí lo deja el teleport al seleccionar un proyecto), así que el tick reabría el panel en el frame siguiente. El estado forzado nunca reproducía esa condición. Dos correcciones, las dos necesarias: recorrer el camino del usuario (PROJECTS → fila → el panel se abre SOLO por proximidad) y medir que **siga** cerrado un rato después, no que se cierre. Y antes de dar por bueno un test nuevo, correrlo contra el código sin el fix: si no falla, no está midiendo nada.
 49. **Meter un elemento hacia adentro no es decidir qué hace cuando no hay margen: sigue flotando.** La lección 39 dejó el rail de iconos con `padding-left` para que no se saliera de la pantalla, y eso corrigió el desborde y nada más: seguía siendo una columna `position: fixed` sobre una página donde no hay columna de margen. En `/contact/` a 320px llegaba a `x = 26.8` con el formulario empezando en 10.4 — los iconos encima de las etiquetas NAME/EMAIL — y a 360 quedaban a 3.6px del borde de la columna, que se lee igual de mal. El arreglo no era moverlo unos píxeles sino cambiarle la naturaleza: **debajo de 1400px, en una página documento, el rail deja de ser chrome y pasa a ser contenido en flujo** (fila horizontal al pie, encima del `StatusBar`), y ahí no puede pisar nada a ningún ancho. Un solo elemento con dos disposiciones, no dos copias en el HTML: como arriba de 1400 es `fixed`, su lugar en el DOM da igual, así que se lo escribe donde tiene que caer cuando NO lo es. En la escena sí sigue fijo, porque ahí no hay flujo donde caer.
 50. **Un backtick adentro de un comentario `{/* ... */}` de Astro rompe el compilador, y el error apunta a otra línea.** Un comentario con `` `position: fixed` `` adentro tiraba `[CompilerError] Unexpected token` en `Base.astro:228:5` —un `</div>` perfectamente balanceado, 37 líneas más abajo— porque el parser trata el backtick como apertura de template literal y se come el resto del archivo buscando el cierre. Media hora de contar `<div>`s por un error que no estaba donde decía. En los comentarios de expresión, cero backticks (y ojo también con `<`).
+51. **Un handshake por evento sobrevive al componente que lo justificaba.** Sacar
+    `PersonaSelector` no era borrar un archivo: era desarmar `nier:zone`, su fallback por
+    `sessionStorage`, la guarda de dedupe del handler (que existía sólo porque el evento
+    llegaba dos veces, lección 18) y **las tres cosas distintas que colgaban de ese
+    evento** — la construcción de los carteles, el arranque de la música y la aparición
+    del joystick táctil. Ninguna de las tres se veía desde el `import` del componente. Al
+    retirar un componente hay que buscar quién **escucha** lo que despachaba, no sólo
+    quién lo importa. Y de las tres, la que muerde es el audio: el click de rol era el
+    gesto que el navegador exige para permitir sonido, así que borrar el selector borraba
+    el permiso, no sólo el disparador.
+52. **La documentación se pudre en silencio y encima con confianza.** Al empezar este
+    cambio, CLAUDE.md describía un end-cap (`drawEndcapCanvas`), un banner de llegada
+    (`showBanner`/`#ps-banner`), un HUD de RECORDS (`#ps-records`) y farolas cada 9.5u.
+    **Ninguna de las cuatro existía en el código**: el end-cap había sido reemplazado por
+    el obelisco, las otras tres se habían retirado. El plan de trabajo salió con "hay que
+    sacar el banner" adentro. Antes de planificar sobre lo que dice el archivo, `grep` de
+    los símbolos que nombra.

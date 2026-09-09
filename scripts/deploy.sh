@@ -46,7 +46,9 @@ fi
 echo
 echo "── verificación en vivo ──"
 fail=0
-for r in / /en/ /es/ /en/risk/ /en/ai/ /en/contact/ /es/contact/ /models/remy.glb; do
+# /en/risk/ y /en/ai/ se fundieron en /projects/; van igual porque siguen
+# existiendo como redirect y un 404 ahi rompe links ya repartidos afuera.
+for r in / /en/ /es/ /en/projects/ /es/projects/ /en/risk/ /en/ai/ /en/contact/ /es/contact/ /models/remy.glb; do
   code=$(curl -sS -o /dev/null -w '%{http_code}' "$SITE$r" --max-time 60 || echo 000)
   [ "$code" = "200" ] || fail=1
   printf "  %-18s %s\n" "$r" "$code"
