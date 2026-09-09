@@ -1,0 +1,38 @@
+---
+import RecordsLayout from '../../../layouts/RecordsLayout.astro';
+import { aiProjects, dataProjects } from '../../../data/projects';
+
+const toDossier = (p: typeof aiProjects[0]) => ({
+  id:       p.id,
+  name:     p.es.name,
+  problem:  p.es.problem,
+  outcome:  p.es.outcome || undefined,
+  stack:    p.stack,
+  status:   p.statusEs ?? p.status,
+  featured: p.featured,
+  github:   p.github,
+  demo:     p.demo,
+});
+
+const ai   = aiProjects.map(toDossier);
+const data = dataProjects.map(toDossier);
+
+const stats = [
+  { label: 'ESPECIALIZACIÓN', value: 'Sistemas LLM · Multi-agente · RAG · Tool-calling' },
+  { label: 'PROYECTO ESTRELLA', value: 'CV EVALUATOR — ANÁLISIS ATS DE CVs', sub: 'desplegado en aurea.pablolerner.dev · API REST con arquitectura limpia' },
+  { label: 'ALCANCE', value: 'Detección de fraude · Riesgo crediticio · SQL · Power BI' },
+  { label: 'ESTADO', value: 'ACTIVO · DISPONIBLE', bright: true },
+];
+---
+
+<RecordsLayout
+  title="Registros"
+  lang="es"
+  description="Pablo Lerner — AI Engineer & Data Analyst: sistemas LLM, pipelines multi-agente, RAG, servicios FastAPI, detección de fraude y BI."
+  heading="AI ENGINEER & DATA ANALYST"
+  badge="PERFIL"
+  subline={`NIVEL DE ACCESO: ABIERTO · REGISTROS: ${ai.length + data.length}`}
+  stats={stats}
+  ai={ai}
+  data={data}
+/>

@@ -10,6 +10,14 @@ export default defineConfig({
   // todo lo demas es Astro estatico + JS vanilla. Si alguna vez se saca ese
   // componente, esta integracion se va con el.
   integrations: [react()],
+  /* /ai/ y /risk/ se fundieron en /projects/. Se declaran como redirect y no
+     se borran a secas porque hay links repartidos afuera (CV, LinkedIn,
+     postulaciones) que apuntan a las dos viejas; en salida estatica Astro emite
+     una pagina de meta-refresh. */
+  redirects: {
+    '/en/ai': '/en/projects', '/en/risk': '/en/projects',
+    '/es/ai': '/es/projects', '/es/risk': '/es/projects',
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'es'],

@@ -1,0 +1,40 @@
+---
+import RecordsLayout from '../../../layouts/RecordsLayout.astro';
+import { aiProjects, dataProjects } from '../../../data/projects';
+
+const toDossier = (p: typeof aiProjects[0]) => ({
+  id:       p.id,
+  name:     p.en.name,
+  problem:  p.en.problem,
+  outcome:  p.en.outcome || undefined,
+  stack:    p.stack,
+  status:   p.status,
+  featured: p.featured,
+  github:   p.github,
+  demo:     p.demo,
+});
+
+const ai   = aiProjects.map(toDossier);
+const data = dataProjects.map(toDossier);
+
+/* RANGE y no TOOLS: es lo que sostiene la mitad "Data Analyst" del título en
+   la cabecera, ahora que hay un solo perfil y una sola página. */
+const stats = [
+  { label: 'SPECIALIZATION', value: 'LLM systems · Multi-agent · RAG · Tool-calling' },
+  { label: 'FLAGSHIP', value: 'CV EVALUATOR — ATS RESUME ANALYSIS', sub: 'deployed at aurea.pablolerner.dev · clean-architecture REST API' },
+  { label: 'RANGE', value: 'Fraud detection · Credit risk · SQL · Power BI' },
+  { label: 'STATUS', value: 'ACTIVE · OPEN TO WORK', bright: true },
+];
+---
+
+<RecordsLayout
+  title="Records"
+  lang="en"
+  description="Pablo Lerner — AI Engineer & Data Analyst: LLM systems, multi-agent pipelines, RAG, FastAPI services, fraud detection and BI."
+  heading="AI ENGINEER & DATA ANALYST"
+  badge="UNIT PROFILE"
+  subline={`ACCESS LEVEL: OPEN · RECORDS: ${ai.length + data.length}`}
+  stats={stats}
+  ai={ai}
+  data={data}
+/>

@@ -1,19 +1,26 @@
 ---
+/* Antes era RoleNav y su menú elegía entre dos páginas de rol. Con una sola
+   página de records ese menú ya no navega a ningún lado: pasa a saltar a los
+   dos bloques del listbox que la página ya renderiza (data-jump → select(idx)
+   en el controlador de RecordsLayout). Se reusa la máquina de selección que ya
+   existe en vez de un scroll a un ancla. */
 interface Props {
-  current: 'ai' | 'risk';
   lang: 'en' | 'es';
+  aiCount: number;
+  dataCount: number;
 }
 
-const { current, lang } = Astro.props;
+const { lang, aiCount, dataCount } = Astro.props;
 const base = `/${lang}`;
+const pad2 = (n: number) => String(n).padStart(2, '0');
 
-const roles = [
-  { id: 'ai',   label: 'AI ENGINEER' },
-  { id: 'risk', label: 'DATA ANALYST' },
-] as const;
+const blocks = [
+  { jump: 0,       label: 'AI ENGINEER',  count: aiCount },
+  { jump: aiCount, label: 'DATA ANALYST', count: dataCount },
+];
 
 const t = {
-  panelLabel: lang === 'en' ? 'UNIT SELECTION'         : 'SELECCIÓN DE PERFIL',
+  panelLabel: lang === 'en' ? 'RECORD BLOCKS'          : 'BLOQUES',
   back:       lang === 'en' ? 'STREET'                 : 'CALLE',
   available:  lang === 'en' ? 'OPEN TO WORK'           : 'DISPONIBLE',
 };
@@ -28,15 +35,12 @@ const t = {
   </a>
 
   <nav class="role-menu">
-    {roles.map(r => (
-      <a
-        href={`${base}/${r.id}/`}
-        class:list={['role-item', { active: r.id === current }]}
-        aria-current={r.id === current ? 'page' : undefined}
-      >
-        <span class="cursor">{r.id === current ? '◆' : ''}</span>
-        <span>{r.label}</span>
-      </a>
+    {blocks.map(b => (
+      <button type="button" class="role-item" data-jump={b.jump}>
+        <span class="cursor">◆</span>
+        <span>{b.label}</span>
+        <span class="block-count sys-text">{pad2(b.count)}</span>
+      </button>
     ))}
   </nav>
 
@@ -92,11 +96,23 @@ const t = {
     text-decoration: none;
     transition: color 0.12s, background 0.12s, border-color 0.12s;
   }
+  .role-item {
+    width: 100%;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
   .role-item:hover         { color: var(--sand); background: var(--bg-panel); }
   .role-item.active        { background: var(--bg-panel); color: var(--sand); border-left-color: var(--accent-bright); }
   .role-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 
   .cursor { font-size: 0.7rem; color: var(--accent); width: 1rem; flex-shrink: 0; }
+
+  .block-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: var(--sand-dim);
+  }
 
   .meta-block {
     margin-top: auto;

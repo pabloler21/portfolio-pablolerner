@@ -23,7 +23,7 @@ interface Props {
 
 const {
   title,
-  description = 'Pablo Lerner — Data Analyst · AI Engineer · Data Scientist',
+  description = 'Pablo Lerner — AI Engineer & Data Analyst',
   lang = 'en',
   activeTab = 'projects',
   surface = 'doc',
@@ -97,11 +97,11 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
         <div class="identity-left">
           <a class="id-name" href={`/${lang}/`}>Pablo Lerner</a>
           <span class="id-sep sys-text"> · </span>
-          <span class="id-role">
-            {lang === 'en'
-              ? 'Data Analyst & AI Engineer'
-              : 'Data Analyst & AI Engineer'}
-          </span>
+          {/* Un solo perfil, y AI Engineer primero: es lo que PRODUCT.md declara
+              como el trabajo del sitio, y desde que se fue el selector esta
+              franja es donde se nombra. El ternario devolvía el mismo string
+              en las dos ramas. */}
+          <span class="id-role">AI Engineer &amp; Data Analyst</span>
           {/* Cambio de idioma. Va ACA y no en el StatusBar porque el StatusBar
               solo se renderiza en surface="doc": en la home —que es la escena y
               la puerta de entrada del sitio— no habia forma de cambiar de

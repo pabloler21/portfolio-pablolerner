@@ -1,6 +1,6 @@
 ---
 import Base from './Base.astro';
-import RoleNav from '../components/ui/RoleNav.astro';
+import DocNav from '../components/ui/DocNav.astro';
 import TerminalWindow from '../components/ui/TerminalWindow.astro';
 
 export interface StatBox {
@@ -26,22 +26,29 @@ export interface DossierProject {
 interface Props {
   title: string;
   lang: 'en' | 'es';
-  role: 'ai' | 'risk';
   description?: string;
-  heading?: string;        // "DATA ANALYST"
-  badge?: string;          // "PRIMARY ROLE"
-  badgeBright?: boolean;   // mint badge (primary role only)
+  heading?: string;        // "AI ENGINEER & DATA ANALYST"
+  badge?: string;          // "UNIT PROFILE"
   subline?: string;        // sys-text line under the heading
   stats?: StatBox[];       // compact HUD stat grid
-  projects?: DossierProject[]; // if present → master-detail dossier
+  /* Los records van en DOS bloques. El orden del documento no es el orden de
+     la avenida: el paseo es una decisión de ritmo de juego, la página la lee
+     alguien evaluando candidatos y ahí gana el agrupamiento por especialidad. */
+  ai?: DossierProject[];
+  data?: DossierProject[];
 }
 
 const {
-  title, lang, role, description,
-  heading, badge, badgeBright = false, subline,
-  stats = [], projects = [],
+  title, lang, description,
+  heading, badge, subline,
+  stats = [], ai = [], data = [],
 } = Astro.props;
 
+/* Una sola lista numerada 01..NN, con un divisor no seleccionable entre los
+   dos bloques. El divisor NO lleva la clase .dossier-row a propósito: el
+   controlador exige que haya tantas filas como paneles. */
+const projects = [...ai, ...data];
+const dividerAt = ai.length;
 const hasDossier = projects.length > 0;
 
 // Short name for the master list rows ("Iris — Personal AI Assistant" → "Iris")
@@ -50,6 +57,10 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 
 // Flagship HUD stat box: explicit flag prop, or label match (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
 const isFlagStat = (s: StatBox) => s.flag ?? /flagship|estrella/i.test(s.label);
+
+const blockLabel = lang === 'en'
+  ? { ai: 'AI ENGINEER', data: 'DATA ANALYST' }
+  : { ai: 'AI ENGINEER', data: 'DATA ANALYST' };
 
 const L = lang === 'en'
   ? {
@@ -75,59 +86,38 @@ const L = lang === 'en'
       hint:     '↑↓ SELECCIONAR · ENTER → CODE',
     };
 
-const termContent = {
-  ai: {
-    title: 'PROC::AGENT_RUNTIME',
-    lines: [
-      '$ python agent.py',
-      'from langchain_anthropic import ChatAnthropic',
-      'llm = ChatAnthropic(model="claude-haiku-4-5")',
-      'tools = [search_memory, call_api, web_fetch]',
-      'agent = create_react_agent(llm, tools)',
-      'result = agent.invoke({',
-      '  "input": "summarize recent docs"',
-      '})',
-      '[think] querying vector store...',
-      '[tool]  memory_search → 8 chunks found',
-      '[think] synthesizing response...',
-      '[done]  347 tokens · latency: 1.84s',
-      '$ _',
-    ],
-  },
-  risk: {
-    title: 'PROC::DATA_PIPELINE',
-    lines: [
-      '$ psql -d fraud_analytics',
-      'psql (15.3) · connected',
-      'fraud_db=# SELECT',
-      '  fraud_type,',
-      '  COUNT(*) AS n,',
-      '  ROUND(AVG(amount),2) AS avg_amt',
-      'FROM transactions',
-      'WHERE risk_score > 0.85',
-      'GROUP BY fraud_type;',
-      ' card_cloned   | 8441 | 1247.33',
-      ' acct_takeover | 2891 |  834.12',
-      ' synthetic_id  | 1109 | 2341.88',
-      'Query OK · 12441 rows · 0.847s',
-      'fraud_db=# _',
-    ],
-  },
+/* Una sola terminal ambiente: el perfil lidera con AI Engineer. La variante
+   PROC::DATA_PIPELINE se fue con la página de rol que la mostraba. */
+const term = {
+  title: 'PROC::AGENT_RUNTIME',
+  lines: [
+    '$ python agent.py',
+    'from langchain_anthropic import ChatAnthropic',
+    'llm = ChatAnthropic(model="claude-haiku-4-5")',
+    'tools = [search_memory, call_api, web_fetch]',
+    'agent = create_react_agent(llm, tools)',
+    'result = agent.invoke({',
+    '  "input": "summarize recent docs"',
+    '})',
+    '[think] querying vector store...',
+    '[tool]  memory_search → 8 chunks found',
+    '[think] synthesizing response...',
+    '[done]  347 tokens · latency: 1.84s',
+    '$ _',
+  ],
 } as const;
-
-const term = termContent[role];
 ---
 
-<Base title={title} lang={lang} activeTab={role} description={description} surface="doc">
+<Base title={title} lang={lang} activeTab="projects" description={description} surface="doc">
   <div class="role-grid">
-    <RoleNav current={role} lang={lang} />
+    <DocNav lang={lang} aiCount={ai.length} dataCount={data.length} />
 
     <section class="panel-center">
       {heading && (
         <header class="role-head">
           <div class="role-head-top">
             <h2 class="role-title">{heading}</h2>
-            {badge && <span class:list={['role-badge', { bright: badgeBright }]}>{badge}</span>}
+            {badge && <span class="role-badge bright">{badge}</span>}
           </div>
           {subline && <p class="role-sub sys-text">{subline}</p>}
           {stats.length > 0 && (
@@ -156,20 +146,25 @@ const term = termContent[role];
               role="listbox"
               tabindex="0"
               aria-label={L.listAria}
-              aria-activedescendant={`pf-${role}-0`}
+              aria-activedescendant="pf-0"
             >
               {projects.map((p, i) => (
-                <div
-                  class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
-                  role="option"
-                  id={`pf-${role}-${i}`}
-                  aria-selected={i === 0 ? 'true' : 'false'}
-                  data-idx={i}
-                >
-                  <span class="row-cursor" aria-hidden="true">◆</span>
-                  <span class="row-name">{shortName(p.name)}</span>
-                  <span class:list={['row-badge', { flag: p.featured }]}>{p.status}</span>
-                </div>
+                <>
+                  {i === 0 && <p class="dossier-divider sys-text" role="presentation">{blockLabel.ai}</p>}
+                  {i === dividerAt && <p class="dossier-divider sys-text" role="presentation">{blockLabel.data}</p>}
+                  <div
+                    class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
+                    role="option"
+                    id={`pf-${i}`}
+                    aria-selected={i === 0 ? 'true' : 'false'}
+                    data-idx={i}
+                  >
+                    <span class="row-num sys-text" aria-hidden="true">{pad2(i + 1)}</span>
+                    <span class="row-cursor" aria-hidden="true">◆</span>
+                    <span class="row-name">{shortName(p.name)}</span>
+                    <span class:list={['row-badge', { flag: p.featured }]}>{p.status}</span>
+                  </div>
+                </>
               ))}
             </div>
             <p class="list-hint sys-text">{L.hint}</p>
@@ -178,7 +173,7 @@ const term = termContent[role];
           <!-- ── Detail: pre-rendered pane per project (SSG) ── -->
           <div class="dossier-detail">
             {projects.map((p, i) => (
-              <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${role}-${i}`}>
+              <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${i}`}>
                 <div class="detail-top">
                   <span class:list={['detail-badge', { flag: p.featured }]}>{p.status}</span>
                   <span class="detail-file sys-text">{L.file} {pad2(i + 1)}/{pad2(projects.length)} · ID: {p.id.toUpperCase()}</span>
@@ -297,6 +292,16 @@ const term = termContent[role];
       revealPane(pane, fromPointer);
     }
 
+    /* DocNav: sus dos entradas saltan al primer archivo de cada bloque
+       reusando este mismo select(), en vez de hacer scroll a un ancla. Viven
+       fuera de .dossier, así que se buscan en el documento. */
+    document.querySelectorAll<HTMLElement>('[data-jump]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.jump);
+        if (Number.isInteger(idx) && idx >= 0 && idx < rows.length) select(idx, true);
+      });
+    });
+
     rows.forEach((row, i) => {
       row.addEventListener('click', () => {
         list!.focus({ preventScroll: true });
@@ -323,6 +328,22 @@ const term = termContent[role];
 </script>
 
 <style>
+  /* Divisor de bloque: NO es una fila del listbox (no lleva .dossier-row), así
+     que ni el teclado ni el controlador lo ven — sólo separa a la vista. */
+  .dossier-divider {
+    padding: 0.7rem 0.85rem 0.35rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    color: var(--sand-dim);
+    border-bottom: var(--border);
+  }
+
+  .row-num {
+    font-size: 0.7rem;
+    color: var(--sand-dim);
+    flex-shrink: 0;
+  }
+
   .role-grid {
     display: grid;
     grid-template-columns: 280px 1fr 220px;

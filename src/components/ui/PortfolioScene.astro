@@ -1,13 +1,11 @@
 ---
-import { aiProjects, riskProjects } from '../../data/projects.ts';
+import { streetProjects } from '../../data/projects.ts';
 import TouchControls from './TouchControls.tsx';
 
 interface Props { lang: 'en' | 'es' }
 const { lang = 'en' } = Astro.props;
 
-type ZoneKey = 'risk' | 'ai';
-
-const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
+const mapProj = (p: typeof streetProjects[0], l: 'en' | 'es') => ({
   name:     p[l].name,
   desc:     p[l].problem,
   outcome:  p[l].outcome,
@@ -15,26 +13,21 @@ const mapProj = (p: typeof aiProjects[0], l: 'en' | 'es') => ({
   github:   p.github,
   demo:     p.demo ?? '',
   featured: p.featured ?? false,
+  track:    p.track,
   stack:    p.stack.slice(0, 6),
 });
 
-/* Every project of the role gets its own billboard now — asked explicitly
-   ("que estén TODOS los proyectos en la calle"). */
-const zoneProjects = {
-  risk: riskProjects.map(p => mapProj(p, lang)),
-  ai:   aiProjects.map(p => mapProj(p, lang)),
-  ds:   [] as ReturnType<typeof mapProj>[],
-};
+/* Ya no hay rol que elegir: los carteles son estos y solo estos, en este
+   orden, construidos una vez en init(). El orden de la avenida vive en
+   projects.ts (streetProjects), que es donde se decide una sola vez. */
+const boards = streetProjects.map(p => mapProj(p, lang));
 
-const zoneLabels = {
-  en: { risk: 'DATA ANALYST', ai: 'AI ENGINEER', ds: 'DATA SCIENTIST' },
-  es: { risk: 'DATA ANALYST', ai: 'AI ENGINEER', ds: 'DATA SCIENTIST' },
-}[lang];
+/* Cada cartel imprime su propia mitad del perfil en la cabecera. Es lo que
+   mantiene las dos visibles EN LA CALLE ahora que no hay selector que las
+   nombre. */
+const trackLabels = { ai: 'AI ENGINEER', data: 'DATA ANALYST' };
 
-const allUrl: Record<ZoneKey, string> = {
-  risk: `/${lang}/risk/`,
-  ai:   `/${lang}/ai/`,
-};
+const allUrl     = `/${lang}/projects/`;
 const contactUrl = `/${lang}/contact/`;
 
 const allLabel        = lang === 'en' ? 'VIEW ALL RECORDS →' : 'VER TODOS →';
@@ -105,13 +98,10 @@ const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
   <!-- Fallback SOLO para cuando no hay WebGL. Ya no es la pantalla de mobile:
        en tactil la escena corre y se maneja con TouchControls. -->
   <div class="ps-fallback hidden" id="ps-fallback">
-    <p class="panel-title sys-text">ACCESS UNIT SELECTION</p>
+    <p class="panel-title sys-text">ACCESS RECORDS</p>
     <nav class="fb-menu" role="menu">
-      <a class="fb-item" href={allUrl.ai} role="menuitem">
-        <span class="fb-cursor">◆</span> AI ENGINEER <span class="fb-tag">PRIMARY</span>
-      </a>
-      <a class="fb-item" href={allUrl.risk} role="menuitem">
-        <span class="fb-cursor"></span> DATA ANALYST
+      <a class="fb-item" href={allUrl} role="menuitem">
+        <span class="fb-cursor">◆</span> AI ENGINEER &amp; DATA ANALYST
       </a>
     </nav>
   </div>
@@ -127,12 +117,12 @@ const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
 
 </div>
 
-<script type="application/json" id="ps-data" set:html={JSON.stringify({ zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl })}></script>
+<script type="application/json" id="ps-data" set:html={JSON.stringify({ boards, trackLabels, allUrl, allLabel, dossier, contactUrl })}></script>
 <script>
 /* Plain <script> — no define:vars — so Vite bundles it and import('three') resolves.
    define:vars forces is:inline, which skips Vite processing entirely. */
 import { createAmbient, runLive } from '../../lib/ambient.ts';
-const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON.parse(document.getElementById('ps-data').textContent);
+const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.parse(document.getElementById('ps-data').textContent);
 (function () {
   /* ── Guards ── */
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -142,8 +132,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
      TouchControls, que despacha los mismos KeyboardEvent que el teclado.
      El fallback queda SOLO para el caso real de que no haya WebGL. */
 
-  /* Billboard positions are computed per-role by buildRoleBillboards (avenue
-     layout) — there are no fixed zones anymore */
+  /* Billboard positions are computed by buildBillboards (avenue layout) from
+     `boards`, which arrives already in walk order from projects.ts */
   const CENTER = { x: 0, z: 4 };
 
   let scene, camera, renderer;
@@ -154,8 +144,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   let shakeT = 0;   /* camera shake on death — decaying timer, triggered in respawnAtEntrance() */
   const SHAKE_DUR = 0.4, SHAKE_MAG = 0.9;   /* bumped up — asked explicitly ("mas potente") */
   let isMoving = false;
-  let activeZone = null;
-  let zoneMeshes = [];   // [{mesh: hitbox, key, projIdx}]
+  let boardMeshes = [];   // [{mesh: hitbox, projIdx}]
   let visible = true;
   let t = 0;
   let mixer = null;
@@ -232,19 +221,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   const WALK_TIMESCALE = 1.8;
   const RUN_TIMESCALE  = 1.44;
   let composer = null;
-  let activeRole = null;
-  /* Dynamic billboards: built on role selection, destroyed on role change.
-     Exactly N billboards exist for N projects of the active role — nothing else.
-     AVENUE layout: boards spread along the street alternating sides, flagship
-     last as the finale. Boards start dark and power on by proximity. */
+  /* Los carteles son fijos: uno por proyecto de `boards`, construidos una vez
+     en init(). AVENUE layout: se reparten a lo largo de la calle alternando
+     lados, el flagship último como cierre. Arrancan apagados y se encienden
+     por proximidad. */
   /* ponytail: CHAR_HEIGHT anchors building/monument scale to the character.
      Remy's GLB is normalized+centered at load (no direct Box3 measurement is
      taken here — buildCityDressing runs before the async GLB load resolves),
      so this is the same ~1.8u reference already implied by the existing
      chest-height fill-light position (0, 1.6, ...) a few lines below. */
   const CHAR_HEIGHT = 1.8;
-  let roleBillGroup = null;  // THREE.Group holding ALL billboard structure of the active role
-  let roleBillRefs = [];     // [{mesh, frame, edges, hit, ring, borderColor, isHero, projIdx, bx, bz, lit}]
+  let billGroup = null;  // THREE.Group holding ALL billboard structure
+  let billRefs = [];     // [{mesh, frame, edges, hit, ring, borderColor, isHero, projIdx, bx, bz, lit}]
   /* squared distance (8u radius) at which a board powers on/off. Boards sit
      off to the side (bx=±6.5) again, so the circle needs to reach far enough
      to still cover a player walking straight down the middle (lateral
@@ -261,14 +249,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
      respawnea; caminando (Shift) se choca contra el borde como una pared. */
   const CRATER_ZS = [-5, -35];   /* 2nd moved to a different stretch of the avenue entirely, not squeezed right after the 1st between boards 1 and 2 */
   const CRATER_HALF_W = 1.8;     /* bigger, asked explicitly */
-  const OBELISK_X = 0, OBELISK_Z = -84;   /* must match buildCityDressing's obX/obZ — touch-to-navigate check lives in tick() */
+  const OBELISK_X = 0, OBELISK_Z = -114;   /* must match buildCityDressing's obX/obZ — touch-to-navigate check lives in tick() */
   const OBELISK_TOUCH_R2 = 9;             /* 3u radius */
   let obeliskTouched = false;             /* one-shot latch so the mailto redirect fires once per approach, not every frame inside range */
   const SIDEBAR_ENABLED = true;           /* re-enabled — the small-circle spinner completing now opens a simplified version of it */
   const DEATH_ENABLED = true;             /* re-enabled after the diagnostic pass */
-  /* World bounds — keeps the character on the street, out of buildings.
-     -76 fits the longest role (risk, 7 boards, deepest at z=-70) plus margin. */
-  const BOUND_X = 8.8, BOUND_Z_MIN = -87, BOUND_Z_MAX = 4.5;   /* -87 so the obelisk at z=-84 is actually reachable to touch */
+  /* World bounds — keeps the character on the street, out of buildings. */
+  /* La avenida creció de 7 carteles (z=-70) a 10 (z=-100): los diez son fijos
+     ahora, no los N del rol elegido. Se movió el FONDO del mundo conservando
+     cada distancia relativa —obelisco 14u detrás del último cartel, el bound 3u
+     detrás del obelisco— en vez de achicar la separación entre carteles: la
+     banda de proximidad mide 9u de ancho (|bz - charZ| < 4.5), así que con
+     menos de 10u de separación dos carteles se encienden en el mismo frame y
+     showPanel compite consigo mismo. */
+  const BOUND_X = 8.8, BOUND_Z_MIN = -117, BOUND_Z_MAX = 4.5;   /* -117 so the obelisk at z=-114 is actually reachable to touch */
   const clampX = (v) => Math.max(-BOUND_X, Math.min(BOUND_X, v));
   const clampZ = (v) => Math.max(BOUND_Z_MIN, Math.min(BOUND_Z_MAX, v));
   let targetRotY = Math.PI;  // character heading, lerped in tick (no snap turns) — PI faces into the avenue (-z), away from the camera
@@ -335,7 +329,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     /* Density scaled down from 0.018 to keep the same haze-at-the-skyline
        look now that the skyline sits at z=-96 instead of z=-58 (avenue got
        much longer to fit every project as its own billboard). */
-    scene.fog = new THREE.FogExp2(0x0d0f14, 0.011);
+    scene.fog = new THREE.FogExp2(0x0d0f14, 0.0086);
 
     /* ── Camera — street perspective ── */
     /* El `fov` de Three.js es VERTICAL, y eso en una pantalla vertical es una
@@ -390,40 +384,27 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
         document.fonts.load('11px "Share Tech Mono"'),
       ]);
     } catch (_) { /* non-critical — canvas will use fallback monospace */ }
-    /* No billboards at init — the scene starts as clean city. Billboards are
-       built dynamically in the nier:zone handler when a role is selected. */
+    /* Los carteles se construyen ACA, una sola vez, sin esperar ningún gesto:
+       ya no hay rol que elegir, así que la calle está poblada desde el primer
+       frame. Se fue con el selector todo el handshake que hacía falta para
+       coordinar los dos (evento `nier:zone`, su fallback por sessionStorage y
+       la guarda de dedupe que existía sólo porque el evento llegaba dos veces
+       — lección 18: sin evento no hay carrera que desempatar).
+       populateProjectsDrawer() va después y no antes: lee billRefs, que es lo
+       que buildBillboards acaba de poblar. */
+    buildBillboards(THREE);
+    populateProjectsDrawer();
+    /* Contrato con verify:mobile M21 — el arnés mira un atributo que el
+       producto ya escribe, no un gancho de test (mismo criterio que
+       `data-audio`). */
+    document.documentElement.dataset.boards = String(billRefs.length);
 
-    /* ── nier:zone listener — registered HERE (before GLB load) so PersonaSelector's
-       600ms dispatch is never missed even if the model takes time to download. ── */
-    window.addEventListener('nier:zone', (e) => {
-      const zone = e.detail?.zone;
-      if (!zone) return;
-      /* La música entra ANTES de la guarda de dedupe y tiene la suya propia
-         (`if (ambient)`): elegir perfil es el gesto que el navegador exige, y
-         si esto quedara debajo del `return` de abajo, en una recarga —donde el
-         evento llega dos veces con la misma zona— el segundo se descartaría
-         junto con el arranque del audio. */
-      startAmbient();
-      /* Dedupe — PersonaSelector (600ms) and our sessionStorage fallback (200ms)
-         can both fire on reload; the second identical event must no-op or
-         showPanel runs twice and scramble/type animations interleave. */
-      if (zone === activeRole) return;
-      activeRole = zone;
-
-      /* Rebuild billboards for the selected role only — everything from the
-         previous role is destroyed. N projects → N billboards, nothing else. */
-      buildRoleBillboards(THREE, zone);
-      navigateTo(zone);
-      populateProjectsDrawer(zone);
-    });
-
-    /* Fallback: if sessionStorage has a stored zone, re-dispatch after init completes */
-    const storedZone = sessionStorage.getItem('nier-persona');
-    if (storedZone) {
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('nier:zone', { detail: { zone: storedZone } }));
-      }, 200);
-    }
+    /* La música ya no puede entrar por el click de rol, que era el gesto que
+       el navegador exige. startAmbient() se apoya en el camino que ya existía
+       para las recargas: si el contexto queda 'suspended', arma un
+       pointerdown/keydown de un solo uso. O sea, entra en el primer toque real
+       del visitante — que acá es la primera tecla de movimiento. */
+    startAmbient();
 
     /* ── Character ── */
     buildCharPlaceholder(THREE);
@@ -530,7 +511,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
          cartel, `opened` todavía puede estar en false mientras el spinner
          llena, y la ✕ tocada en ese hueco no marcaría nada. Se rearma solo
          al salir del círculo. */
-      roleBillRefs.forEach(r => {
+      billRefs.forEach(r => {
         const dx = r.bx - charX, dz = r.bz - charZ;
         if (dx * dx + dz * dz < SPINNER_R * SPINNER_R) r.dismissed = true;
       });
@@ -590,10 +571,16 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       if (e.code === 'Space') e.preventDefault();
     });
 
-    /* Cinematic intro — first visit only (no persona chosen yet). The camera
-       starts on a high wide shot of the avenue and eases down to street level
-       while the hero title shows; PersonaSelector waits ~2.4s before fading in. */
-    if (!sessionStorage.getItem('nier-persona') && !reduced) {
+    /* Intro cinematográfica — sólo la primera visita. La cámara arranca en un
+       plano alto de la avenida y baja hasta el nivel de calle mientras se ve
+       el título. Es la única puerta de entrada que le queda al sitio ahora que
+       no hay selector, así que se queda: sin ella el visitante cae de golpe en
+       una calle sin contexto. Al terminar, el control es del jugador, sin
+       pantalla intermedia.
+       La marca la escribe ESTA escena al terminar la intro; antes la escribía
+       PersonaSelector al elegir rol (`nier-persona`), y con el selector se fue
+       también el único lugar donde se guardaba. */
+    if (!sessionStorage.getItem('nier-visited') && !reduced) {
       introActive = true;
       introT = 0;
       const heroEl = document.getElementById('ps-hero');
@@ -702,27 +689,26 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   }
 
   /* ────────────────── Street Geometry ──────────────────── */
-  /* Avenue length: 7 projects (the biggest role, risk) alternating sides at
-     10u spacing reach z=-70 (see buildRoleBillboards), so the street, its
-     dressing and the world bounds all had to grow past the old 5-board/-42
-     length to fit "todos los proyectos en la calle" without running out of
-     road. */
+  /* Largo de la avenida: los 10 carteles fijos alternando lados cada 10u
+     llegan a z=-100 (ver buildBillboards), así que la calle, su dressing y los
+     límites del mundo se estiraron hasta el obelisco en -114. La separación de
+     10u NO se toca: ver la nota en BOUND_Z_MIN. */
   function buildStreet(THREE) {
     /* Asphalt */
     const asphalt = new THREE.Mesh(
-      new THREE.PlaneGeometry(22, 100),
+      new THREE.PlaneGeometry(22, 130),
       new THREE.MeshBasicMaterial({ color: 0x10131a })
     );
     asphalt.rotation.x = -Math.PI / 2;
-    asphalt.position.set(0, 0, -34);
+    asphalt.position.set(0, 0, -49);
     scene.add(asphalt);
 
     /* Sidewalks */
     const swMat = new THREE.MeshBasicMaterial({ color: 0x161a22 });
     [-11, 11].forEach(sx => {
-      const sw = new THREE.Mesh(new THREE.PlaneGeometry(6, 100), swMat);
+      const sw = new THREE.Mesh(new THREE.PlaneGeometry(6, 130), swMat);
       sw.rotation.x = -Math.PI / 2;
-      sw.position.set(sx, 0.01, -34);
+      sw.position.set(sx, 0.01, -49);
       scene.add(sw);
     });
 
@@ -751,7 +737,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        y=0.015, above the pit's y=0.008, and was drawing right across it). */
     const dashMat = new THREE.MeshBasicMaterial({ color: 0x232a38 });
     const DASH_HALF_LEN = 2.25;
-    for (let dz = -4; dz > -82; dz -= 9) {
+    for (let dz = -4; dz > -112; dz -= 9) {
       const overlapsCrater = CRATER_ZS.some(cz =>
         Math.abs(dz - cz) < DASH_HALF_LEN + CRATER_HALF_W
       );
@@ -778,9 +764,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     carColliders.push({ x: -9, z: 1, r: 3.4 }, { x: 9, z: 1, r: 3.4 });
 
     /* Buildings — alternating left/right, 6-12 stories tall relative to the character */
-    const leftH  = [8, 11, 6, 9, 7, 10, 6, 9].map(n => n * CHAR_HEIGHT);
-    const rightH = [9, 7, 12, 8, 10, 7, 11, 8].map(n => n * CHAR_HEIGHT);
-    const bZs    = [-6, -15, -24, -33, -42, -51, -60, -69];
+    const leftH  = [8, 11, 6, 9, 7, 10, 6, 9, 11, 7, 9, 6].map(n => n * CHAR_HEIGHT);
+    const rightH = [9, 7, 12, 8, 10, 7, 11, 8, 6, 10, 7, 12].map(n => n * CHAR_HEIGHT);
+    const bZs    = [-6, -15, -24, -33, -42, -51, -60, -69, -78, -87, -96, -105];
     bZs.forEach((bz, i) => {
       addBuilding(THREE, -14, bz, leftH[i]);
       addBuilding(THREE,  14, bz, rightH[i]);
@@ -788,7 +774,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
 
     /* A handful of parked cars, one at a time (not stacked — asked
        explicitly), sitting on the sidewalk-side empty slot: boards alternate
-       sides at bx=±6.5 per walk-order index k (see buildRoleBillboards,
+       sides at bx=±6.5 per walk-order index k (see buildBillboards,
        side = k%2===0 ? -1 : 1), so at any given k only one side has a board
        — these sit on the OTHER side at a few of those k positions. */
     [1, 3, 5].forEach((k, i) => {
@@ -857,6 +843,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       { text: 'PL-77',     x:  10.6, y: 13.4, z: -33, c: '#4d8f75' },
       { text: '▸ NODE',    x: -10.6, y: 10.6, z: -42, c: '#3d7a64' },
       { text: '::SYS',     x:  10.6, y: 8.4,  z: -24, c: '#4d8f75' },
+      /* Los seis originales se agotaban en z=-42. Con la avenida en 100u de
+         largo, la mitad de atrás quedaba desnuda. */
+      { text: 'UNIT-77',   x: -10.6, y: 12.1, z: -60, c: '#4d8f75' },
+      { text: '◆ ARCHIVE', x:  10.6, y: 9.2,  z: -78, c: '#3d7a64' },
+      { text: 'PL·DEV',    x: -10.6, y: 8.9,  z: -96, c: '#4d8f75' },
     ];
     SIGNS.forEach(s => {
       const cv = document.createElement('canvas');
@@ -900,7 +891,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       new THREE.PlaneGeometry(95, 18),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCv), transparent: true, depthWrite: false })
     );
-    skyline.position.set(0, 8.5, -96);
+    skyline.position.set(0, 8.5, -126);
     scene.add(skyline);
 
     /* Stars — static points high above, subtle */
@@ -911,7 +902,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       sSeed = (sSeed * 1103515245 + 12345) & 0x7fffffff;
       starPos[i*3]   = ((sSeed % 1000) / 1000 - 0.5) * 90;
       starPos[i*3+1] = 15 + ((sSeed >> 10) % 1000) / 1000 * 20;
-      starPos[i*3+2] = -12 - ((sSeed >> 20) % 1000) / 1000 * 92;
+      starPos[i*3+2] = -12 - ((sSeed >> 20) % 1000) / 1000 * 122;
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
@@ -924,9 +915,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        ~6.4m base tapering to ~4.2m near the shaft top, ~3m pyramidal cap.
        CylinderGeometry(r, r, h, 4) inscribes a square whose flat-face width
        is r·√2 (with the 45° yaw below turning the diamond into flat faces
-       toward the avenue), hence the /Math.SQRT2 below. Placed past where any
-       role's boards reach (deepest board z is -40, walk clamp is -46) and in
-       front of the skyline backdrop at z=-58. Purely decorative, no hitbox.
+       toward the avenue), hence the /Math.SQRT2 below. Placed past where the
+       boards reach (deepest board z=-100) and in front of the skyline backdrop
+       at z=-126. Purely decorative, no hitbox.
        Pale cool gray (never pure white), MeshBasic like the rest of this
        ambience-only city dressing (no real lights besides the character's). */
     const obX = OBELISK_X, obZ = OBELISK_Z;
@@ -1154,9 +1145,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     ambientPump = runLive(ambient, ctx);
     ambient.start();
     paintAudioBtn();
-    /* Al recargar, `nier:zone` se re-despacha solo (sessionStorage) y ahí NO
-       hay gesto: el contexto queda 'suspended' y no sale sonido. En vez de
-       darlo por perdido se espera al primer toque real del visitante. */
+    /* startAmbient() corre en init(), donde NO hay gesto del usuario: el
+       contexto queda 'suspended' y no sale sonido. En vez de darlo por perdido
+       se espera al primer toque real del visitante. Este camino existía para
+       las recargas; al irse el selector —cuyo click era el gesto que el
+       navegador exige— pasó a ser el camino normal. */
     if (ctx.state === 'suspended') {
       const wake = () => {
         ctx.resume();
@@ -1183,43 +1176,31 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   paintAudioBtn();
 
 
-  /* ────────────────── Dynamic billboards — AVENUE ───────── */
-  /* DEFINITIVE ARCHITECTURE: billboards are built ON role selection and
-     destroyed on role change — N projects → N billboards, nothing else.
-     AVENUE LAYOUT: boards spread along the street every ~10u alternating
-     sides, angled toward the walking camera. Flagship (projIdx 0) is the
-     LAST board — the finale of the walk. Boards start dark (dimmed color +
-     dim edges) and power on via proximity in tick(). */
+  /* ────────────────── Billboards — AVENUE ──────────────── */
+  /* Un cartel por proyecto de `boards`, construidos una vez en init(). Ya no
+     dependen de que se elija nada: la calle está poblada desde el primer frame.
+     AVENUE LAYOUT: se reparten a lo largo de la calle cada 10u alternando
+     lados, orientados hacia la cámara que camina. El flagship es el ÚLTIMO
+     cartel — el cierre del paseo — y es más grande. Arrancan apagados (color
+     atenuado + bordes apagados) y se encienden por proximidad en tick(). */
 
-  function disposeRoleBillboards() {
-    if (roleBillGroup) {
-      scene.remove(roleBillGroup);
-      roleBillGroup.traverse(o => {
-        if (o.geometry) o.geometry.dispose();
-        if (o.material) {
-          if (o.material.map) o.material.map.dispose();
-          o.material.dispose();
-        }
-      });
-      roleBillGroup = null;
-    }
-    roleBillRefs = [];
-    zoneMeshes = [];
-  }
-
-  function buildRoleBillboards(THREE, role) {
-    disposeRoleBillboards();
-    const projects = zoneProjects[role] ?? [];
+  /* No hay dispose: los carteles se construyen una vez y viven lo que vive la
+     escena. La única razón por la que existía disposeRoleBillboards era el
+     cambio de rol; sin roles, mantener viva una función que nadie llama cuesta
+     más que volver a escribirla el día que haga falta. */
+  function buildBillboards(THREE) {
+    const projects = boards;
     if (!projects.length) return;
 
-    roleBillGroup = new THREE.Group();
+    billGroup = new THREE.Group();
 
-    /* Walk order: non-flagship projects first, flagship (projIdx 0) closes */
-    const order = projects.map((_, i) => i).slice(1).concat([0]);
-
-    order.forEach((projIdx, k) => {
-      const proj   = projects[projIdx];
-      const isHero = projIdx === 0;
+    /* `boards` YA viene en orden de caminata desde projects.ts (streetProjects)
+       y el flagship es el último. Se fue la convención vieja —índice 0 es el
+       flagship y se camina [1..N-1, 0]— que era un rodeo para que el dato
+       ordenado por documento sirviera de orden de paseo. */
+    projects.forEach((proj, k) => {
+      const projIdx = k;
+      const isHero = proj.featured;
       const side   = k % 2 === 0 ? -1 : 1;           /* alternating: left, right, left… — asked explicitly, one project per hand */
       const bx     = side * 6.5;
       const bz     = -10 - k * 10;
@@ -1238,7 +1219,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       const frame = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ color: 0x111418 }));
       frame.position.set(bx, boardY, bz);
       frame.rotation.y = rotY;
-      roleBillGroup.add(frame);
+      billGroup.add(frame);
 
       /* Frame edges — dim until the board powers on */
       const edgeLines = new THREE.LineSegments(
@@ -1247,12 +1228,12 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       );
       edgeLines.position.copy(frame.position);
       edgeLines.rotation.copy(frame.rotation);
-      roleBillGroup.add(edgeLines);
+      billGroup.add(edgeLines);
 
       /* Canvas texture — fresh canvas + texture per build (never mutated) */
       const bbCv = document.createElement('canvas');
       bbCv.width = cvW; bbCv.height = cvH;
-      drawBillboardCanvas(bbCv.getContext('2d'), cvW, cvH, proj, role, isHero);
+      drawBillboardCanvas(bbCv.getContext('2d'), cvW, cvH, proj, isHero);
       const tex = new THREE.CanvasTexture(bbCv);
 
       /* Board starts DARK (color multiplier) — proximity power-on brightens it */
@@ -1263,7 +1244,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       bill.position.set(bx, boardY, bz);
       bill.rotation.y = rotY;
       bill.translateZ(0.06);   /* offset along facing direction so it sits on the frame */
-      roleBillGroup.add(bill);
+      billGroup.add(bill);
 
       /* TWO circles, asked explicitly, not one: a small visible marker under
          the board (this one) that stays small, and a big INVISIBLE sensor
@@ -1291,7 +1272,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
         tick.rotation.x = -Math.PI / 2;
         tick.rotation.z = -ang;
         tick.position.set(bx + Math.sin(ang) * SPINNER_R, 0.025, bz + Math.cos(ang) * SPINNER_R);
-        roleBillGroup.add(tick);
+        billGroup.add(tick);
         spinnerTicks.push(tick);
       }
 
@@ -1303,26 +1284,26 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       hit.position.copy(bill.position);
       hit.rotation.y = rotY;
       hit.translateZ(0.02);
-      hit.userData = { zone: role, projIdx };
-      roleBillGroup.add(hit);
-      zoneMeshes.push({ mesh: hit, key: role, projIdx });
+      hit.userData = { projIdx };
+      billGroup.add(hit);
+      boardMeshes.push({ mesh: hit, projIdx });
 
-      roleBillRefs.push({ mesh: bill, frame, edges: edgeLines, hit, spinnerTicks, fillT: 0, opened: false, dismissed: false, inBigCircle: false, borderColor, isHero, projIdx, bx, bz, lit: false });
+      billRefs.push({ mesh: bill, frame, edges: edgeLines, hit, spinnerTicks, fillT: 0, opened: false, dismissed: false, inBigCircle: false, borderColor, isHero, projIdx, bx, bz, lit: false });
     });
 
     /* Warm amber glow light at the flagship — the finale (G7) */
-    const last = roleBillRefs[roleBillRefs.length - 1];
+    const last = billRefs[billRefs.length - 1];
     const light = new THREE.PointLight(FLAG_BRIGHT, 3.0, 18);
     light.position.set(last.bx, 5.0, last.bz);
-    light.userData = { zone: role };
-    roleBillGroup.add(light);
+    light.userData = { flagship: true };
+    billGroup.add(light);
 
-    scene.add(roleBillGroup);
+    scene.add(billGroup);
   }
 
   /* Draws a billboard canvas texture for one project.
      The flagship (isHero) is marked in amber — Deus Ex treatment (G7). */
-  function drawBillboardCanvas(ctx, W, H, proj, key, isHero) {
+  function drawBillboardCanvas(ctx, W, H, proj, isHero) {
     const MINT  = '#5ee7aa';
     const TEAL  = '#3d7a64';
     const AMBER = '#c9a94f';
@@ -1346,11 +1327,11 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     const MS = isHero ? 13 : 11;   /* meta font size  */
     const PAD = 18;
 
-    /* Header: role label */
+    /* Cabecera: la mitad del perfil que este proyecto evidencia */
     ctx.fillStyle = DIM;
     ctx.font = `${MS}px "Share Tech Mono", monospace`;
     ctx.textAlign = 'left';
-    ctx.fillText('SYSTEM::PROJECT · ' + (zoneLabels[key] ?? key).toUpperCase(), PAD, isHero ? 30 : 26);
+    ctx.fillText('SYSTEM::PROJECT · ' + (trackLabels[proj.track] ?? ''), PAD, isHero ? 30 : 26);
 
     /* Status badge (top-right) */
     const STATUS_COLORS = { FLAGSHIP: AMBER, ACTIVE: MINT, DEPLOYED: '#8fa882', BUILT: DIM, TOOLING: DIM };
@@ -1510,17 +1491,17 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       -((e.clientY - rect.top)  / rect.height) * 2 + 1
     );
     raycaster.r.setFromCamera(mouse, camera);
-    const hits = raycaster.r.intersectObjects(zoneMeshes.map(z => z.mesh));
+    const hits = raycaster.r.intersectObjects(boardMeshes.map(z => z.mesh));
     if (!hits.length) return null;
-    const found = zoneMeshes.find(z => z.mesh === hits[0].object);
-    return found ? { key: found.key, projIdx: found.projIdx } : null;
+    const found = boardMeshes.find(z => z.mesh === hits[0].object);
+    return found ? { projIdx: found.projIdx } : null;
   }
 
   function onCanvasClick(THREE, e) {
     /* Billboard hit */
     const hit = getZoneHit(THREE, e);
     if (hit) {
-      showPanel(hit.key, hit.projIdx);
+      showPanel(hit.projIdx);
       return;
     }
     /* No hay click-to-move: el personaje se mueve SÓLO con WASD.
@@ -1532,7 +1513,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     document.getElementById('ps-canvas').style.cursor = hit ? 'pointer' : 'default';
     /* Hover glow — hovered billboard's frame edges flash bright (amber for the
        flagship, mint otherwise); others restore to their state color */
-    roleBillRefs.forEach(ref => {
+    billRefs.forEach(ref => {
       const hovered = hit && ref.projIdx === hit.projIdx;
       ref.edges.material.color.setHex(
         hovered ? (ref.isHero ? FLAG_BRIGHT : 0x5ee7aa)
@@ -1545,10 +1526,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   /* Dead-center (x=0), not offset toward the first board's side — boards
      alternate sides, and starting biased toward one side put the OTHER
      side's boards too far away (laterally) for the 8u activation circle to
-     ever reach, so half the boards never lit up. Shared by navigateTo (role
-     select) and respawnAtEntrance (falling into a crater while running). */
+     ever reach, so half the boards never lit up. Used by init() and by
+     respawnAtEntrance (falling into a crater while running). */
   function resetToEntrance() {
-    const first = roleBillRefs[0];
+    const first = billRefs[0];
     charX = 0;
     charZ = first ? first.bz + 10 : -8;   /* 2m further back than before, asked explicitly */
     targetX = charX; targetZ = charZ;
@@ -1606,18 +1587,14 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
      sidebar per SIDEBAR_ENABLED). Global styles for these JS-injected rows
      live in the <style is:global> block, anchored to #ps-projects-drawer
      (lesson 22: component-scoped styles never match runtime-created DOM). */
-  function populateProjectsDrawer(zone) {
+  function populateProjectsDrawer() {
     const list = document.getElementById('pd-list');
     if (!list) return;
     list.innerHTML = '';
-    const projects = zoneProjects[zone] ?? [];
-    /* Same order the boards actually sit in along the street (roleBillRefs
-       is built in WALK order — flagship/projIdx 0 goes last — not the raw
-       data-array order), asked explicitly. Must run after
-       buildRoleBillboards populates roleBillRefs (it does, see the
-       nier:zone handler above). */
-    roleBillRefs.forEach((ref) => {
-      const p = projects[ref.projIdx];
+    /* Mismo orden en el que los carteles están parados en la calle. Corre
+       después de buildBillboards, que es quien puebla billRefs (ver init). */
+    billRefs.forEach((ref) => {
+      const p = boards[ref.projIdx];
       if (!p) return;
       const row = document.createElement('button');
       row.type = 'button';
@@ -1634,7 +1611,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   }
 
   function panelSideFor(projIdx) {
-    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
+    const ref = billRefs.find(r => r.projIdx === projIdx);
     return (ref && ref.bx > 0) ? 'left' : 'right';
   }
 
@@ -1660,7 +1637,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   }
 
   function teleportToBoard(projIdx) {
-    const ref = roleBillRefs.find(r => r.projIdx === projIdx);
+    const ref = billRefs.find(r => r.projIdx === projIdx);
     if (!ref) return;
     charX = ref.bx;
     charZ = ref.bz;
@@ -1675,23 +1652,18 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     shakeT = SHAKE_DUR;
   }
 
-  function navigateTo(zone) {
-    activeZone = zone;
-    /* Teleport straight to the avenue entrance instead of auto-walking there —
-       the character must never move on its own, only via WASD (or selecting
-       a project, which is its own explicit teleport-on-select exception). */
-    resetToEntrance();
-    hidePanel();
-  }
-
+  /* navigateTo() se fue con el rol: existía para llevar al personaje a la
+     entrada de la avenida cuando se elegía un perfil. Ahora el personaje
+     arranca ahí y no hay a dónde llegar. resetToEntrance() sigue viva: la usa
+     el respawn al caer en un charco. */
 
   /* ────────────────── Minimap 2.0 (G4) ────────────────── */
-  /* World→map: x ∈ [-10,10] → px ∈ [15,125] · z ∈ [6,-90] → py ∈ [12,178].
+  /* World→map: x ∈ [-10,10] → px ∈ [15,125] · z ∈ [6,-120] → py ∈ [12,178].
      Heading arrow, click = fast-travel, pulse on next objective, corner-cut frame.
-     ponytail: z-range was still [6,-56] from before the avenue grew to fit
-     every project + the obelisk (BOUND_Z_MIN=-87) — anything past z=-56
-     computed a negative py and drew off the top edge of the canvas ("el
-     minimapa quedo cortado"). Extended to -90, past BOUND_Z_MIN. */
+     El rango de z tiene que pasar SIEMPRE a BOUND_Z_MIN: cualquier cosa más
+     allá computa un py negativo y se dibuja fuera del borde de arriba del
+     canvas ("el minimapa quedo cortado"). Ya pasó dos veces al crecer la
+     avenida — ahora BOUND_Z_MIN es -117, así que va a -120. */
   /* mz maps world z so that walking FORWARD (into the avenue, z decreasing)
      moves the marker UP the minimap (py decreasing) — the intuitive
      top-down-minimap convention. It was previously inverted: forward
@@ -1699,9 +1671,9 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   const MM = {
     W: 140, H: 190,
     mx: (x) => 15 + ((x + 10) / 20) * 110,
-    mz: (z) => 12 + ((z + 90) / 96) * 166,
+    mz: (z) => 12 + ((z + 120) / 126) * 166,
     invX: (px) => ((px - 15) / 110) * 20 - 10,
-    invZ: (py) => ((py - 12) / 166) * 96 - 90,
+    invZ: (py) => ((py - 12) / 166) * 126 - 120,
   };
 
   function drawMinimap() {
@@ -1721,16 +1693,15 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     ctx.fill();
     ctx.strokeStyle = '#2a3040';
     ctx.stroke();
-    /* street — ponytail: this stopped at z=-54 from before the avenue grew
-       to fit every project + the obelisk (BOUND_Z_MIN=-87); boards/obelisk
-       past that point drew floating past where the visible street ended
-       ("el minimapa quedo cortado", still broken after the mz() range fix
-       alone). Extended to -88, just past the world's own Z bound. */
+    /* La calle dibujada tiene que llegar hasta el bound del mundo, o los
+       carteles y el obelisco que están más allá quedan flotando después de
+       donde la calle visible se termina ("el minimapa quedo cortado", que
+       seguía roto después de arreglar sólo el rango de mz()). */
     ctx.strokeStyle = '#1c2030';
     ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.moveTo(mx(0), mz(6));
-    ctx.lineTo(mx(0), mz(-88));
+    ctx.lineTo(mx(0), mz(-118));
     ctx.stroke();
     ctx.lineWidth = 1;
     /* header */
@@ -1739,7 +1710,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     ctx.textAlign = 'left';
     ctx.fillText('MAP::SECTOR-7', 6, 10);
     /* next objective pulse — expanding square around the first unlit board */
-    const nxt = roleBillRefs.find(r => !r.lit);
+    const nxt = billRefs.find(r => !r.lit);
     if (nxt) {
       const pr = 5 + ((t * 14) % 8);
       ctx.strokeStyle = '#5ee7aa';
@@ -1748,7 +1719,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       ctx.globalAlpha = 1;
     }
     /* billboard markers — lit solid (amber for flagship), unlit hollow */
-    roleBillRefs.forEach(ref => {
+    billRefs.forEach(ref => {
       const px = mx(ref.bx), py = mz(ref.bz);
       if (ref.lit) {
         ctx.fillStyle = ref.isHero ? '#c9a94f' : '#5ee7aa';
@@ -1818,20 +1789,20 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
   /* DOSSIER panel — one project as a structured record: counter, big title,
      MISSION section, highlighted metric box, large CTAs, and the remaining
      projects as numbered navigable rows (click → walk to that board). */
-  function showPanel(zone, projIdx = 0) {
+  function showPanel(projIdx = 0) {
     /* ponytail: sidebar disabled for now, asked explicitly ("que nada abra
        el sidebar por ahora") — still teleport (selecting a project should
        still move the character), just skip populating/opening the panel UI.
        Flip SIDEBAR_ENABLED back to true to restore it, nothing else to undo. */
     if (!SIDEBAR_ENABLED) { teleportToBoard(projIdx); return; }
-    const projects = zoneProjects[zone];
-    document.getElementById('panel-all').href = allUrl[zone];
+    const projects = boards;
+    document.getElementById('panel-all').href = allUrl;
 
     const cards = document.getElementById('panel-cards');
     cards.innerHTML = '';
 
     if (!projects || !projects.length) {
-      scrambleIn(document.getElementById('panel-title'), zoneLabels[zone]);
+      scrambleIn(document.getElementById('panel-title'), 'RECORDS');
       cards.innerHTML = '<p class="panel-empty sys-text">[ RECORDS INCOMING ]</p>';
       setPanelSide(panelSideFor(projIdx) === 'left');
       document.getElementById('ps-panel').classList.add('open');
@@ -1883,7 +1854,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        the panel from outside the small-circle tick loop (e.g. the PROJECTS
        button below) doesn't leave that ring stuck "already opened" — it
        needs to be able to re-fire if the player walks back into it. */
-    const openRef = roleBillRefs.find(r => r.opened);
+    const openRef = billRefs.find(r => r.opened);
     if (openRef) openRef.opened = false;
   }
 
@@ -2117,8 +2088,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        baseline (still not glowing) so it reads as "in range, come stand
        here". Does NOT touch the board's screen — that only turns on in the
        small circle below, synced with the spinner. */
-    if (roleBillRefs.length && frameCount % 4 === 0) {
-      roleBillRefs.forEach(ref => {
+    if (billRefs.length && frameCount % 4 === 0) {
+      billRefs.forEach(ref => {
         const dx = ref.bx - charX, dz = ref.bz - charZ;
         ref.inBigCircle = dx * dx + dz * dz < PROXIMITY_R2;
       });
@@ -2131,8 +2102,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
        Stepping out reverses both. Once fillT reaches 1 the (simplified)
        project panel opens — `opened` is a one-shot latch so it doesn't
        refire every frame you stay standing there. */
-    if (roleBillRefs.length) {
-      roleBillRefs.forEach(ref => {
+    if (billRefs.length) {
+      billRefs.forEach(ref => {
         const dx = ref.bx - charX, dz = ref.bz - charZ;
         const inSmallCircle = dx * dx + dz * dz < SPINNER_R * SPINNER_R;
 
@@ -2168,7 +2139,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
            círculo lo rearma. */
         if (ref.fillT >= 1 && !ref.opened && !ref.dismissed) {
           ref.opened = true;
-          showPanel(activeRole, ref.projIdx);
+          showPanel(ref.projIdx);
         } else if (!inSmallCircle && (ref.opened || ref.dismissed)) {
           /* Closes immediately on stepping out — asked explicitly — not
              waiting for fillT to finish decaying back down. */
@@ -2183,7 +2154,7 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
     /* Boards face the camera every frame (yaw only, stay upright) instead of
        a fixed angle. Once the character has walked past a board, hide it
        instead of leaving it re-orienting toward the camera indefinitely. */
-    roleBillRefs.forEach(ref => {
+    billRefs.forEach(ref => {
       const passed = charZ < ref.bz - 1.5;
       ref.mesh.visible = !passed;
       ref.frame.visible = !passed;
@@ -2222,7 +2193,10 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
       camera.position.set(nx * e, 17 + (ny - 17) * e, 34 + (nz - 34) * e);
       camera.lookAt(camX * e, 1.8 + 1.2 * (1 - e), camTgtZ - 6);
       if (introT > 0.72) document.getElementById('ps-hero').classList.remove('show');
-      if (introT >= 1) introActive = false;
+      if (introT >= 1) {
+        introActive = false;
+        try { sessionStorage.setItem('nier-visited', '1'); } catch (_) { /* modo privado */ }
+      }
     } else {
       /* La camara sigue al personaje en X a fondo, asi queda SIEMPRE centrado.
          Antes seguia solo el 30% (y el lookAt el 20%), lo que dejaba ver mas
@@ -2244,11 +2218,8 @@ const { zoneProjects, zoneLabels, allUrl, allLabel, dossier, contactUrl } = JSON
 
     /* Zone lights pulse */
     scene.traverse(obj => {
-      if (obj.isLight && obj.userData.zone) {
-        const isActive = obj.userData.zone === activeZone;
-        obj.intensity = isActive
-          ? 5.0 + Math.sin(t * 2.5) * 0.8
-          : 2.0 + Math.sin(t * 1.8 + obj.userData.zone.length) * 0.4;
+      if (obj.isLight && obj.userData.flagship) {
+        obj.intensity = 5.0 + Math.sin(t * 2.5) * 0.8;
       }
     });
 

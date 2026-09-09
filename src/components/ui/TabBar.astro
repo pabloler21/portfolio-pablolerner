@@ -9,12 +9,12 @@ const { active = 'terminal', lang = 'en' } = Astro.props;
 /* Sólo rutas que existen. PROFILE/SKILLS/ABOUT/CONTACT estaban en 404 y
    PROFILE y ABOUT apuntaban a la MISMA url muerta; vuelven cuando las
    páginas existan (Fase 4), no como items deshabilitados.
-   Los nombres de rol quedan en inglés en ambos locales: son títulos de
-   puesto, y la regla de i18n del proyecto deja los técnicos en inglés. */
+   Las dos pestañas de rol se fundieron en una sola: el perfil es uno, así que
+   ofrecer DATA ANALYST y AI ENGINEER como destinos distintos volvía a plantear
+   la elección que el selector dejó de pedir. */
 const tabs = [
   { id: 'terminal', label: lang === 'en' ? 'STREET' : 'CALLE', href: `/${lang}/` },
-  { id: 'risk',     label: 'DATA ANALYST', href: `/${lang}/risk/` },
-  { id: 'ai',       label: 'AI ENGINEER',  href: `/${lang}/ai/` },
+  { id: 'projects', label: lang === 'en' ? 'PROJECTS' : 'PROYECTOS', href: `/${lang}/projects/` },
 ];
 ---
 

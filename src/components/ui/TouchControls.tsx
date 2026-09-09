@@ -30,11 +30,11 @@ export default function TouchControls({ lang = 'en' }: { lang?: 'en' | 'es' }) {
      sobre una lista de links no controlaria nada. */
   const [isTouch, setIsTouch] = useState(false);
   const [sceneUp, setSceneUp] = useState(false);
-  /* Mientras el selector de perfil esta abierto no hay nada que manejar: es un
-     overlay a pantalla completa con z-index 9000, o sea que los controles
-     quedaban DEBAJO y el dedo le pegaba al overlay. Aparecen recien cuando se
-     eligio un rol, que es cuando el personaje empieza a poder caminar. */
-  const [personaChosen, setPersonaChosen] = useState(false);
+  /* Antes habia un tercer pestillo (`personaChosen`): los controles esperaban a
+     que se eligiera un rol porque el overlay del selector tenia z-index 9000 y
+     el dedo le pegaba al overlay, no al joystick. Ese overlay ya no existe —la
+     calle arranca sola— asi que el unico requisito que queda es que la escena
+     este viva. */
   const held = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -50,16 +50,10 @@ export default function TouchControls({ lang = 'en' }: { lang?: 'en' | 'es' }) {
     /* La escena puede haber arrancado antes de que hidrate esta isla. */
     if (document.documentElement.dataset.scene === 'ready') setSceneUp(true);
 
-    const chose = () => setPersonaChosen(true);
-    window.addEventListener('nier:zone', chose);
-    /* Y puede que ya se hubiera elegido en una recarga. */
-    if (sessionStorage.getItem('nier-persona')) setPersonaChosen(true);
-
     return () => {
       mq.removeEventListener('change', sync);
       window.removeEventListener('nier:scene-ready', up);
       window.removeEventListener('nier:scene-fallback', down);
-      window.removeEventListener('nier:zone', chose);
     };
   }, []);
 
@@ -110,7 +104,7 @@ export default function TouchControls({ lang = 'en' }: { lang?: 'en' | 'es' }) {
     sendKey('Space', false);
   }, []);
 
-  if (!isTouch || !sceneUp || !personaChosen) return null;
+  if (!isTouch || !sceneUp) return null;
 
   return (
     <div className="tc-root" aria-hidden="true">
