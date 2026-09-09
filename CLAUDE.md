@@ -505,7 +505,7 @@ justificaba.
 
 **Key systems:**
 - WASD + arrow keys (no `prefers-reduced-motion` guard on input, only on visual effects)
-- Click billboard → `showPanel(hit.projIdx)`
+- **Click billboard → `teleportToBoard(hit.projIdx)`, NUNCA `showPanel`.** El panel lo abre el anillo al llenarse (`SPINNER_FILL_TIME` 1.1s), y ese es el único camino que lo abre. `showPanel()` además teletransporta, así que llamarla desde el click dejaba al jugador parado adentro del círculo con `ref.opened` en false: el tick la volvía a llamar al llenarse el anillo y el dossier se dibujaba **dos veces**, con el título haciendo scramble encima del anterior. Las filas del cajón `[ PROJECTS ]` ya hacían lo correcto. Cubierto por `verify:ui` **C16**
 - `scrambleIn(el, text)` — cancel-safe scramble-settle text reveal (replaces old typeOut; stores interval in `el._scrambleTimer`)
 - **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range **[6,−120]** — tiene que pasar SIEMPRE a `BOUND_Z_MIN`, o los carteles de más allá computan un `py` negativo y se dibujan fuera del borde de arriba del canvas; ya pasó dos veces al crecer la avenida). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18

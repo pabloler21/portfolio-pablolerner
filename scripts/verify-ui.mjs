@@ -304,6 +304,45 @@ const pointerMove = await grepSrc(/intersectObject\s*\(\s*groundMesh|onMinimapCl
 record('C5', 'Sin movimiento por puntero', pointerMove.length === 0,
   pointerMove.length ? pointerMove.join(', ') : 'sin raycast a ground ni click en minimapa');
 
+/* C16 — clickear un cartel no abre el dossier: lo abre el anillo al llenarse.
+   `showPanel()` ademas TELETRANSPORTA, asi que llamarla desde el click dejaba
+   al jugador parado adentro del circulo con `ref.opened` en false; 1.1s
+   despues el tick la volvia a llamar y el dossier se dibujaba dos veces, con
+   el titulo haciendo scramble encima del anterior.
+   Es un check de POLITICA leido del fuente, no de comportamiento — mismo
+   criterio que C5, que tambien grepea que puede y que no puede hacer un click.
+   El comportamiento del anillo lo cubre verify:mobile M15, que recorre el
+   camino real. Montar un click sobre un cartel 3D en headless obligaria a
+   proyectar el hitbox a coordenadas de pantalla, y el test terminaria midiendo
+   la proyeccion mas que la regla. Se acota al CUERPO de onCanvasClick (grepSrc
+   es por linea y no sabe de funciones). */
+{
+  const src = await readFile(path.join(ROOT, 'src/components/ui/PortfolioScene.astro'), 'utf8');
+  const i = src.indexOf('function onCanvasClick(');
+  let cuerpo = null;
+  if (i !== -1) {
+    let depth = 0, j = src.indexOf('{', i);
+    for (let k = j; k < src.length; k++) {
+      if (src[k] === '{') depth++;
+      else if (src[k] === '}' && --depth === 0) { cuerpo = src.slice(j, k + 1); break; }
+    }
+  }
+  /* Se sacan los comentarios antes de mirar: el cuerpo EXPLICA por que ya no
+     llama a showPanel, y esa explicacion no puede hacer fallar el check. Hay
+     que borrar el BLOQUE entero /* ... *\/, no filtrar por linea: en este repo
+     las lineas de continuacion de un comentario arrancan con texto pelado, sin
+     asterisco, asi que un filtro por linea las deja pasar (este check fallo
+     asi la primera vez, contra su propio comentario). */
+  const codigo = (cuerpo ?? '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+  const llama = /\bshowPanel\s*\(/.test(codigo);
+  const teleporta = /\bteleportToBoard\s*\(/.test(codigo);
+  record('C16', 'El click en el cartel espera al anillo', cuerpo !== null && !llama && teleporta,
+    cuerpo === null ? 'no encontre onCanvasClick'
+      : `llama a showPanel=${llama} · teletransporta=${teleporta}`);
+}
+
 const plain = await grepSrc(/data-plain|iron-dust-plain|plain-toggle/);
 record('C9', 'Sin restos de plain mode', plain.length === 0,
   plain.length ? `${plain.length} refs: ${plain.slice(0, 4).join(', ')}…` : 'limpio');

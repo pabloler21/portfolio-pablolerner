@@ -516,11 +516,10 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     document.getElementById('panel-close').addEventListener('click', (e) => {
       /* Marcar como cerrado A MANO el cartel en cuyo círculo está parado el
          jugador —ahí lo deja el teleport al seleccionar un proyecto—, o el
-         tick lo reabre enseguida. Se usa la MISMA condición que el tick
-         (`SPINNER_R`) y no `ref.opened`: si el panel se abrió clickeando el
-         cartel, `opened` todavía puede estar en false mientras el spinner
-         llena, y la ✕ tocada en ese hueco no marcaría nada. Se rearma solo
-         al salir del círculo. */
+         tick lo reabre enseguida. Se usa la condición geométrica (`SPINNER_R`)
+         y no `ref.opened` porque hay que marcar el cartel por DÓNDE ESTÁ
+         PARADO el jugador, que es lo que el tick va a evaluar en el frame
+         siguiente. Se rearma solo al salir del círculo. */
       billRefs.forEach(r => {
         const dx = r.bx - charX, dz = r.bz - charZ;
         if (dx * dx + dz * dz < SPINNER_R * SPINNER_R) r.dismissed = true;
@@ -1509,10 +1508,19 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
   }
 
   function onCanvasClick(THREE, e) {
-    /* Billboard hit */
+    /* Clickear un cartel TELETRANSPORTA a su anillo y nada más. NO abre el
+       panel: eso lo hace el anillo al llenarse, y es el único camino que lo
+       hace.
+       Antes esto llamaba a showPanel(), que abre el panel Y teletransporta. El
+       teleport te deja parado adentro del círculo, así que el fillT arrancaba
+       igual y 1.1s después el tick volvía a llamar a showPanel — porque el
+       click nunca marcaba `ref.opened`. Resultado: el dossier se dibujaba dos
+       veces, con el título haciendo scramble de nuevo encima del anterior.
+       Las filas del cajón [ PROJECTS ] ya hacían esto mismo; el click sobre el
+       cartel era el único de los dos caminos que se adelantaba. */
     const hit = getZoneHit(THREE, e);
     if (hit) {
-      showPanel(hit.projIdx);
+      teleportToBoard(hit.projIdx);
       return;
     }
     /* No hay click-to-move: el personaje se mueve SÓLO con WASD.
