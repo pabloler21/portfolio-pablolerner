@@ -268,6 +268,33 @@ try {
   record('C7', 'Lluvia no solapa .os-shell @1920', rain.overlaps.length === 0,
     rain.overlaps.length ? JSON.stringify(rain.overlaps) : 'sin solapamiento');
 
+  /* C15 — la presentacion se ve TAMBIEN con reduced-motion. Windows trae
+     prefers-reduced-motion encendido de fabrica (leccion 8), asi que la
+     mayoria de los visitantes de escritorio no veia ninguna presentacion: la
+     placa "Pablo Lerner / ACCESS TERMINAL" y el barrido de camara colgaban de
+     la MISMA condicion. Ahora la placa es de todos y el ajuste solo suprime el
+     barrido, que es la parte que marea.
+     Se miden los dos extremos, porque una placa que aparece y se queda para
+     siempre tapa la escena: que se muestre, y que despues se vaya sola. */
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+    const pg = await ctx.newPage();
+    await pg.goto(BASE + GAME_PAGE, { waitUntil: 'load' });
+    await pg.waitForFunction(`document.documentElement.dataset.scene === 'ready'`, null, { timeout: 120000 });
+    const visible = await pg.waitForFunction(
+      `document.getElementById('ps-hero')?.classList.contains('show')`, null, { timeout: 15000 },
+    ).then(() => true).catch(() => false);
+    /* Headless con SwiftShader corre el RAF lentisimo (leccion 3), asi que la
+       intro tarda mucho mas que sus 2.2s de reloj: se espera con holgura. */
+    const seVa = visible && await pg.waitForFunction(
+      `!document.getElementById('ps-hero')?.classList.contains('show')`, null, { timeout: 90000 },
+    ).then(() => true).catch(() => false);
+    record('C15', 'La presentacion se ve con reduced-motion', visible && seVa,
+      `placa visible=${visible} · se oculta sola=${seVa}`);
+    await pg.close();
+    await ctx.close();
+  }
+
 } finally {
   await browser.close();
   srv.close();

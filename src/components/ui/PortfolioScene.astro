@@ -270,8 +270,19 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
   let sceneW = 1; let sceneH = 1;
   let minimapCtx = null;     // 2D context of the HUD minimap canvas
   let frameCount = 0;
-  let introActive = false;   // cinematic camera pan on first visit
+  /* DOS hechos, no uno. `introActive` es que la PLACA DE TÍTULO está en
+     pantalla; `introCam` es que además corre el barrido de cámara. Estaban
+     pegados en una sola condición detrás de `!reduced`, y como Windows trae
+     prefers-reduced-motion ENCENDIDO de fábrica (lección 8), la mayoría de los
+     visitantes de escritorio no veían ninguna presentación: ni cámara ni
+     título. La presentación es de todos; el barrido —3.7s de cámara cayendo—
+     es lo único que el ajuste tiene que suprimir. */
+  let introActive = false;   // la placa "Pablo Lerner / ACCESS TERMINAL" está visible
+  let introCam = false;      // además baja la cámara (sólo sin reduced-motion)
   let introT = 0;
+  /* Segundos reales. Sin cámara que esperar, aguantar 3.7s un título inmóvil
+     se lee como que algo se colgó. */
+  const INTRO_DUR = reduced ? 2.2 : 3.7;
   let particles = null; let particleVelocities = null;
   let heroEl = null;
   /* Gameplay FX pool — footstep dust, jump takeoff/landing puffs, crater
@@ -579,8 +590,9 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
        La marca la escribe ESTA escena al terminar la intro; antes la escribía
        PersonaSelector al elegir rol (`nier-persona`), y con el selector se fue
        también el único lugar donde se guardaba. */
-    if (!sessionStorage.getItem('nier-visited') && !reduced) {
+    if (!sessionStorage.getItem('nier-visited')) {
       introActive = true;
+      introCam = !reduced;
       introT = 0;
       const heroEl = document.getElementById('ps-hero');
       heroEl.classList.add('show');
@@ -2184,18 +2196,26 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
        ±6.5— el personaje va exactamente en el centro. */
     const CAM_X_LIMIT = 4.5;
     const camX = Math.max(-CAM_X_LIMIT, Math.min(CAM_X_LIMIT, camTgtX));
+    /* El reloj de la intro avanza en SEGUNDOS REALES, no por frame. Antes era
+       `introT += 0.0045`, o sea 223 FRAMES: a 60Hz daba los 3.7s de diseño,
+       pero a 144Hz duraba 1.55s y a 165Hz, 1.35s. Es la misma familia que la
+       lección 34 (el alcance del salto atado a los Hz del monitor). `delta`
+       viene del Clock unas líneas arriba, ya topeado a 0.05. */
     if (introActive) {
+      introT = Math.min(1, introT + delta / INTRO_DUR);
+      if (introT > 0.72) document.getElementById('ps-hero').classList.remove('show');
+      if (introT >= 1) {
+        introActive = false;
+        introCam = false;
+        try { sessionStorage.setItem('nier-visited', '1'); } catch (_) { /* modo privado */ }
+      }
+    }
+    if (introActive && introCam) {
       /* Cinematic intro: high wide shot of the avenue easing down to street level */
-      introT = Math.min(1, introT + 0.0045);
       const e = 1 - Math.pow(1 - introT, 3);   /* easeOutCubic */
       const nx = camX, ny = 4.0, nz = camTgtZ + 9;
       camera.position.set(nx * e, 17 + (ny - 17) * e, 34 + (nz - 34) * e);
       camera.lookAt(camX * e, 1.8 + 1.2 * (1 - e), camTgtZ - 6);
-      if (introT > 0.72) document.getElementById('ps-hero').classList.remove('show');
-      if (introT >= 1) {
-        introActive = false;
-        try { sessionStorage.setItem('nier-visited', '1'); } catch (_) { /* modo privado */ }
-      }
     } else {
       /* La camara sigue al personaje en X a fondo, asi queda SIEMPRE centrado.
          Antes seguia solo el 30% (y el lookAt el 20%), lo que dejaba ver mas

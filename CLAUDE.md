@@ -510,7 +510,7 @@ justificaba.
 - **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range **[6,−120]** — tiene que pasar SIEMPRE a `BOUND_Z_MIN`, o los carteles de más allá computan un `py` negativo y se dibujan fuera del borde de arriba del canvas; ya pasó dos veces al crecer la avenida). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18
 - **Dossier panel 2.0**: `showPanel(projIdx)` renders ONE project as a record — `#panel-count` REC nn/NN, `#dossier-status` badge (amber `.d-badge-flag` when featured), big `#panel-title` (scrambleIn), `.d-progress` DISCOVERED blocks (one per board, amber for flagship), MISSION section, `.d-metric` box (`.d-metric-flag` amber variant), `.d-chips` stack chips, `.d-cta-primary/.d-cta-ghost`, `.d-nav` PREV/NEXT (wraps, walks to board), `.d-row` numbered rows for other projects (click → `showPanel` + `walkToBoard`)
-- **Cinematic intro** (first visit, skipped on reduced-motion): `introActive/introT` blend camera from (0,17,34) down to street cam over ~3.7s (easeOutCubic in tick); `#ps-hero` overlay fades at introT>0.72. **Se queda a propósito**: es la única puerta de entrada que le queda al sitio ahora que no hay selector, y sin ella el visitante cae de golpe en una calle sin contexto. La marca la escribe la escena (`sessionStorage['nier-visited']`) al terminar la intro — antes la escribía PersonaSelector al elegir rol
+- **Cinematic intro** (primera visita): **son DOS hechos, no uno.** `introActive` es que la placa "Pablo Lerner / ACCESS TERMINAL" está en pantalla, y va **siempre**; `introCam` es que además baja la cámara de (0,17,34) al nivel de calle (easeOutCubic en el tick), y **sólo corre sin reduced-motion**. Estaban pegados detrás de un `!reduced`, y como Windows trae el ajuste encendido de fábrica (lección 8), la mayoría de los visitantes de escritorio no veía ninguna presentación. El punto final del barrido es idéntico al arranque de la cámara normal (`camX, 4.0, camTgtZ+9`), así que el empalme no salta. `INTRO_DUR` es `reduced ? 2.2 : 3.7` **segundos** — `introT` avanza con `delta`, no por frame (antes duraba 223 frames: 1.55s en un monitor de 144Hz); `#ps-hero` overlay fades at introT>0.72. **Se queda a propósito**: es la única puerta de entrada que le queda al sitio ahora que no hay selector, y sin ella el visitante cae de golpe en una calle sin contexto. La marca la escribe la escena (`sessionStorage['nier-visited']`) al terminar la intro — antes la escribía PersonaSelector al elegir rol
 - **3D palette = blue-void** (matches site tokens): clearColor/fog 0x0d0f14, buildings 0x12151c + edges 0x2a3040, windows 0x4d8f75, asphalt 0x10131a, sidewalks 0x161a22, dashes/poles 0x232a38, char body 0x181b22. NEVER reintroduce the old olive-green (0x1b1e1a etc.)
 - `returnToCenter()` only closes panel (does NOT teleport character)
 - Unit tag: HTML `<div id="unit-tag-hud">` projected via `Vector3.project(camera)` each tick
@@ -767,3 +767,13 @@ COMING SOON.
     el obelisco, las otras tres se habían retirado. El plan de trabajo salió con "hay que
     sacar el banner" adentro. Antes de planificar sobre lo que dice el archivo, `grep` de
     los símbolos que nombra.
+
+53. **Un `prefers-reduced-motion` de más apaga cosas que no son movimiento.** La intro
+    del sitio tenía la placa de título y el barrido de cámara colgando de la MISMA
+    condición `!reduced`, así que en Windows —donde el ajuste viene encendido de
+    fábrica, lección 8— no había ninguna presentación: ni cámara ni título. Se reportó
+    como "en el celular se ve y en la compu no", que es cierto pero describe el
+    síntoma en el eje equivocado: no era el dispositivo, era el ajuste, y el corte
+    pasa por cualquier visitante de escritorio. Antes de poner un `!reduced` delante de
+    un bloque, separar qué parte de ese bloque **se mueve**: el ajuste suprime
+    movimiento, no contenido.
