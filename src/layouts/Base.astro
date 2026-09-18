@@ -149,38 +149,74 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             <a class="os-nav-btn" href={`/${lang}/`}>[ PROJECTS ]</a>
           )}
           <a class="os-nav-btn" href={`/${lang}/contact/`}>[ CONTACT ]</a>
-          {/* Corte de la música ambiente. Vive acá y no en el HUD de la escena
-              por dos razones: el HUD es `pointer-events: none`, y en un
-              teléfono la esquina inferior ya es del joystick. Mismo precedente
-              que #ps-projects-tab — sólo existe donde hay escena, y es
-              PortfolioScene quien lo cablea. Arranca en 'on' porque la música
-              entra al elegir rol; si el visitante ya la apagó alguna vez, el
-              script lo corrige antes de que suene nada. */}
+          {/* Menú de ajustes. El parlante estaba suelto en la fila, al lado de
+              [ STREET ] / [ PROJECTS ] / [ CONTACT ], y no es hermano de esos
+              tres: ellos LLEVAN A UN LADO y él CAMBIA UN AJUSTE. La fila
+              además cerraba con 0.7px de sobra en un teléfono de 390, o sea
+              que no entraba un ajuste más — y ya sabíamos que venía otro.
+              Un kebab cuesta lo mismo que el parlante suelto (es un icono en
+              la misma caja) y adentro el espacio deja de ser el problema.
+              Sólo existe donde hay escena, mismo precedente que
+              #ps-projects-tab; cuando entre el idioma pasa a estar en todas. */}
           {surface === 'game' && (
+          <div class="os-menu">
             <button
               type="button"
-              class="os-nav-btn os-audio-btn"
-              id="ps-audio-toggle"
-              aria-pressed="true"
-              aria-label={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
-              title={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
+              class="os-nav-btn os-kebab-btn"
+              id="os-menu-btn"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="os-menu-pop"
+              aria-label={lang === 'en' ? 'Settings' : 'Ajustes'}
+              title={lang === 'en' ? 'Settings' : 'Ajustes'}
             >
-              {/* Parlante en SVG, no un glifo. 🔊/🔇 son emoji: salen en color,
-                  rompen la barra mono y cada sistema los dibuja distinto. Un
-                  SVG hereda currentColor, asi que el mint de "encendido" y el
-                  atenuado de "apagado" siguen saliendo del mismo CSS.
-                  Los DOS iconos van en el HTML y el CSS muestra uno: asi el
-                  estado no depende de que JS reconstruya nodos. */}
-              <svg class="ab-ico ab-on" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
-                <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
-                <path d="M16.5 8.6a5 5 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.7" />
-                <path d="M19.4 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.7" />
-              </svg>
-              <svg class="ab-ico ab-off" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
-                <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
-                <path d="M16.6 9 L21.6 15 M21.6 9 L16.6 15" fill="none" stroke="currentColor" stroke-width="1.9" />
+              {/* Tres CUADRADITOS, no tres círculos: `border-radius: 0` es
+                  regla dura del sistema y el cuadrado es el glifo de esta
+                  paleta (◆ ▪ del rain). Sigue leyéndose como kebab. */}
+              <svg class="kb-ico" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false">
+                <rect x="10" y="3" width="4" height="4" fill="currentColor" />
+                <rect x="10" y="10" width="4" height="4" fill="currentColor" />
+                <rect x="10" y="17" width="4" height="4" fill="currentColor" />
               </svg>
             </button>
+
+            {/* `hidden` y no una clase: el estado cerrado es el del HTML, así
+                que el menú nace cerrado aunque el script no llegue nunca. */}
+            <div class="os-menu-pop" id="os-menu-pop" role="menu" aria-labelledby="os-menu-btn" hidden>
+            {/* Corte de la música ambiente. Vive en la barra y no en el HUD de
+                la escena por dos razones: el HUD es `pointer-events: none`, y
+                en un teléfono la esquina inferior ya es del joystick. Lo cablea
+                PortfolioScene (#ps-audio-toggle, sin cambios). Arranca en 'on'
+                porque la música entra sola; si el visitante ya la apagó alguna
+                vez, el script lo corrige antes de que suene nada. */}
+              <button
+                type="button"
+                role="menuitem"
+                class="os-menu-item os-audio-btn"
+                id="ps-audio-toggle"
+                aria-pressed="true"
+                aria-label={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
+                title={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
+              >
+                {/* Parlante en SVG, no un glifo. 🔊/🔇 son emoji: salen en color,
+                    rompen la barra mono y cada sistema los dibuja distinto. Un
+                    SVG hereda currentColor, asi que el mint de "encendido" y el
+                    atenuado de "apagado" siguen saliendo del mismo CSS.
+                    Los DOS iconos van en el HTML y el CSS muestra uno: asi el
+                    estado no depende de que JS reconstruya nodos. */}
+                <svg class="ab-ico ab-on" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                  <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
+                  <path d="M16.5 8.6a5 5 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.7" />
+                  <path d="M19.4 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.7" />
+                </svg>
+                <svg class="ab-ico ab-off" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                  <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
+                  <path d="M16.6 9 L21.6 15 M21.6 9 L16.6 15" fill="none" stroke="currentColor" stroke-width="1.9" />
+                </svg>
+                <span class="mi-lbl">{lang === 'en' ? 'MUSIC' : 'MÚSICA'}</span>
+              </button>
+            </div>
+          </div>
           )}
         </div>
       </div>
@@ -329,6 +365,29 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
       })();
     </script>
     )}
+
+    <script>
+      /* ── Menú de ajustes (kebab) ──────────────────────────────────────
+         Vive en Base y no en PortfolioScene aunque hoy el único ítem sea la
+         música: la barra de identidad se renderiza en TODAS las páginas y
+         PortfolioScene sólo existe en la escena. Lo que PortfolioScene cablea
+         es el ítem (#ps-audio-toggle), no el menú.
+         Abrir/cerrar es una sola cosa: el atributo `hidden`. El estado
+         accesible (aria-expanded) se deriva de él y no se lleva aparte, así
+         no pueden desincronizarse. */
+      (function () {
+        const btn = document.getElementById('os-menu-btn');
+        const pop = document.getElementById('os-menu-pop');
+        if (!btn || !pop) return;
+
+        function setOpen(open: boolean) {
+          pop.toggleAttribute('hidden', !open);
+          btn.setAttribute('aria-expanded', String(open));
+        }
+
+        btn.addEventListener('click', () => setOpen(pop.hasAttribute('hidden')));
+      })();
+    </script>
 
     <script>
       // ── Hover scramble — nav tabs + header CTAs (opt-in via data-scramble) ──
@@ -540,19 +599,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     border-color: var(--accent-bright);
   }
 
-  /* Toggle de la música ambiente. VA DESPUÉS DEL :hover a propósito: tiene la
-     misma especificidad (dos clases contra clase + pseudo-clase), así que
-     declarado antes el estado apagado nunca ganaría… y declarado después se
-     come el hover, por eso el hover del apagado se repite explícitamente
-     abajo. Es la lección 40 del repo, tercera vez.
-     Encendido lleva el mint de "activo"; apagado se atenúa CON COLOR —nunca
-     con opacity, lección 25— y además va tachado, para que el estado no
-     dependa sólo del color. */
-  .os-audio-btn {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
-
   /* Dos letras, sin corchetes: es un ajuste, no una accion de navegacion.
      Va con el MISMO peso que los otros botones de la franja (borde y texto en
      --sand): lo tenia en --sand-dim con borde --ink-mid "para no pelearle al
@@ -596,13 +642,18 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     border-color: var(--accent-bright);
   }
 
-  /* El boton lleva iconos, no texto: hay que centrarlos contra los corchetes. */
-  /* Sin corchetes y con padding propio: los corchetes enmarcan una PALABRA en
-     este lenguaje, alrededor de un icono son 23px sin significado. Y esos 23px
-     importaban: la fila de cuatro botones cerraba con 0.7px de sobra en un
-     telefono de 390 y el boton se caia al renglon de abajo. Sigue leyendose
-     como hermano de los otros porque conserva borde, alto y tipografia. */
-  .os-audio-btn {
+  /* ── Menú de ajustes (kebab) ───────────────────────────────────────────
+     El botón es hermano visual de [ STREET ] / [ PROJECTS ] / [ CONTACT ]
+     —hereda .os-nav-btn, o sea borde, alto y tipografía— pero SIN corchetes:
+     los corchetes enmarcan una PALABRA en este lenguaje, alrededor de un
+     icono son 23px sin significado. Y esos 23px importaban: la fila cerraba
+     con 0.7px de sobra en un teléfono de 390. */
+  .os-menu {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .os-kebab-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -610,18 +661,96 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     line-height: 1;
   }
 
-  /* El icono mide 13px y la caja de texto de los botones hermanos mide 10.99,
+  /* Los iconos miden 13px y la caja de texto de los botones hermanos 10.99,
      asi que sin esto el boton sale 2px mas alto y en una fila de cajas con
-     borde el desalineo se ve. Se compensa 1px por lado en vez de achicar el
-     icono a 11px: el parlante tiene que LEERSE, que es todo el pedido.
-     verify:mobile M20 controla que los cuatro botones sigan midiendo igual. */
-  .ab-ico { display: block; margin-block: -1px; }
+     borde el desalineo se ve. verify:mobile M20 controla que los botones de
+     la barra sigan midiendo igual, para que el ajuste no quede viejo. */
+  .kb-ico { display: block; margin-block: -1px; }
+
+  .os-menu-pop {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    /* Anclado al borde DERECHO del botón: el menú vive en la punta derecha de
+       la barra, así que abrir hacia la izquierda es lo único que no se sale
+       de la pantalla en un teléfono. */
+    right: 0;
+    min-width: 11.5rem;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    border: 1px solid var(--ink-mid);
+    box-shadow: 0 8px 26px rgba(13, 15, 20, 0.75);
+    /* Por encima del cajón de proyectos (46) y del joystick táctil (40): los
+       dos son capas fijas que pueden estar abiertas debajo, y un control
+       flotante flota también sobre tus paneles — lección 47. */
+    z-index: 60;
+  }
+
+  /* El `display: flex` de arriba le gana al `[hidden] { display: none }` de la
+     hoja del navegador —regla de autor contra regla de UA— así que sin esto el
+     menú nace ABIERTO. Es la lección 56, misma trampa que las filas filtradas
+     del listbox de records. */
+  .os-menu-pop[hidden] { display: none; }
+
+  .os-menu-item {
+    appearance: none;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--ink);
+    color: var(--sand);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-align: left;
+    text-decoration: none;
+    /* 44px de blanco de toque: esto se toca con el dedo, y es la única medida
+       que importa acá — el texto mide 11.2px pero la fila mide un dedo. */
+    min-height: 44px;
+    padding: 0 0.9rem;
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s;
+  }
+
+  .os-menu-item:last-child { border-bottom: 0; }
+
+  .os-menu-item:focus-visible {
+    outline: none;
+    background: var(--bg-surface);
+    color: var(--accent-bright);
+  }
+
+  /* El :hover va detrás de @media (hover: hover) a propósito. En táctil queda
+     PEGADO después de tocar, así que la fila de la música se seguía viendo
+     mint justo en el momento en que hay que ver que se apagó — exactamente lo
+     que ya le había pasado al parlante cuando estaba suelto en la barra. */
+  @media (hover: hover) {
+    .os-menu-item:hover {
+      background: var(--bg-surface);
+      color: var(--accent-bright);
+    }
+  }
+
+  .mi-lbl { line-height: 1; }
+
+  /* Toggle de la música ambiente. VA DESPUÉS de .os-menu-item a propósito:
+     misma especificidad (una clase), así que declarado antes el mint de
+     "encendida" nunca le ganaría al --sand de la fila. Es la lección 40 del
+     repo, cuarta vez. El :hover de la fila (dos clases) sigue ganando, que es
+     lo que se quiere.
+     Encendida lleva el mint de "activo"; apagada se atenúa CON COLOR —nunca
+     con opacity, lección 25— y además el parlante va tachado, para que el
+     estado no dependa sólo del color. */
+  .os-audio-btn { color: var(--accent-bright); }
+
+  .ab-ico { display: block; flex-shrink: 0; }
   .ab-off { display: none; }
 
-  .os-audio-btn.is-off {
-    color: var(--sand-dim);
-    border-color: var(--ink-mid);
-  }
+  .os-audio-btn.is-off { color: var(--sand-dim); }
 
   /* El parlante tachado ES el estado apagado, asi que no hace falta el
      line-through que habia antes (y sobre un SVG solo habria tachado los
@@ -635,16 +764,10 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
      mint — justo en el momento en que el visitante necesita ver que se apago.
      En escritorio el hover del apagado sigue encendiendose. */
   @media (hover: hover) {
-    .os-audio-btn.is-off:hover {
-      color: var(--accent-bright);
-      border-color: var(--accent-bright);
-    }
+    .os-audio-btn.is-off:hover { color: var(--accent-bright); }
   }
 
-  .os-audio-btn.is-off:focus-visible {
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
+  .os-audio-btn.is-off:focus-visible { color: var(--accent-bright); }
 
   /* ── Navigation header ── */
   .os-header {
