@@ -213,7 +213,13 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
                   <path d="M3 9 H8 L13 4 V20 L8 15 H3 Z" fill="currentColor" />
                   <path d="M16.6 9 L21.6 15 M21.6 9 L16.6 15" fill="none" stroke="currentColor" stroke-width="1.9" />
                 </svg>
-                <span class="mi-lbl">{lang === 'en' ? 'MUSIC' : 'MÚSICA'}</span>
+                {/* El estado en PALABRAS, no sólo en el icono. Adentro del menú
+                    hay lugar y la fila es lo primero que se lee; el parlante
+                    tachado hay que interpretarlo. Son dos <span> y los alterna
+                    el CSS, igual que los dos parlantes: el estado no depende
+                    de que JS reconstruya nodos. */}
+                <span class="mi-lbl am-lbl am-on">{lang === 'en' ? 'MUSIC · ON' : 'MÚSICA · ON'}</span>
+                <span class="mi-lbl am-lbl am-off">{lang === 'en' ? 'MUSIC · OFF' : 'MÚSICA · OFF'}</span>
               </button>
             </div>
           </div>
@@ -769,16 +775,19 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   .os-audio-btn { color: var(--accent-bright); }
 
   .ab-ico { display: block; flex-shrink: 0; }
-  .ab-off { display: none; }
+  .am-lbl { display: block; }
+  .ab-off, .am-off { display: none; }
 
   .os-audio-btn.is-off { color: var(--sand-dim); }
 
-  /* El parlante tachado ES el estado apagado, asi que no hace falta el
-     line-through que habia antes (y sobre un SVG solo habria tachado los
-     corchetes). El estado sigue sin depender solo del color: cambia la
-     FORMA del icono. */
-  .os-audio-btn.is-off .ab-on { display: none; }
-  .os-audio-btn.is-off .ab-off { display: block; }
+  /* El estado apagado se dice TRES veces y ninguna es redundante: el
+     parlante cambia de FORMA (tachado), la fila cambia de PALABRA (OFF) y
+     el color se atenua. El color solo no alcanza —un daltonico no lo
+     distingue— y el icono solo hay que interpretarlo. */
+  .os-audio-btn.is-off .ab-on,
+  .os-audio-btn.is-off .am-on { display: none; }
+  .os-audio-btn.is-off .ab-off,
+  .os-audio-btn.is-off .am-off { display: block; }
 
   /* Detras de @media (hover: hover) a proposito. En tactil el :hover queda
      PEGADO despues de tocar, asi que el boton recien apagado se seguia viendo
