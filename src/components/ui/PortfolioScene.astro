@@ -6,6 +6,10 @@ interface Props { lang: 'en' | 'es' }
 const { lang = 'en' } = Astro.props;
 
 const mapProj = (p: typeof streetProjects[0], l: 'en' | 'es') => ({
+  /* El id viaja a la escena porque las filas del dropdown de PROJECTS —que
+     vive en Base, que no sabe nada de carteles— dicen a qué proyecto van con
+     `data-proj="<id>"`. Sin esto habría que casar por nombre traducido. */
+  id:       p.id,
   name:     p[l].name,
   desc:     p[l].problem,
   outcome:  p[l].outcome,
@@ -46,7 +50,6 @@ const dossier = {
 };
 const backLabel       = lang === 'en' ? '◀ RETURN' : '◀ VOLVER';
 const returnLabel     = lang === 'en' ? 'RETURN' : 'VOLVER';
-const drawerTitle     = lang === 'en' ? 'PROJECTS' : 'PROYECTOS';
 const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
 ---
 
@@ -71,21 +74,11 @@ const closeLabel      = lang === 'en' ? 'Close' : 'Cerrar';
   <!-- Left rail (GitHub/LinkedIn/mail) now lives in Base.astro, rendered on
        every page, not just this one — asked explicitly. -->
 
-  <!-- Right drawer: full project list — click teleports, sidebar stays closed for now.
-       The trigger button itself lives in Base.astro's top identity bar now
-       (asked explicitly — "arriba a la derecha, en el nav bar superior"),
-       same #ps-projects-tab id, wired up below regardless of which
-       component rendered it. -->
-  <aside class="ps-projects-drawer" id="ps-projects-drawer" aria-label="Project list">
-    <!-- La ✕ no es decorativa: en un teléfono este cajón mide 300 de 390 y
-         va de arriba abajo, así que sin ella no hay forma de volver a la
-         calle. Va en rojo a propósito — es la única salida de la pantalla. -->
-    <div class="pd-head">
-      <span class="pd-head-title">{drawerTitle}</span>
-      <button type="button" class="ps-close" id="pd-close" aria-label={closeLabel} title={closeLabel}>✕</button>
-    </div>
-    <div class="pd-list" id="pd-list"></div>
-  </aside>
+  <!-- La lista de proyectos ya no vive acá. Era un cajón de 300px pegado al
+       borde derecho (#ps-projects-drawer) que se abría desde la barra; ahora
+       es un dropdown que cuelga del botón PROJECTS ▾, en Base.astro, y existe
+       también en las páginas documento. Lo único que queda de este lado es
+       interceptar el clic de sus filas para teletransportar (ver Events). -->
 
   <!-- Project dossier panel (slides in from right, auto-closes when you
        step out of the small activation circle — asked explicitly, no more
@@ -435,11 +428,8 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
        frame. Se fue con el selector todo el handshake que hacía falta para
        coordinar los dos (evento `nier:zone`, su fallback por sessionStorage y
        la guarda de dedupe que existía sólo porque el evento llegaba dos veces
-       — lección 18: sin evento no hay carrera que desempatar).
-       populateProjectsDrawer() va después y no antes: lee billRefs, que es lo
-       que buildBillboards acaba de poblar. */
+       — lección 18: sin evento no hay carrera que desempatar). */
     buildBillboards(THREE);
-    populateProjectsDrawer();
     /* Contrato con verify:mobile M21 — el arnés mira un atributo que el
        producto ya escribe, no un gancho de test (mismo criterio que
        `data-audio`). */
@@ -528,27 +518,29 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     /* ── Events ── */
     canvas.addEventListener('click', onCanvasClick.bind(null, THREE));
     canvas.addEventListener('mousemove', onHover.bind(null, THREE));
-    document.getElementById('ps-projects-tab').addEventListener('click', (e) => {
-      const drawer = document.getElementById('ps-projects-drawer');
-      const open = drawer.classList.toggle('open');
-      /* Drawer overlaps the project dossier rather than closing it — asked
-         explicitly ("mejor no reemplazar sino superponerse, son dos
-         paneles distintos"). */
-      e.currentTarget.setAttribute('aria-expanded', String(open));
-      e.currentTarget.blur();   /* left focused after a click, Space (jump) would silently re-toggle this on keyup */
+    /* Las filas del dropdown de PROJECTS (Base.astro) son <a> a la ficha del
+       record. Acá se les intercepta el clic: en la escena el proyecto no está
+       en otra página, está treinta metros más adelante en la calle.
+       El preventDefault se hace SÓLO si el cartel existe de verdad
+       (billRefs ya está poblado y hay uno para ese id): si algo faltara, el
+       link navega, que es mejor que un clic que no hace nada.
+       Abrir/cerrar el menú no se toca desde acá — de eso se encarga el script
+       de Base, que es el dueño del estado. */
+    document.querySelectorAll('#ps-projects-pop [data-proj]').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        const idx = boards.findIndex(b => b.id === row.getAttribute('data-proj'));
+        if (idx < 0 || !billRefs.some(r => r.projIdx === idx)) return;
+        e.preventDefault();
+        teleportToBoard(idx);
+        row.blur();   /* con foco, el keyup de Space (salto) lo re-clickea */
+      });
     });
-    /* Cerrar los dos paneles. En escritorio se salía caminando (el dossier se
-       cierra solo al salir del círculo) o volviendo a tocar PROJECTS; en un
-       teléfono el panel tapa la pantalla y encima queda ARRIBA del joystick,
-       así que no había con qué caminar ni a dónde tocar: se entraba a un
-       proyecto y no se salía más. El .blur() es el mismo cuidado que el resto
-       de los botones de acá: un botón con foco se vuelve a clickear solo en
-       el keyup de Space, o sea en cada salto. */
-    document.getElementById('pd-close').addEventListener('click', (e) => {
-      document.getElementById('ps-projects-drawer').classList.remove('open');
-      document.getElementById('ps-projects-tab').setAttribute('aria-expanded', 'false');
-      e.currentTarget.blur();
-    });
+    /* Cerrar el dossier. En escritorio se sale caminando (se cierra solo al
+       salir del círculo); en un teléfono el panel tapa la pantalla y encima
+       queda ARRIBA del joystick, así que no hay con qué caminar: se entraba a
+       un proyecto y no se salía más. El .blur() es el mismo cuidado que el
+       resto de los botones de acá: un botón con foco se vuelve a clickear
+       solo en el keyup de Space, o sea en cada salto. */
     document.getElementById('panel-close').addEventListener('click', (e) => {
       /* Marcar como cerrado A MANO el cartel en cuyo círculo está parado el
          jugador —ahí lo deja el teleport al seleccionar un proyecto—, o el
@@ -1638,33 +1630,6 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
      board's activation circle (its own bx/bz), facing further into the
      avenue toward it, so it reads as active immediately. Pulled out of
      showPanel so a selection can teleport WITHOUT opening the sidebar. */
-  /* Right drawer's project list — click a row → teleport to that board (no
-     sidebar per SIDEBAR_ENABLED). Global styles for these JS-injected rows
-     live in the <style is:global> block, anchored to #ps-projects-drawer
-     (lesson 22: component-scoped styles never match runtime-created DOM). */
-  function populateProjectsDrawer() {
-    const list = document.getElementById('pd-list');
-    if (!list) return;
-    list.innerHTML = '';
-    /* Mismo orden en el que los carteles están parados en la calle. Corre
-       después de buildBillboards, que es quien puebla billRefs (ver init). */
-    billRefs.forEach((ref) => {
-      const p = boards[ref.projIdx];
-      if (!p) return;
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'pd-row';
-      row.innerHTML = `<span class="pd-info"><span class="pd-name">${p.name}</span><span class="pd-desc">${p.desc}</span></span>`;
-      row.addEventListener('click', (e) => {
-        teleportToBoard(ref.projIdx);
-        document.getElementById('ps-projects-drawer').classList.remove('open');
-        document.getElementById('ps-projects-tab').setAttribute('aria-expanded', 'false');
-        e.currentTarget.blur();   /* a focused row would silently re-click (re-teleport) on the next Space/jump */
-      });
-      list.appendChild(row);
-    });
-  }
-
   function panelSideFor(projIdx) {
     const ref = billRefs.find(r => r.projIdx === projIdx);
     return (ref && ref.bx > 0) ? 'left' : 'right';
@@ -2402,61 +2367,6 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     display: block;
   }
 
-  /* ── Right projects drawer — slide-out panel only.
-     The trigger button (.os-projects-btn, #ps-projects-tab) moved to
-     Base.astro's top identity bar — asked explicitly ("mejor ponelo arriba
-     a la derecha, en el nav bar superior"). Its styling lives there now. */
-  .ps-projects-drawer {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 300px;
-    height: 100%;
-    background: rgba(13, 15, 20, 0.96);
-    border-left: 1px solid rgba(94, 231, 170, 0.18);
-    box-shadow: -12px 0 40px rgba(13, 15, 20, 0.6);
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    pointer-events: auto;
-    overflow-y: auto;
-    padding: 0;
-    /* Above .ps-panel — they can be open at once now (asked explicitly), and
-       the drawer, just summoned by clicking PROJECTS, should be the one
-       that's actually visible where they overlap.
-       Y los dos por ENCIMA de los controles táctiles (.tc-root, z-index 40):
-       antes el joystick se dibujaba sobre el cajón, o sea que en la mitad de
-       abajo del panel el dedo le pegaba al joystick y no a la lista. */
-    z-index: 46;
-  }
-
-  .ps-projects-drawer.open {
-    transform: translateX(0);
-  }
-
-  /* Cabecera del cajón. Sticky porque la lista scrollea adentro del mismo
-     contenedor: la salida no puede irse scrolleando hacia arriba. */
-  .pd-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    padding: 0.55rem 0.55rem 0.55rem 0.9rem;
-    border-bottom: 1px solid var(--ink);
-    background: rgba(13, 15, 20, 0.96);
-  }
-
-  .pd-head-title {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-    color: var(--sand-dim);
-  }
-
-  .pd-list { padding: 0.4rem 0.8rem 1rem; }
-
   /* ── Project dossier panel ── */
   .ps-panel {
     position: absolute;
@@ -2696,9 +2606,6 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
       width: 100%;
       max-height: 58vh;
     }
-    .ps-projects-drawer {
-      width: min(300px, 86vw);
-    }
     /* El minimapa se achica y se corre para no pisar los chips del HUD. */
     .ps-minimap {
       transform: scale(0.66);
@@ -2783,48 +2690,6 @@ const { boards, trackLabels, allUrl, allLabel, dossier, contactUrl } = JSON.pars
     .tc-root { padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
     .tc-jump { padding: 0.85rem 1.1rem; }
   }
-  /* Rows are runtime-created (document.createElement in populateProjectsDrawer)
-     — component-scoped <style> never matches JS-injected DOM, so these live
-     here, anchored to #ps-projects-drawer (lesson 22 in this repo's own
-     CLAUDE.md — same reason #ps-panel's rows are global too, right below). */
-  #ps-projects-drawer .pd-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.6rem;
-    width: 100%;
-    background: none;
-    border: none;
-    border-bottom: 1px solid var(--ink);
-    color: var(--sand-muted);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    text-align: left;
-    padding: 0.6rem 0.3rem;
-    cursor: pointer;
-    transition: color 0.15s ease;
-  }
-
-  #ps-projects-drawer .pd-row:hover,
-  #ps-projects-drawer .pd-row:focus-visible {
-    color: var(--accent-bright);
-  }
-
-  #ps-projects-drawer .pd-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.22rem;
-    min-width: 0;
-  }
-
-  /* Description line under each project name — asked explicitly, smaller
-     and grayer than the name so it reads as secondary detail. */
-  #ps-projects-drawer .pd-desc {
-    font-family: var(--font-sans);
-    font-size: 0.66rem;
-    line-height: 1.4;
-    color: var(--sand-dim);
-  }
-
   #ps-panel .d-badge {
     font-family: var(--font-mono);
     font-size: 0.58rem;

@@ -3,6 +3,7 @@ import TabBar from '../components/ui/TabBar.astro';
 import DotRow from '../components/ui/DotRow.astro';
 import StatusBar from '../components/ui/StatusBar.astro';
 import AmbientCanvas from '../components/ui/AmbientCanvas.astro';
+import { streetProjects } from '../data/projects.ts';
 import '../styles/global.css';
 
 interface Props {
@@ -31,6 +32,20 @@ const {
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
+
+/* Filas del dropdown de PROJECTS. Es `streetProjects` —los 10 de la avenida,
+   en orden de caminata— y no los 16 de la página de records: en la escena
+   cada fila teletransporta a SU cartel, y un proyecto sin cartel no tendría
+   a dónde llevar. Los 16 están a un clic, en la última fila del menú.
+   El nombre va corto (igual que las filas de la página de records): en 290px
+   "Iris — Personal AI Assistant" se corta, "Iris" no. */
+const shortName = (n: string) => n.split(' — ')[0];
+const projectRows = streetProjects.map(p => ({
+  id:       p.id,
+  name:     shortName(p[lang].name),
+  desc:     p[lang].problem,
+  featured: p.featured ?? false,
+}));
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://pablolerner.dev');
 
 /* Rutas que existen DE VERDAD, leidas del arbol de paginas en tiempo de build.
@@ -113,8 +128,52 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             link home everywhere else (there's nothing to open elsewhere). */}
         <div class="id-ctas">
           <a class="os-nav-btn" href={`/${lang}/`}>[ {lang === 'en' ? 'STREET' : 'CALLE'} ]</a>
+          {/* PROJECTS ▾ — la lista cuelga del botón. Antes abría un cajón de
+              300px pegado al borde derecho de la escena: un panel de altura
+              completa que en un teléfono tapaba 300 de 390 y necesitaba su
+              propia ✕ para poder salir. Como dropdown hay afuera donde tocar,
+              y la barra pasa a tener UN solo lenguaje de menú (este y el
+              kebab son el mismo `.os-menu`).
+              Sin corchetes y con la flechita: los corchetes son de los
+              botones que LLEVAN A UN LADO; la flecha dice que acá se
+              despliega algo, y gira cuando está abierto. */}
           {surface === 'game' ? (
-            <button type="button" class="os-nav-btn" id="ps-projects-tab" aria-expanded="false" aria-controls="ps-projects-drawer">[ PROJECTS ]</button>
+          <div class="os-menu">
+            <button
+              type="button"
+              class="os-nav-btn os-menu-trigger"
+              id="ps-projects-tab"
+              data-menu-btn
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="ps-projects-pop"
+            >
+              <span>PROJECTS</span>
+              <svg class="mt-caret" viewBox="0 0 24 24" width="9" height="9" aria-hidden="true" focusable="false">
+                <path d="M4 8 L12 18 L20 8 Z" fill="currentColor" />
+              </svg>
+            </button>
+            <div class="os-menu-pop os-menu-pop-wide" id="ps-projects-pop" data-menu-pop role="menu" aria-labelledby="ps-projects-tab" hidden>
+              {/* Son <a> de verdad, no botones: en una página documento llevan
+                  a la ficha del record, y en la escena PortfolioScene les
+                  intercepta el clic para teletransportar. Si la escena todavía
+                  no terminó de cargar, el link hace lo suyo en vez de no hacer
+                  nada. */}
+              {projectRows.map(p => (
+                <a
+                  role="menuitem"
+                  class:list={['os-menu-item', 'pj-row', { 'pj-flag': p.featured }]}
+                  href={`/${lang}/projects/#${p.id}`}
+                  data-proj={p.id}
+                >
+                  <span class="pj-info">
+                    <span class="pj-name">{p.name}</span>
+                    <span class="pj-desc">{p.desc}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
           ) : (
             <a class="os-nav-btn" href={`/${lang}/`}>[ PROJECTS ]</a>
           )}
@@ -697,6 +756,28 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
      la barra sigan midiendo igual, para que el ajuste no quede viejo. */
   .kb-ico { display: block; margin-block: -1px; }
 
+  /* El disparador con palabra + flecha. La flecha GIRA al abrir: es el
+     estado del menú dicho por la forma, no sólo por el popup que aparece —
+     y en táctil, donde el popup puede quedar fuera de la vista al hacer
+     scroll, es lo único que queda a la vista. */
+  .os-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.55rem;
+    /* SIN `line-height: 1`. La palabra queda en una caja de 9.92px en vez de
+       los 10.99 de una caja de texto normal, y el botón sale 23.11 contra los
+       24.19 de sus hermanos: en una fila de cajas con borde, ese pixel se ve.
+       Lo agarró verify:mobile M20, que está para exactamente esto. */
+  }
+
+  .mt-caret {
+    display: block;
+    transition: transform 0.18s ease;
+  }
+
+  .os-menu-trigger[aria-expanded='true'] .mt-caret { transform: rotate(180deg); }
+
   .os-menu-pop {
     position: absolute;
     top: calc(100% + 0.35rem);
@@ -747,6 +828,67 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   }
 
   .os-menu-item:last-child { border-bottom: 0; }
+
+  /* ── Filas de proyecto ── */
+  .os-menu-pop-wide {
+    /* Ancho FIJO, no `min-width`. Con un mínimo, la descripción más larga
+       —que va en una sola línea— estira el popup hasta donde quiera: medido,
+       955px de menú colgando de un botón de 92. El `text-overflow: ellipsis`
+       de la fila no puede recortar nada si el contenedor crece con el texto. */
+    width: 20rem;
+    max-width: calc(100vw - 2rem);
+    /* Diez filas de dos renglones no entran en una pantalla chica: el popup
+       scrollea adentro en vez de crecer hasta salirse. */
+    max-height: min(70vh, 32rem);
+    overflow-y: auto;
+  }
+
+  .pj-row {
+    /* Dos renglones: el nombre y qué problema resuelve. El alto lo define el
+       contenido, con el piso de 44px que ya trae .os-menu-item. */
+    align-items: center;
+    padding-block: 0.5rem;
+    /* Transparente en todas para que la marca del flagship no corra el texto
+       2px respecto de las demás. */
+    border-left: 2px solid transparent;
+  }
+
+  /* El flagship se marca con ÁMBAR EN EL BORDE, nunca en el texto: la fila es
+     clickeable y el ámbar no puede pintar nada interactivo. Es el mismo trato
+     que tiene en la lista de la página de records. */
+  .pj-flag { border-left-color: var(--accent-flag); }
+
+  .pj-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    min-width: 0;
+  }
+
+  .pj-name {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  /* Una sola línea con puntos suspensivos: con dos, cada fila mide distinto
+     según el largo del texto y la lista se vuelve un serrucho. */
+  .pj-desc {
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    line-height: 1.3;
+    letter-spacing: 0;
+    color: var(--sand-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* El hover de la fila pinta el nombre (hereda `color`), no la descripción:
+     atenuada es jerarquía, encendida serían dos líneas peleándose. */
+  .os-menu-item:hover .pj-desc,
+  .os-menu-item:focus-visible .pj-desc { color: var(--sand-muted); }
 
   .os-menu-item:focus-visible {
     outline: none;
@@ -816,6 +958,24 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   }
 
   @media (max-width: 640px) {
+    /* El ancla del popup pasa del BOTÓN a la FILA. Arriba de 640 el botón de
+       PROJECTS tiene de sobra a su derecha; abajo, la franja se apila y la
+       fila de botones arranca pegada a la izquierda, así que el borde derecho
+       del botón cae en x≈198: un popup de 320px anclado ahí empieza en −122,
+       o sea la mitad afuera de la pantalla. Medido por verify:mobile M11.
+       Anclado a `.id-ctas` el popup ancho ocupa el ancho de la fila —que ya
+       está adentro de la pantalla por definición— y el kebab sigue alineado
+       al borde derecho, que es donde estaba. */
+    .os-menu { position: static; }
+    .id-ctas { position: relative; }
+
+    .os-menu-pop-wide {
+      left: 0;
+      right: 0;
+      width: auto;
+      max-width: none;
+    }
+
     .os-title-row .os-unit-id,
     .os-title-row .os-status { display: none; }
 

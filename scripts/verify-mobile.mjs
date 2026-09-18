@@ -193,19 +193,29 @@ try {
   /* M9 — el panel del dossier medía 440px sobre un viewport de 390 y se le
      cortaban 50px por la izquierda. La media query existía pero estaba ANTES
      de la regla base: misma especificidad, gana la última. */
+  /* El dropdown de PROJECTS hay que ABRIRLO para medirlo: cerrado es
+     `display: none` y mide 0, que pasaria el check sin decir nada. El panel
+     en cambio conserva su ancho cerrado (entra con un transform). */
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
   const anchos = await page.evaluate(() => {
     const vw = innerWidth;
     const med = sel => {
       const e = document.querySelector(sel);
       return e ? Math.round(e.getBoundingClientRect().width) : null;
     };
-    return { vw, panel: med('#ps-panel'), drawer: med('#ps-projects-drawer'),
+    return { vw, panel: med('#ps-panel'), menu: med('#ps-projects-pop'),
              scrollX: document.documentElement.scrollWidth };
   });
   const entra = anchos.panel !== null && anchos.panel <= anchos.vw
-             && anchos.drawer !== null && anchos.drawer <= anchos.vw;
-  record('M9', 'Panel y cajon entran en la pantalla', entra,
-    `viewport ${anchos.vw} · panel ${anchos.panel} · cajon ${anchos.drawer}`);
+             && anchos.menu !== null && anchos.menu > 0 && anchos.menu <= anchos.vw;
+  record('M9', 'Panel y menu de proyectos entran en la pantalla', entra,
+    `viewport ${anchos.vw} · panel ${anchos.panel} · menu ${anchos.menu}`);
+  /* Y se cierra: el menú es un toggle, así que dejarlo abierto le da vuelta
+     el primer toque del check siguiente (M14 abría creyendo que abría, y en
+     realidad cerraba lo que M9 había dejado abierto). */
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(200);
 
   /* M11 — nada puede colgar fuera del borde. Los iconos sociales quedaban a
      x=-9: su ancho es el margen que sobra del shell de 1400px, que en un
@@ -218,11 +228,12 @@ try {
           && cs.display !== 'none' && +cs.opacity > 0.05
           && (b.x < -0.5 || b.right > vw + 0.5);
     })
-    /* El panel y el cajon —y todo lo que llevan adentro— estan estacionados
-       fuera a proposito MIENTRAS ESTAN CERRADOS: entran con un transform. Se
-       los perdona solo en ese estado; abiertos tienen que entrar en pantalla,
-       que es justo lo que mide M9. */
-    .filter(e => !e.closest('#ps-panel:not(.open), #ps-projects-drawer:not(.open)'))
+    /* El panel esta estacionado fuera a proposito MIENTRAS ESTA CERRADO:
+       entra con un transform. Se lo perdona solo en ese estado; abierto tiene
+       que entrar en pantalla, que es justo lo que mide M9. (El dropdown de
+       proyectos no necesita excepcion: cerrado es `display: none` y el filtro
+       de arriba ya lo saltea.) */
+    .filter(e => !e.closest('#ps-panel:not(.open)'))
     .map(e => `${e.tagName}.${(typeof e.className === 'string' ? e.className.split(' ')[0] : '')}@${Math.round(e.getBoundingClientRect().x)}`);
   });
   record('M11', 'Nada cuelga fuera de la pantalla', colgando.length === 0,
@@ -258,32 +269,51 @@ try {
   record('M12', 'Los carteles entran en cuadro (vertical)', media >= bx,
     `ve x = ±${media.toFixed(1)} · carteles en ±${bx} · fov ${vFov.toFixed(0)}° vert / ${(hFovReal * 180 / Math.PI).toFixed(0)}° horiz`);
 
-  /* M13 — los paneles tienen que dibujarse ARRIBA de los controles. El
+  /* M13 — lo que se abre tiene que dibujarse ARRIBA de los controles. El
      joystick es `position: fixed` con z-index 40 y el cajon estaba en 11: en
      la mitad de abajo del panel el dedo le pegaba al joystick, no a la lista.
      Se lee el z-index computado, no el del fuente: lo que decide es lo que
      resuelve el navegador. */
   const zs = await page.evaluate(() => {
     const z = s => { const e = document.querySelector(s); return e ? +getComputedStyle(e).zIndex : null; };
-    return { panel: z('#ps-panel'), drawer: z('#ps-projects-drawer'), controles: z('.tc-root') };
+    return { panel: z('#ps-panel'), menu: z('#ps-projects-pop'), controles: z('.tc-root') };
   });
-  const arriba = zs.panel > zs.controles && zs.drawer > zs.controles;
+  const arriba = zs.panel > zs.controles && zs.menu > zs.controles;
   record('M13', 'Los paneles tapan al joystick', arriba,
-    `panel ${zs.panel} · cajon ${zs.drawer} · controles ${zs.controles}`);
+    `panel ${zs.panel} · menu de proyectos ${zs.menu} · controles ${zs.controles}`);
 
-  /* M14 — la salida. En un telefono el cajon mide 300 de 390 y va de arriba
-     abajo: sin una ✕ se entra y no se sale (no hay tecla Escape ni lugar
-     donde tocar afuera). Se mide que exista, que sea un blanco de pulgar
-     (44px) y —lo que importa— que CIERRE. */
-  await page.locator('#ps-projects-tab').tap();
-  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
-  const xBox = await page.locator('#pd-close').boundingBox().catch(() => null);
-  await page.locator('#pd-close').tap().catch(() => {});
-  await page.waitForTimeout(400);
-  const cajonCerrado = await page.locator('#ps-projects-drawer').evaluate(el => !el.classList.contains('open')).catch(() => false);
-  const blancoOk = !!xBox && xBox.width >= 44 && xBox.height >= 44;
-  record('M14', 'La ✕ cierra el cajon de proyectos', cajonCerrado && blancoOk,
-    xBox ? `${Math.round(xBox.width)}×${Math.round(xBox.height)}px · cerro=${cajonCerrado}` : 'NO existe la ✕');
+  /* M14 — la salida de la lista de proyectos. El cajon de 300px tapaba 300
+     de 390 y de arriba abajo: no habia lugar donde tocar afuera, por eso
+     necesitaba una ✕ propia. El dropdown SI deja afuera —y esa es la razon
+     por la que la ✕ se pudo retirar—, asi que lo que hay que medir ahora es
+     exactamente eso: que quede pantalla libre y que tocarla cierre.
+     El punto se calcula del rectangulo del menu, no a ojo: a la izquierda de
+     su borde y arriba de la mitad de la pantalla, para no tocar el joystick,
+     que es fijo y vive abajo a la izquierda. */
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  const fuera = await page.evaluate(() => {
+    const pop = document.getElementById('ps-projects-pop');
+    const r = pop.getBoundingClientRect();
+    /* El punto libre se busca DEBAJO del menu: en un telefono el popup ocupa
+       casi todo el ancho de la barra, asi que a los costados quedan 17px y no
+       son un blanco. Se deja un margen de 120px contra el borde de abajo
+       porque ahi vive el joystick, que es fijo y se comeria el toque. */
+    const y = r.bottom + 40;
+    return {
+      abierto: !pop.hasAttribute('hidden'),
+      hayAfuera: y < innerHeight - 120,
+      libre: Math.round(innerHeight - r.bottom),
+      x: Math.round(innerWidth / 2), y: Math.round(y),
+    };
+  });
+  if (fuera.hayAfuera) await page.touchscreen.tap(fuera.x, fuera.y).catch(() => {});
+  await page.waitForTimeout(300);
+  const menuCerrado = await page.evaluate(() =>
+    document.getElementById('ps-projects-pop').hasAttribute('hidden'));
+  record('M14', 'Tocar afuera cierra la lista de proyectos',
+    fuera.abierto && fuera.hayAfuera && menuCerrado,
+    `abrio=${fuera.abierto} · deja ${fuera.libre}px de pantalla libre debajo · cerro=${menuCerrado}`);
 
   /* M15 — la misma salida en el dossier, por el camino REAL: PROJECTS → una
      fila → el teleport te deja parado en el centro del anillo → el spinner
@@ -293,9 +323,9 @@ try {
      y el tick siguiente REABRIA el panel (fillT ya estaba en 1), asi que la ✕
      parecia no hacer nada. Por eso se espera un segundo y medio despues de
      cerrar: lo que se mide es que SIGA cerrado, no que se cierre. */
-  await page.locator('#ps-projects-tab').tap();
-  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
-  await page.locator('#ps-projects-drawer .pd-row').first().tap().catch(() => {});
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  await page.locator('#ps-projects-pop [data-proj]').first().tap().catch(() => {});
   const seAbrioSolo = await page.waitForSelector('#ps-panel.open', { timeout: 20000 }).then(() => true).catch(() => false);
   await page.locator('#panel-close').tap().catch(() => {});
   await page.waitForTimeout(1500);
@@ -369,18 +399,28 @@ try {
   const parejas = new Set(alturas).size === 1;
   record('M20', 'Los botones de la barra miden lo mismo', parejas, alturas.join(' / '));
 
-  /* M24 — el menu abre POR ENCIMA de lo que ya este abierto debajo. El cajon
-     de proyectos tiene z-index 46 y el joystick 40; un control flotante flota
+  /* M24 — el menu abre POR ENCIMA de lo que ya este abierto debajo. El
+     dossier tiene z-index 45 y el joystick 40; un control flotante flota
      tambien sobre tus paneles (leccion 47) y aca hace falta la relacion
-     inversa: si el cajon le gana, las filas del menu se ven pero el dedo le
-     pega al cajon.
+     inversa: si el dossier le gana, las filas del menu se ven pero el dedo le
+     pega al dossier. (Antes el panel de abajo era el cajon de proyectos, que
+     se retiro: ahora lo que puede estar abierto debajo del kebab es el
+     dossier, que en un telefono ocupa el ancho entero y 58vh de alto.)
      Se mide de dos maneras y las dos hacen falta. Primero se pregunta quien
      ATIENDE el punto (elementFromPoint en el centro de la fila), que es el
      hecho exacto y no el z-index, que es la formula. Despues se TOCA: si el
-     cajon estuviera arriba, el dedo caeria en una fila de proyecto —que
-     teletransporta y cierra el cajon— y la musica no cambiaria. */
-  await page.locator('#ps-projects-tab').tap();
-  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
+     dossier estuviera arriba, el dedo caeria en el panel y la musica no
+     cambiaria.
+     El dossier se abre por el camino real: PROJECTS -> una fila -> el teleport
+     deja al personaje parado en el anillo y el panel se abre solo. Se usa la
+     SEGUNDA fila porque M15 acaba de cerrar a mano el dossier de la primera,
+     y ese cartel queda con el pestillo `dismissed` puesto hasta que el
+     personaje salga de su circulo. */
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  await page.locator('#ps-projects-pop [data-proj]').nth(1).tap().catch(() => {});
+  const dossierAbierto = await page.waitForSelector('#ps-panel.open', { timeout: 25000 })
+    .then(() => true).catch(() => false);
   /* Los toques van con .catch: si el menu quedara TAPADO, Playwright espera a
      que reciba el puntero y termina tirando una excepcion que se lleva puesto
      el arnes entero — se pierde el resto de los checks y el informe dice
@@ -393,15 +433,15 @@ try {
     const pop = document.getElementById('os-menu-pop');
     const r = fila.getBoundingClientRect();
     const quien = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    const cajon = document.getElementById('ps-projects-drawer');
+    const panel = document.getElementById('ps-panel');
     return {
       atiendeElMenu: !!quien && pop.contains(quien),
       quien: quien ? quien.tagName.toLowerCase() + (quien.id ? '#' + quien.id : '') : 'nadie',
-      /* Se deja constancia de que el cajon estaba ABIERTO y solapando: sin eso
-         el check pasaria tambien por no haber nada debajo. */
-      cajonAbierto: !!cajon && cajon.classList.contains('open'),
-      solapa: !!cajon && (() => {
-        const c = cajon.getBoundingClientRect();
+      /* Se deja constancia de que el dossier estaba ABIERTO y solapando: sin
+         eso el check pasaria tambien por no haber nada debajo. */
+      panelAbierto: !!panel && panel.classList.contains('open'),
+      solapa: !!panel && (() => {
+        const c = panel.getBoundingClientRect();
         return Math.min(c.right, r.right) - Math.max(c.left, r.left) > 1
             && Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top) > 1;
       })(),
@@ -411,9 +451,10 @@ try {
   await page.locator('#ps-audio-toggle').tap({ timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(300);
   const audioDespues = await page.evaluate(() => document.documentElement.dataset.audio);
-  record('M24', 'El menu abre por encima del cajon abierto',
-    capas.cajonAbierto && capas.solapa && capas.atiendeElMenu && audioDespues !== audioAntes,
-    `cajon abierto=${capas.cajonAbierto} solapando=${capas.solapa} · atiende ${capas.quien} · musica ${audioAntes}→${audioDespues}`);
+  record('M24', 'El menu abre por encima del dossier abierto',
+    dossierAbierto && capas.panelAbierto && capas.solapa && capas.atiendeElMenu
+      && audioDespues !== audioAntes,
+    `dossier abierto=${capas.panelAbierto} solapando=${capas.solapa} · atiende ${capas.quien} · musica ${audioAntes}→${audioDespues}`);
 
   /* M23 — el buffer del render tiene el mismo aspecto que la caja.
      `renderer.setSize(W, H, false)` NO toca el estilo del canvas: si el buffer
