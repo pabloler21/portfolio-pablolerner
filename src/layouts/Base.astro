@@ -133,6 +133,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               type="button"
               class="os-nav-btn os-kebab-btn"
               id="os-menu-btn"
+              data-menu-btn
               aria-haspopup="true"
               aria-expanded="false"
               aria-controls="os-menu-pop"
@@ -151,7 +152,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
 
             {/* `hidden` y no una clase: el estado cerrado es el del HTML, así
                 que el menú nace cerrado aunque el script no llegue nunca. */}
-            <div class="os-menu-pop" id="os-menu-pop" role="menu" aria-labelledby="os-menu-btn" hidden>
+            <div class="os-menu-pop" id="os-menu-pop" data-menu-pop role="menu" aria-labelledby="os-menu-btn" hidden>
               {/* Cambio de idioma. PRIMERA fila siempre, y no la segunda: es la
                   única que existe en las 10 páginas, así que dejándola arriba
                   el menú abre igual en todos lados y el dedo aprende un lugar.
@@ -372,45 +373,70 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     )}
 
     <script>
-      /* ── Menú de ajustes (kebab) ──────────────────────────────────────
-         Vive en Base y no en PortfolioScene aunque hoy el único ítem sea la
-         música: la barra de identidad se renderiza en TODAS las páginas y
-         PortfolioScene sólo existe en la escena. Lo que PortfolioScene cablea
-         es el ítem (#ps-audio-toggle), no el menú.
+      /* ── Menús de la barra de identidad ───────────────────────────────
+         UN solo script para TODOS los menús de la barra: cada `.os-menu`
+         trae su botón y su popup marcados con `data-menu-btn` /
+         `data-menu-pop`, en vez de ids cableados acá. Con ids sueltos, el
+         segundo menú obliga a duplicar el bloque entero — incluidos el
+         Escape y el click afuera, que son globales y terminarían siendo dos
+         listeners peleándose por el mismo gesto.
+         Vive en Base y no en PortfolioScene aunque algunos ítems sean de la
+         escena: la barra se renderiza en TODAS las páginas y PortfolioScene
+         sólo existe en una. Lo que PortfolioScene cablea es el ÍTEM
+         (#ps-audio-toggle), no el menú.
          Abrir/cerrar es una sola cosa: el atributo `hidden`. El estado
          accesible (aria-expanded) se deriva de él y no se lleva aparte, así
          no pueden desincronizarse. */
       (function () {
-        const btn = document.getElementById('os-menu-btn');
-        const pop = document.getElementById('os-menu-pop');
-        if (!btn || !pop) return;
+        type Menu = { root: Element; btn: HTMLElement; pop: HTMLElement };
+        const menus: Menu[] = [];
+        document.querySelectorAll('.os-menu').forEach((root) => {
+          const btn = root.querySelector<HTMLElement>('[data-menu-btn]');
+          const pop = root.querySelector<HTMLElement>('[data-menu-pop]');
+          if (btn && pop) menus.push({ root, btn, pop });
+        });
+        if (!menus.length) return;
 
-        function setOpen(open: boolean) {
-          pop.toggleAttribute('hidden', !open);
-          btn.setAttribute('aria-expanded', String(open));
+        const isOpen = (m: Menu) => !m.pop.hasAttribute('hidden');
+
+        function setOpen(m: Menu, open: boolean) {
+          m.pop.toggleAttribute('hidden', !open);
+          m.btn.setAttribute('aria-expanded', String(open));
+          /* Uno por vez. Dos popups abiertos en la misma esquina se pisan, y
+             el de al lado no se cierra solo: el click que abre el segundo cae
+             DENTRO de su propio `.os-menu`, así que el "click afuera" del
+             primero no lo ve. */
+          if (open) menus.forEach(o => { if (o !== m && isOpen(o)) setOpen(o, false); });
         }
 
-        btn.addEventListener('click', () => setOpen(pop.hasAttribute('hidden')));
+        menus.forEach((m) => {
+          m.btn.addEventListener('click', () => setOpen(m, !isOpen(m)));
+        });
 
-        /* Escape cierra y DEVUELVE EL FOCO al kebab. Sin lo segundo, quien
+        /* Escape cierra y DEVUELVE EL FOCO al botón. Sin lo segundo, quien
            navega con teclado cierra el menú y queda con el foco en la nada:
            el siguiente Tab arranca desde el principio del documento. */
         document.addEventListener('keydown', (e) => {
-          if (e.key !== 'Escape' || pop.hasAttribute('hidden')) return;
-          setOpen(false);
-          btn.focus();
+          if (e.key !== 'Escape') return;
+          const abierto = menus.find(isOpen);
+          if (!abierto) return;
+          setOpen(abierto, false);
+          abierto.btn.focus();
         });
 
         /* Click afuera. `pointerdown` y no `click`: en un teléfono el click
            llega ~300ms después del toque en algunos navegadores, y el menú
            tiene que irse cuando el dedo toca, no cuando se levanta.
-           El botón se excluye o se cancelarían entre sí: pointerdown cerraría
-           y el click de arriba volvería a abrir. */
+           Se excluye el `.os-menu` entero —botón y popup— o el botón y este
+           handler se cancelarían entre sí: pointerdown cerraría y el click
+           volvería a abrir. */
         document.addEventListener('pointerdown', (e) => {
-          if (pop.hasAttribute('hidden')) return;
           const t = e.target;
-          if (t instanceof Node && (btn.contains(t) || pop.contains(t))) return;
-          setOpen(false);
+          menus.forEach((m) => {
+            if (!isOpen(m)) return;
+            if (t instanceof Node && m.root.contains(t)) return;
+            setOpen(m, false);
+          });
         });
       })();
     </script>
