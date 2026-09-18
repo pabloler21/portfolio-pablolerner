@@ -560,7 +560,13 @@ for (const f of paginas) {
      contexto WebGL— asi que no tiene barra de identidad donde poner nada.
      Exigirle el toggle era medir mal, no encontrar un bug. */
   if (!html.includes('class="os-identity"')) continue;
-  const m = html.match(/class="os-lang-btn" href="([^"]+)"/);
+  /* Se busca el ANCLA por su clase y despues su href, en vez de exigir que
+     `class` y `href` esten pegados y en ese orden. Con el patron viejo,
+     agregarle una segunda clase al boton —o moverlo de lugar— apagaba C11 y
+     C12 sin que nada estuviera roto: el arnes media el formato del HTML y no
+     el hecho que le importa, que es que el toggle exista y apunte bien. */
+  const a = html.match(/<a\b[^>]*\bclass="[^"]*\bos-lang-btn\b[^"]*"[^>]*>/);
+  const m = a && a[0].match(/\bhref="([^"]+)"/);
   if (!m) { sinToggle.push(ruta); continue; }
   const idioma = ruta.startsWith('/es/') ? 'es' : 'en';
   const otro = idioma === 'en' ? 'es' : 'en';
