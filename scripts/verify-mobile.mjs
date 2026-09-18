@@ -322,6 +322,12 @@ try {
      handle); el boton dice la preferencia. Son dos hechos distintos y por eso
      se miran los dos. */
   const btnAntes = await page.locator('#ps-audio-toggle').getAttribute('aria-pressed').catch(() => null);
+  /* El parlante ya no esta suelto en la barra: vive adentro del menu kebab,
+     asi que el camino real son DOS toques. Se recorre ese camino y no se
+     fuerza el estado (leccion 48) — y sin el toque del kebab la fila esta en
+     display:none y no se puede tocar, que es justo lo que tiene que pasar. */
+  await page.locator('#os-menu-btn').tap().catch(() => {});
+  await page.waitForTimeout(200);
   await page.locator('#ps-audio-toggle').tap().catch(() => {});
   await page.waitForTimeout(300);
   const tras = await page.evaluate(() => ({
@@ -362,6 +368,52 @@ try {
     [...document.querySelector('.id-ctas').children].map(e => +e.getBoundingClientRect().height.toFixed(2)));
   const parejas = new Set(alturas).size === 1;
   record('M20', 'Los botones de la barra miden lo mismo', parejas, alturas.join(' / '));
+
+  /* M24 — el menu abre POR ENCIMA de lo que ya este abierto debajo. El cajon
+     de proyectos tiene z-index 46 y el joystick 40; un control flotante flota
+     tambien sobre tus paneles (leccion 47) y aca hace falta la relacion
+     inversa: si el cajon le gana, las filas del menu se ven pero el dedo le
+     pega al cajon.
+     Se mide de dos maneras y las dos hacen falta. Primero se pregunta quien
+     ATIENDE el punto (elementFromPoint en el centro de la fila), que es el
+     hecho exacto y no el z-index, que es la formula. Despues se TOCA: si el
+     cajon estuviera arriba, el dedo caeria en una fila de proyecto —que
+     teletransporta y cierra el cajon— y la musica no cambiaria. */
+  await page.locator('#ps-projects-tab').tap();
+  await page.waitForSelector('#ps-projects-drawer.open', { timeout: 5000 }).catch(() => {});
+  /* Los toques van con .catch: si el menu quedara TAPADO, Playwright espera a
+     que reciba el puntero y termina tirando una excepcion que se lleva puesto
+     el arnes entero — se pierde el resto de los checks y el informe dice
+     "crash" donde tendria que decir "M24 en rojo". El hecho se mide sobre el
+     estado, no sobre el exito del toque. */
+  await page.locator('#os-menu-btn').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  const capas = await page.evaluate(() => {
+    const fila = document.getElementById('ps-audio-toggle');
+    const pop = document.getElementById('os-menu-pop');
+    const r = fila.getBoundingClientRect();
+    const quien = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const cajon = document.getElementById('ps-projects-drawer');
+    return {
+      atiendeElMenu: !!quien && pop.contains(quien),
+      quien: quien ? quien.tagName.toLowerCase() + (quien.id ? '#' + quien.id : '') : 'nadie',
+      /* Se deja constancia de que el cajon estaba ABIERTO y solapando: sin eso
+         el check pasaria tambien por no haber nada debajo. */
+      cajonAbierto: !!cajon && cajon.classList.contains('open'),
+      solapa: !!cajon && (() => {
+        const c = cajon.getBoundingClientRect();
+        return Math.min(c.right, r.right) - Math.max(c.left, r.left) > 1
+            && Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top) > 1;
+      })(),
+    };
+  });
+  const audioAntes = await page.evaluate(() => document.documentElement.dataset.audio);
+  await page.locator('#ps-audio-toggle').tap({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const audioDespues = await page.evaluate(() => document.documentElement.dataset.audio);
+  record('M24', 'El menu abre por encima del cajon abierto',
+    capas.cajonAbierto && capas.solapa && capas.atiendeElMenu && audioDespues !== audioAntes,
+    `cajon abierto=${capas.cajonAbierto} solapando=${capas.solapa} · atiende ${capas.quien} · musica ${audioAntes}→${audioDespues}`);
 
   /* M23 — el buffer del render tiene el mismo aspecto que la caja.
      `renderer.setSize(W, H, false)` NO toca el estilo del canvas: si el buffer
