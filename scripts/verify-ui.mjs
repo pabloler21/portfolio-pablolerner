@@ -475,6 +475,95 @@ try {
       fallas.length ? fallas.join(' · ') : 'sin numeros · toda fila etiquetada · contadores exactos · doble etiqueta en los dos filtros · teclado sin filas ocultas');
   }
 
+  /* C20 — el menu kebab de la barra: los dos ajustes del sitio (idioma y
+     musica) viven adentro, y un menu tiene tres maneras distintas de estar
+     roto que salen todas como HTML valido.
+       a) Que nazca ABIERTO. `.os-menu-pop` es `display: flex`, o sea una
+          regla de autor, y le gana al `[hidden] { display: none }` de la hoja
+          del navegador: sin la regla explicita el popup se ve desde el primer
+          frame, tapando la esquina de toda pagina (leccion 56).
+       b) Que el ajuste no este adentro. Se comprueba con `contains`, que es
+          el hecho —el idioma en TODAS, la musica solo donde hay escena— y no
+          la forma del HTML.
+       c) Que abra fuera de la pantalla, o con filas que no se pueden tocar.
+          El popup ancla a la derecha justamente para que a 390 no se salga, y
+          cada fila necesita 44px de dedo.
+     Se recorre el camino real (clic en el kebab, Escape) y no se fuerza
+     estado: un test que fuerza el estado pasa en verde con el bug adentro
+     (leccion 48). Se mide en las dos superficies y en un telefono, porque el
+     menu se comporta distinto en cada una. */
+  {
+    const fallas = [];
+    const casos = [
+      ['/en/ escritorio', GAME_PAGE, { width: 1440, height: 900 }, true],
+      ['/en/ telefono', GAME_PAGE, { width: 390, height: 844 }, true],
+      ['/es/projects/ escritorio', '/es/projects/', { width: 1440, height: 900 }, false],
+      ['/es/contact/ telefono', '/es/contact/', { width: 390, height: 844 }, false],
+    ];
+    for (const [nombre, url, viewport, conMusica] of casos) {
+      const ctx = await browser.newContext({ viewport });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      await pg.waitForSelector('#os-menu-btn');
+
+      const cerrado = await pg.evaluate(() => {
+        const pop = document.getElementById('os-menu-pop');
+        return {
+          hidden: pop.hasAttribute('hidden'),
+          display: getComputedStyle(pop).display,
+          expanded: document.getElementById('os-menu-btn').getAttribute('aria-expanded'),
+          idioma: pop.contains(document.querySelector('.os-lang-btn')),
+          musica: pop.contains(document.getElementById('ps-audio-toggle')),
+        };
+      });
+      if (!cerrado.hidden || cerrado.display !== 'none') fallas.push(`${nombre}: el menu nace abierto (display ${cerrado.display})`);
+      if (cerrado.expanded !== 'false') fallas.push(`${nombre}: aria-expanded=${cerrado.expanded} con el menu cerrado`);
+      if (!cerrado.idioma) fallas.push(`${nombre}: el cambio de idioma no esta adentro del menu`);
+      if (cerrado.musica !== conMusica) fallas.push(`${nombre}: la musica ${conMusica ? 'falta' : 'sobra'} (superficie equivocada)`);
+
+      await pg.locator('#os-menu-btn').click();
+      const abierto = await pg.evaluate(() => {
+        const pop = document.getElementById('os-menu-pop');
+        const r = pop.getBoundingClientRect();
+        return {
+          visible: !pop.hasAttribute('hidden') && getComputedStyle(pop).display !== 'none',
+          expanded: document.getElementById('os-menu-btn').getAttribute('aria-expanded'),
+          dentro: r.left >= 0 && r.top >= 0 && r.right <= innerWidth,
+          caja: `${Math.round(r.left)}..${Math.round(r.right)} de ${innerWidth}`,
+          bajitas: [...pop.children].filter(e => e.getBoundingClientRect().height < 44)
+            .map(e => `${e.textContent.replace(/\s+/g, ' ').trim().slice(0, 14)} ${e.getBoundingClientRect().height.toFixed(1)}px`),
+        };
+      });
+      if (!abierto.visible) fallas.push(`${nombre}: el kebab no abre`);
+      if (abierto.expanded !== 'true') fallas.push(`${nombre}: aria-expanded=${abierto.expanded} con el menu abierto`);
+      if (!abierto.dentro) fallas.push(`${nombre}: el menu abre fuera de la pantalla (${abierto.caja})`);
+      if (abierto.bajitas.length) fallas.push(`${nombre}: filas sin 44px de dedo (${abierto.bajitas.join(', ')})`);
+
+      /* Escape cierra Y devuelve el foco. Hay que meter el foco ADENTRO del
+         menu antes (un Tab desde el kebab, que es el camino real del teclado):
+         midiendolo justo despues del click, el foco ya estaba en el boton y el
+         check pasaba en verde con o sin el `btn.focus()` — o sea que no media
+         nada. Comprobado mutando el fuente (leccion 48). */
+      await pg.keyboard.press('Tab');
+      const focoAdentro = await pg.evaluate(() =>
+        document.getElementById('os-menu-pop').contains(document.activeElement));
+      if (!focoAdentro) fallas.push(`${nombre}: Tab desde el kebab no entra al menu`);
+      await pg.keyboard.press('Escape');
+      const tras = await pg.evaluate(() => ({
+        cerrado: document.getElementById('os-menu-pop').hasAttribute('hidden'),
+        foco: document.activeElement && document.activeElement.id,
+      }));
+      if (!tras.cerrado) fallas.push(`${nombre}: Escape no cierra`);
+      if (tras.foco !== 'os-menu-btn') fallas.push(`${nombre}: tras Escape el foco quedo en "${tras.foco}"`);
+
+      await pg.close();
+      await ctx.close();
+    }
+    record('C20', 'El kebab guarda los ajustes y abre bien', fallas.length === 0,
+      fallas.length ? fallas.slice(0, 4).join(' · ')
+        : 'nace cerrado · idioma en las 4, musica solo en la escena · abre dentro de pantalla con filas de 44px · Escape cierra y devuelve el foco');
+  }
+
 } finally {
   await browser.close();
   srv.close();
