@@ -386,6 +386,27 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
         }
 
         btn.addEventListener('click', () => setOpen(pop.hasAttribute('hidden')));
+
+        /* Escape cierra y DEVUELVE EL FOCO al kebab. Sin lo segundo, quien
+           navega con teclado cierra el menú y queda con el foco en la nada:
+           el siguiente Tab arranca desde el principio del documento. */
+        document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape' || pop.hasAttribute('hidden')) return;
+          setOpen(false);
+          btn.focus();
+        });
+
+        /* Click afuera. `pointerdown` y no `click`: en un teléfono el click
+           llega ~300ms después del toque en algunos navegadores, y el menú
+           tiene que irse cuando el dedo toca, no cuando se levanta.
+           El botón se excluye o se cancelarían entre sí: pointerdown cerraría
+           y el click de arriba volvería a abrir. */
+        document.addEventListener('pointerdown', (e) => {
+          if (pop.hasAttribute('hidden')) return;
+          const t = e.target;
+          if (t instanceof Node && (btn.contains(t) || pop.contains(t))) return;
+          setOpen(false);
+        });
       })();
     </script>
 
