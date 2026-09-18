@@ -448,7 +448,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
          accesible (aria-expanded) se deriva de él y no se lleva aparte, así
          no pueden desincronizarse. */
       (function () {
-        type Menu = { root: Element; btn: HTMLElement; pop: HTMLElement };
+        type Menu = { root: Element; btn: HTMLElement; pop: HTMLElement; hover?: boolean };
         const menus: Menu[] = [];
         document.querySelectorAll('.os-menu').forEach((root) => {
           const btn = root.querySelector<HTMLElement>('[data-menu-btn]');
@@ -470,7 +470,19 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
         }
 
         menus.forEach((m) => {
-          m.btn.addEventListener('click', () => setOpen(m, !isOpen(m)));
+          m.btn.addEventListener('click', () => {
+            /* Un click NUNCA cierra un menú que el hover está sosteniendo
+               abierto. Con mouse, apuntar al botón ya lo abre, así que el
+               click de quien igual hace click caía en la otra mitad del
+               toggle y lo cerraba — y como el puntero sigue adentro, no
+               vuelve a abrirse hasta salir y entrar de nuevo: el botón
+               parecía roto.
+               Sigue cerrando con click donde NO hay hover que lo sostenga
+               (un teléfono, o el teclado con Enter), que es el único caso en
+               el que cerrar a mano hace falta. */
+            if (!isOpen(m)) setOpen(m, true);
+            else if (!m.hover) setOpen(m, false);
+          });
 
           /* Elegir un ítem CIERRA el menú: es lo que espera cualquiera que
              haya usado un menú, y el que llega ahora —la lista de proyectos—
@@ -501,9 +513,11 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             let cerrar: number | undefined;
             m.root.addEventListener('pointerenter', () => {
               clearTimeout(cerrar);
+              m.hover = true;
               setOpen(m, true);
             });
             m.root.addEventListener('pointerleave', () => {
+              m.hover = false;
               /* Demora corta y no cierre inmediato: entre el pie del botón y
                  el techo del popup hay 5.6px de aire que NO son parte del
                  `.os-menu`, así que bajar el mouse hacia la lista dispara un
