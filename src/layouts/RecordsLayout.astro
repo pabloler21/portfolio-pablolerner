@@ -193,6 +193,7 @@ const term = {
                   id={`pf-${i}`}
                   aria-selected={i === 0 ? 'true' : 'false'}
                   data-idx={i}
+                  data-id={p.id}
                   data-tracks={p.tracks.join(' ')}
                 >
                   <span class="row-cursor" aria-hidden="true">◆</span>
@@ -339,6 +340,14 @@ const term = {
 
       rows[idx].scrollIntoView({ block: 'nearest' });
       revealPane(pane, fromPointer);
+
+      /* La URL sigue a lo que se está mirando, así el link que uno copia abre
+         lo que tiene en pantalla. `replaceState` y no `location.hash = …`:
+         con el segundo, cada fila que se toca deja una entrada en el
+         historial y volver atrás obliga a deshacer la navegación fila por
+         fila. */
+      const id = rows[idx].dataset.id;
+      if (id) history.replaceState(null, '', `#${id}`);
     }
 
     /* ── Filtro por especialidad ──────────────────────────────────
@@ -379,6 +388,32 @@ const term = {
         select(i, true);
       });
     });
+
+    /* ── Abrir el record que pide la URL ──────────────────────────
+       `/es/projects/#llamarag` tiene que abrir LlamaRAG, no la lista en el
+       primero. Lo usa el dropdown de PROJECTS de la barra —desde una página
+       documento sus filas no pueden teletransportar a ningún lado, así que
+       llevan acá— y de paso cada record pasa a tener una URL propia que se
+       puede mandar.
+       Hacen falta las DOS puertas: `hashchange` además del arranque. Estando
+       ya en esta página, elegir otra fila del dropdown cambia el hash y NO
+       recarga nada, así que sin el listener el clic no haría absolutamente
+       nada y parecería que el menú está roto. */
+    function selectFromHash(hash: string) {
+      const id = decodeURIComponent(hash.replace(/^#/, ''));
+      if (!id) return;
+      const idx = rows.findIndex(r => r.dataset.id === id);
+      if (idx < 0) return;
+      /* Si el filtro puesto deja esa fila oculta, se vuelve a ALL: una URL que
+         nombra un record tiene que poder abrirlo, y seleccionar una fila
+         oculta es el modo de falla clásico de filtrar un listbox. */
+      if (rows[idx].hidden) applyFilter('all');
+      select(idx, true);
+      rows[idx].scrollIntoView({ block: 'nearest' });
+    }
+
+    if (location.hash) selectFromHash(location.hash);
+    window.addEventListener('hashchange', () => selectFromHash(location.hash));
 
     list.addEventListener('keydown', (e: KeyboardEvent) => {
       const k = e.key;
