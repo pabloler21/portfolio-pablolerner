@@ -102,36 +102,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               franja es donde se nombra. El ternario devolvía el mismo string
               en las dos ramas. */}
           <span class="id-role">AI Engineer &amp; Data Analyst</span>
-          {/* Cambio de idioma. Va ACA y no en el StatusBar porque el StatusBar
-              solo se renderiza en surface="doc": en la home —que es la escena y
-              la puerta de entrada del sitio— no habia forma de cambiar de
-              idioma, y encima estaba al pie, con scroll de por medio. Esta
-              franja es la unica que se renderiza en TODAS las paginas.
-              Y va de este lado y no con los otros botones porque no entra:
-              medido, los cinco suman 358.1px en 358 disponibles en un telefono
-              de 390 y el parlante se caia al renglon de abajo. Meterlo a la
-              fuerza significaba achicar los tres botones-palabra en todos los
-              telefonos para acomodar uno mas; de este lado el lugar ya estaba
-              libre (la linea del nombre ocupa 304 de 358).
-              Muestra el idioma DESTINO, no los dos: un "EN|ES" completo ocupa
-              el doble por la misma plata. */}
-          <a
-            class="os-lang-btn"
-            href={altHref}
-            hreflang={altLang}
-            aria-label={lang === 'en' ? 'Ver en español' : 'View in English'}
-            title={lang === 'en' ? 'Ver en español' : 'View in English'}
-          >
-            {/* Icono de traducción (A/文), SVG inline heredando currentColor.
-                Misma postura que el parlante: nada de emoji (🌐 sale en color, rompe
-                la barra mono y cada sistema lo dibuja distinto). El código de
-                idioma se queda al lado del icono: solo, el glifo dice "acá se
-                cambia el idioma" pero no A CUÁL. */}
-            <svg class="tr-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
-              <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" />
-            </svg>
-            <span class="lang-code">{altLang.toUpperCase()}</span>
-          </a>
         </div>
         {/* STREET + PROJECTS + CONTACT, top-right of the identity bar —
             asked explicitly ("arriba a la derecha, en el nav bar superior"),
@@ -156,9 +126,8 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               que no entraba un ajuste más — y ya sabíamos que venía otro.
               Un kebab cuesta lo mismo que el parlante suelto (es un icono en
               la misma caja) y adentro el espacio deja de ser el problema.
-              Sólo existe donde hay escena, mismo precedente que
-              #ps-projects-tab; cuando entre el idioma pasa a estar en todas. */}
-          {surface === 'game' && (
+              Existe en TODAS las páginas porque el cambio de idioma existe en
+              todas; la música es la única fila que depende de que haya escena. */}
           <div class="os-menu">
             <button
               type="button"
@@ -183,12 +152,42 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             {/* `hidden` y no una clase: el estado cerrado es el del HTML, así
                 que el menú nace cerrado aunque el script no llegue nunca. */}
             <div class="os-menu-pop" id="os-menu-pop" role="menu" aria-labelledby="os-menu-btn" hidden>
-            {/* Corte de la música ambiente. Vive en la barra y no en el HUD de
-                la escena por dos razones: el HUD es `pointer-events: none`, y
-                en un teléfono la esquina inferior ya es del joystick. Lo cablea
-                PortfolioScene (#ps-audio-toggle, sin cambios). Arranca en 'on'
-                porque la música entra sola; si el visitante ya la apagó alguna
-                vez, el script lo corrige antes de que suene nada. */}
+              {/* Cambio de idioma. PRIMERA fila siempre, y no la segunda: es la
+                  única que existe en las 10 páginas, así que dejándola arriba
+                  el menú abre igual en todos lados y el dedo aprende un lugar.
+                  Antes vivía suelto en la línea del nombre, del lado izquierdo,
+                  porque en la fila de botones no entraba (los cinco sumaban
+                  358.1px en 358 disponibles a 390); adentro del menú el ancho
+                  deja de ser el problema y además deja de ser un chip de dos
+                  letras sueltas en una barra llena de códigos de sistema.
+                  Dice el idioma DESTINO y ahora con todas las letras: en un
+                  renglón de menú "ESPAÑOL" cuesta lo mismo que "ES" y no hay
+                  que descifrarlo. */}
+              <a
+                role="menuitem"
+                class="os-lang-btn os-menu-item"
+                href={altHref}
+                hreflang={altLang}
+                aria-label={lang === 'en' ? 'Ver en español' : 'View in English'}
+                title={lang === 'en' ? 'Ver en español' : 'View in English'}
+              >
+                {/* Icono de traducción (A/文), SVG inline heredando currentColor.
+                    Misma postura que el parlante: nada de emoji (🌐 sale en color,
+                    rompe la barra mono y cada sistema lo dibuja distinto). */}
+                <svg class="tr-ico" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" />
+                </svg>
+                <span class="mi-lbl">{altLang === 'es' ? 'ESPAÑOL' : 'ENGLISH'}</span>
+              </a>
+              {/* Corte de la música ambiente. Sólo donde hay escena — es lo
+                  único que suena en el sitio. Vive en la barra y no en el HUD
+                  de la escena por dos razones: el HUD es `pointer-events:
+                  none`, y en un teléfono la esquina inferior ya es del
+                  joystick. Lo cablea PortfolioScene (#ps-audio-toggle, sin
+                  cambios). Arranca en 'on' porque la música entra sola; si el
+                  visitante ya la apagó alguna vez, el script lo corrige antes
+                  de que suene nada. */}
+              {surface === 'game' && (
               <button
                 type="button"
                 role="menuitem"
@@ -221,9 +220,9 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
                 <span class="mi-lbl am-lbl am-on">{lang === 'en' ? 'MUSIC · ON' : 'MÚSICA · ON'}</span>
                 <span class="mi-lbl am-lbl am-off">{lang === 'en' ? 'MUSIC · OFF' : 'MÚSICA · OFF'}</span>
               </button>
+              )}
             </div>
           </div>
-          )}
         </div>
       </div>
 
@@ -626,48 +625,11 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     border-color: var(--accent-bright);
   }
 
-  /* Dos letras, sin corchetes: es un ajuste, no una accion de navegacion.
-     Va con el MISMO peso que los otros botones de la franja (borde y texto en
-     --sand): lo tenia en --sand-dim con borde --ink-mid "para no pelearle al
-     nombre", y el resultado fue que no se encontraba — al lado de
-     [ STREET ] no leia como un boton. El pedido era que se vea. El nombre
-     domina igual: es serif, mucho mas grande. Al hover pasa a mint como todo
-     lo interactivo del sistema. */
-  .os-lang-btn {
-    display: inline-flex;
-    align-items: center;
-    /* auto y no un margen fijo: `.identity-left` ya es flex con wrap, asi que
-       esto lo empuja al borde derecho de SU linea. Cuando entra al lado del rol
-       queda al final de la franja, y cuando no entra —en un telefono de 375 el
-       nombre y el rol se comen la linea entera— baja alineado a la derecha en
-       vez de quedar huerfano debajo del nombre. */
-    margin-left: auto;
-    padding: 0.22rem 0.42rem;
-    border: 1px solid var(--sand);
-    color: var(--sand);
-    font-family: var(--font-mono);
-    /* 0.7rem = 11.2px. El piso del sistema son 11px y lo tenia en 0.58rem
-       (9.3px): lo marco C6, que es exactamente para lo que esta. */
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-decoration: none;
-    vertical-align: middle;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  /* El icono mide 14 y la caja de texto del código 11.2: sin el margen
-     negativo el chip sale 3px más alto que el texto que tiene al lado. Mismo
-     ajuste que .ab-ico en el parlante, y por la misma razón. */
-  .tr-ico { display: block; margin-block: -1px; flex-shrink: 0; }
-
-  .os-lang-btn { gap: 0.32rem; }
-
-  .os-lang-btn:hover,
-  .os-lang-btn:focus-visible {
-    outline: none;
-    color: var(--accent-bright);
-    border-color: var(--accent-bright);
-  }
+  /* El cambio de idioma ya no tiene caja propia: es una fila del menú y toda
+     su forma sale de .os-menu-item. Lo único suyo es el icono. Conserva la
+     clase porque es lo que miran C11 y C12 —que exista en toda página con
+     barra y que apunte a su hermana—, que es el hecho, no el lugar. */
+  .tr-ico { display: block; flex-shrink: 0; }
 
   /* ── Menú de ajustes (kebab) ───────────────────────────────────────────
      El botón es hermano visual de [ STREET ] / [ PROJECTS ] / [ CONTACT ]
