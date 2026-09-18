@@ -298,7 +298,8 @@ propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho 
 ┌─────────────────────────────────────────────────────────────┐
 │  UNIT::PL-7729  ·  [page title]  ·  SYS:OK · EN           │  ← os-title-row
 ├─────────────────────────────────────────────────────────────┤
-│  Pablo Lerner · AI Engineer & Data Analyst  [GH][LI][✉][CV]│  ← os-identity
+│  Pablo Lerner · AI Engineer & Data Analyst              │  ← os-identity
+│                    [ STREET ][ PROJECTS ][ CONTACT ][ ⋮ ]   │     (.id-ctas)
 ├─────────────────────────────────────────────────────────────┤
 │  ⬡ STREET  ⬡ PROJECTS                                      │  ← TabBar
 ├─────────────────────────────────────────────────────────────┤
@@ -318,21 +319,59 @@ la cabecera mide distinto en escritorio (una línea) que en un teléfono angosto
 cualquier constante que la suplante nace vieja — ver lección 54. `100svh` y no `100vh`
 porque en un teléfono `vh` es el viewport GRANDE y la página quedaría con scroll.
 
-**Cambio de idioma (`.os-lang-btn`)**: vive en la franja de identidad, al final de la
-linea del nombre. Antes estaba SOLO en el `StatusBar`, que se renderiza unicamente en
-`surface="doc"` — o sea que en la home, que es la escena y la puerta de entrada del
-sitio, no habia forma de cambiar de idioma, y encima estaba al pie con scroll de por
-medio. Esta franja es la unica que se renderiza en TODAS las paginas.
+**Menu de ajustes (`.os-menu`, el kebab)** — cierra la fila de botones de la franja de
+identidad, a la derecha de `[ CONTACT ]`, **en todas las paginas**. Adentro van los dos
+ajustes del sitio: el **cambio de idioma** (siempre) y el **corte de la musica** (solo
+`surface="game"`, que es donde suena algo).
 
-- Muestra el idioma **destino** (`ES` estando en ingles), no los dos: un `EN|ES` completo
-  ocupa el doble por la misma informacion.
-- **Va de ese lado y no con los otros botones porque no entra**: medido, los cinco suman
-  358.1px en 358 disponibles en un telefono de 390 y el parlante se caia al renglon de
-  abajo. Meterlo a la fuerza obligaba a achicar los tres botones-palabra en todos los
-  telefonos para acomodar uno mas.
-- `margin-left: auto` en vez de un margen fijo: `.identity-left` ya es flex con wrap, asi
-  que el chip se pega al borde derecho de SU linea. A 375 el nombre y el rol se comen la
-  linea entera y el chip baja — alineado a la derecha, no huerfano bajo el nombre.
+Los dos vivian sueltos y ninguno de los dos estaba donde tenia sentido, sino donde
+entraba: el parlante en la fila —al lado de tres botones que LLEVAN A UN LADO, siendo el
+unico que CAMBIA UN AJUSTE— y el idioma exiliado a la punta derecha de la linea del
+nombre, porque en la fila no habia lugar (los cinco sumaban 358.1px en 358 disponibles a
+390). El kebab cuesta lo mismo que el parlante suelto y adentro el ancho deja de decidir
+nada; es la otra salida al presupuesto de suma cero de la leccion 56: en vez de sacar un
+dato de la fila, se guardan los dos abajo.
+
+- **El boton hereda `.os-nav-btn`** —mismo borde, alto y tipografia que sus hermanos—
+  pero **sin corchetes**: enmarcan una PALABRA en este lenguaje, alrededor de un icono son
+  23px sin significado. Medido a 390: los cuatro siguen en UNA fila y miden 24.19px.
+- **El icono son tres CUADRADITOS**, no tres circulos: `border-radius: 0` es regla dura y
+  el cuadrado es el glifo de esta paleta. Igual se lee como kebab.
+- **El popup nace cerrado con el atributo `hidden`**, no con una clase: cerrado es el
+  estado del HTML, asi que lo esta aunque el script no llegue nunca. Y lleva
+  `.os-menu-pop[hidden] { display: none }` **explicito** — el `display: flex` de autor le
+  gana al `[hidden]` de la hoja del navegador y sin esa linea el menu **nace abierto**
+  (leccion 56, segunda vez).
+- **`z-index: 60`**: por encima del cajon de proyectos (46) y del joystick (40), que son
+  capas que pueden estar abiertas debajo. Es la leccion 47 al reves, y esta medido
+  tocando: con el cajon abierto, `elementFromPoint` sobre la fila tiene que devolver el
+  menu (`verify:mobile` **M24**; con `z-index: 1` devuelve `div#pd-list`).
+- **Cierra con Escape —devolviendo el foco al kebab— y con un `pointerdown` afuera.** Sin
+  lo primero el teclado queda en la nada; sin lo segundo el unico modo de cerrar es
+  volver a acertarle a un blanco de 29px. Tocar la musica **no** cierra, a proposito: si
+  cerrara se perderia justo el feedback de ver el parlante tacharse.
+- **Las filas miden 44px** de blanco de toque y el `:hover` vive dentro de
+  `@media (hover: hover)` — en tactil queda pegado despues de tocar.
+- `aria-haspopup` / `aria-expanded` / `role="menu"` / `role="menuitem"`, y el estado
+  accesible se **deriva** del atributo `hidden` en vez de llevarse aparte: no pueden
+  desincronizarse.
+
+**El cambio de idioma (`.os-lang-btn`)**, primera fila del menu:
+
+- **Va primero y no segundo**: es la unica fila que existe en las 10 paginas, asi que el
+  menu abre igual en todos lados y el dedo aprende un lugar.
+- **Icono de traduccion (A/文) + el idioma destino con todas las letras** (`ESPAÑOL` /
+  `ENGLISH`). Era un chip que decia `ES`: dos letras que hay que descifrar en una barra
+  llena de codigos de sistema (`UNIT::PL-7729`, `SYS:OK`). En un renglon de menu la
+  palabra entera cuesta lo mismo. Sigue diciendo el **destino**, no los dos: un `EN|ES`
+  completo ocupa el doble por la misma informacion.
+- El icono es un **SVG inline** que hereda `currentColor`, nunca un emoji (`🌐` sale en
+  color, rompe la barra mono y cada sistema lo dibuja distinto). Misma postura que el
+  parlante.
+- Antes de esto vivia SOLO en el `StatusBar`, que se renderiza unicamente en
+  `surface="doc"` — o sea que en la home, que es la escena y la puerta de entrada del
+  sitio, no habia forma de cambiar de idioma, y encima estaba al pie con scroll de por
+  medio. La franja de identidad es la unica que se renderiza en TODAS las paginas.
 - **El destino se verifica contra el arbol de paginas** (`import.meta.glob`), no se arma
   a ciegas: `/en/concept/*` solo existe en ingles y un swap ciego manda a un 404. Sin
   hermana se cae a la home del otro idioma. Por lo mismo, el `hreflang` alternate solo se
@@ -340,9 +379,11 @@ medio. Esta franja es la unica que se renderiza en TODAS las paginas.
   no declarar nada.
 - El `StatusBar` tambien perdia la pagina (sus links eran fijos a `/en/` y `/es/`, asi que
   desde `/en/risk/` caias en la home española). Ahora recibe `altHref` de `Base`, que es
-  quien sabe que paginas existen.
-- Cubierto por `verify:ui` **C11** (toda pagina con barra de identidad lo tiene) y **C12**
-  (apunta a su hermana, o a la home si no existe).
+  quien sabe que paginas existen. Su `EN|ES` al pie **sigue existiendo**: es del pie de
+  las paginas documento, no de la barra.
+- Cubierto por `verify:ui` **C11** (toda pagina con barra de identidad lo tiene), **C12**
+  (apunta a su hermana, o a la home si no existe) y **C20** (esta adentro del menu, que
+  abre bien en escena y documento, en escritorio y telefono).
 
 **Rail de contacto (`.ps-icon-rail`)** — GitHub/LinkedIn/formulario, en todas las
 paginas. **Tiene DOS disposiciones segun haya o no margen donde vivir**, y es el mismo
@@ -602,8 +643,8 @@ son el material de esa decision y cambiar de una a otra es una linea.
   escena sin tocar nada no escucha musica — es la politica del navegador, no un bug.
 - **Un solo `AudioContext`** para beeps y musica (`getAudioCtx()`). Dos suenan igual y
   se pagan dos veces; Safari ademas los cuenta contra un presupuesto por pestaña.
-- **Se apaga con el boton del parlante** en la barra de arriba —mismo precedente que `[ PROJECTS ]`,
-  un control que solo existe donde hay escena (`surface === 'game'`)— y apagarla se
+- **Se apaga desde el menu kebab de la barra de arriba** (ver *Base.astro header
+  structure*) —fila que solo existe donde hay escena, `surface === 'game'`— y apagarla se
   **recuerda para siempre** (`localStorage` `nier-audio`). Quien la apago una vez no
   quiere que vuelva sola en la proxima visita. No va en el HUD de la escena: ese tiene
   `pointer-events: none` y en un telefono la esquina de abajo ya es del joystick.
@@ -619,20 +660,20 @@ son el material de esa decision y cambiar de una a otra es una linea.
   el mint de encendido y el atenuado de apagado salen del mismo CSS. Los DOS parlantes
   (normal y tachado) estan en el HTML y el CSS muestra uno: el estado no depende de que
   JS reconstruya nodos, y **no depende solo del color** — cambia la forma.
-- **Sin corchetes, a diferencia del resto de los botones.** Los corchetes enmarcan una
-  PALABRA en este lenguaje; alrededor de un icono son 23px sin significado, y esos 23px
-  importaban: la fila de cuatro botones cerraba con **0.7px de sobra** en un telefono de
-  390 y el boton se caia al renglon de abajo. Antes de tocar anchos, medir la fila.
-- El icono mide 13px y la caja de texto de los botones hermanos 10.99, asi que lleva
-  `margin-block: -1px`: sin eso el boton sale 2px mas alto y en una fila de cajas con
-  borde el desalineo se ve. `verify:mobile` **M20** controla que los cuatro sigan
-  midiendo igual, para que el ajuste no quede viejo.
+- **El estado apagado se dice TRES veces y ninguna sobra**: el parlante cambia de FORMA
+  (tachado), la fila cambia de PALABRA (`MUSIC · ON` → `MUSIC · OFF`) y el color se
+  atenua. El color solo no alcanza —un daltonico no lo distingue— y el icono solo hay
+  que interpretarlo. Las dos etiquetas estan en el HTML y las alterna el CSS, igual que
+  los dos parlantes: `paintAudioBtn()` no reconstruye ningun nodo.
 - El estado apagado se atenua **con color**, nunca con `opacity` (leccion 25), y el
-  bloque CSS va DESPUES del `:hover` de `.os-nav-btn` — misma especificidad, gana el
-  ultimo (leccion 40, tercera vez en este repo). El `:hover` del apagado ademas vive
-  dentro de `@media (hover: hover)`: **en tactil el `:hover` queda pegado despues de
-  tocar**, asi que el boton recien apagado se seguia viendo mint justo en el momento en
-  que hay que ver que se apago.
+  bloque CSS va DESPUES de `.os-menu-item` — misma especificidad, gana el ultimo
+  (leccion 40, cuarta vez en este repo). El `:hover` de la fila ademas vive dentro de
+  `@media (hover: hover)`: **en tactil el `:hover` queda pegado despues de tocar**, asi
+  que la fila recien apagada se seguia viendo mint justo en el momento en que hay que
+  ver que se apago.
+- `verify:mobile` **M18/M19** recorren el camino real —tocar el kebab, despues la fila—
+  y **M20** controla que los botones de la barra sigan midiendo lo mismo, para que los
+  ajustes de alineacion de los iconos no queden viejos.
 
 ### Como esta verificado
 
@@ -709,6 +750,7 @@ COMING SOON.
 | 3.19 — UI capas separadas | **DONE** | Atmósfera acotada a la superficie jugable vía prop `surface`. Fix del bug de lluvia (dos canvas de 100vw sobre todo el sitio). AA en estado por defecto, plain mode eliminado. Nav sólo con rutas reales. WASD-only. DS retirado. Arnés `npm run verify:ui` (9/9). Spec: `docs/superpowers/specs/2026-08-20-ui-capas-separadas-design.md` |
 | 3.20 — Perfil único | **DONE** | Se retira PersonaSelector: la calle arranca sola, sin selección de rol. 10 carteles fijos construidos en `init()` (`streetProjects`), con support-json, LlamaRAG y Tarnish sumados y CV Evaluator como flagship. `/ai/` + `/risk/` → `/projects/` (RoleLayout→RecordsLayout, RoleNav→DocNav) con redirects. Avenida de −70 a −100 moviendo el fondo del mundo. Audio armado en `init()` en vez del click de rol. Arneses: C14, M21, M22 nuevos; M3 retirado, M17 reescrito. Spec: `docs/superpowers/specs/2026-09-09-perfil-unico-design.md` |
 | 3.21 — Intro y click del cartel | **DONE** | La placa "Pablo Lerner / ACCESS TERMINAL" se separa del barrido de cámara: la placa va siempre, el barrido sólo sin reduced-motion (Windows lo trae encendido de fábrica, así que la mayoría de escritorio no veía ninguna presentación). `introT` pasa a segundos reales. Y clickear un cartel ya no abre el dossier: sólo teletransporta, y el anillo queda como único camino que lo abre — antes se dibujaba dos veces. Arneses: C15 y C16 |
+| 3.22 — Menu de ajustes | **DONE** | Los dos ajustes del sitio dejan de estar sueltos en la barra y pasan a un menu kebab: el parlante (que estaba entre tres botones de navegacion) y el cambio de idioma (que estaba exiliado a la linea del nombre por falta de lugar). El chip `ES` pasa a icono de traduccion A/文 + `ESPAÑOL`/`ENGLISH`. El menu cierra con Escape (devolviendo el foco), con un toque afuera, y abre por encima del cajon y del joystick. Arneses: C20 y M24 nuevos; C11 despegado del orden de atributos, M18/M19 por el camino real |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
@@ -897,3 +939,25 @@ COMING SOON.
     que ejercita el camino real (clic en el chip, teclas sobre la lista) y comprueba, entre
     otras cosas, que ↑↓ nunca deje seleccionada una fila oculta — el modo de falla clásico
     de filtrar un listbox que navega por índice.
+
+57. **Un assert puede pasar por una razón que no es la tuya.** El check nuevo del menú
+    kebab comprobaba que Escape devolviera el foco al botón: abrir con un clic, apretar
+    Escape, mirar `document.activeElement`. Verde. Y seguía verde con `btn.focus()`
+    borrado del fuente — porque el clic ya había dejado el foco en el botón, así que el
+    assert medía una verdad anterior al comportamiento que decía medir. No es la lección
+    48 (ahí el test *fuerza* el estado); acá el test recorre el camino real, pero el
+    estado que espera ya era cierto por otro motivo. La corrección fue mover el foco
+    ADENTRO del menú antes de apretar Escape —un `Tab`, que es lo que hace de verdad
+    quien navega con teclado— y recién ahí la mutación lo puso en rojo (`foco quedó en
+    ""`, el `<a>` ya oculto). **La prueba de que un assert mide algo no es que pase: es
+    que falle cuando rompés justo lo que dice medir.** Y conviene hacerla en el check
+    chico, no sólo en el arnés entero: mutar y correr `verify:mobile` completo tarda dos
+    minutos, mutar y correr un script de doce líneas contra `dist/` tarda seis segundos.
+58. **Un `.tap()` de Playwright sobre un elemento tapado no falla: espera, y después se
+    lleva puesto el arnés.** M24 mide que el menú abra por encima del cajón de proyectos.
+    Mutado el `z-index` a 1, el toque quedó esperando a que la fila recibiera el puntero
+    y a los 30s tiró `TimeoutError`: el proceso murió, se perdieron los checks que venían
+    después y el informe decía "crash" donde tenía que decir "M24 en rojo". Los toques de
+    un arnés van con `.catch(() => {})` y el hecho se mide sobre el ESTADO (`data-audio`
+    cambió, `elementFromPoint` devuelve el menú), nunca sobre el éxito del toque. Un
+    arnés tiene que saber reportar su propia falla, no sólo detectarla.
