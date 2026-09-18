@@ -3,7 +3,7 @@ import TabBar from '../components/ui/TabBar.astro';
 import DotRow from '../components/ui/DotRow.astro';
 import StatusBar from '../components/ui/StatusBar.astro';
 import AmbientCanvas from '../components/ui/AmbientCanvas.astro';
-import { streetProjects } from '../data/projects.ts';
+import { projects, streetProjects } from '../data/projects.ts';
 import '../styles/global.css';
 
 interface Props {
@@ -40,6 +40,15 @@ const altLang = lang === 'en' ? 'es' : 'en';
    El nombre va corto (igual que las filas de la página de records): en 290px
    "Iris — Personal AI Assistant" se corta, "Iris" no. */
 const shortName = (n: string) => n.split(' — ')[0];
+/* La última fila del menú. Existe por dos razones: el dropdown lista 10 y la
+   página tiene 16, así que sin decirlo parece que hay diez; y es la única
+   manera de llegar a la lista completa desde la barra, ahora que el botón
+   abre un menú en vez de navegar. El número va en la etiqueta y sale de los
+   datos: "TODOS" sin cantidad no dice que haya más. */
+const allRecordsLabel = lang === 'en'
+  ? `ALL RECORDS · ${projects.length} →`
+  : `TODOS LOS REGISTROS · ${projects.length} →`;
+
 const projectRows = streetProjects.map(p => ({
   id:       p.id,
   name:     shortName(p[lang].name),
@@ -175,6 +184,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
                   </span>
                 </a>
               ))}
+              <a role="menuitem" class="os-menu-item pj-all" href={`/${lang}/projects/`}>{allRecordsLabel}</a>
             </div>
           </div>
           <a class="os-nav-btn" href={`/${lang}/contact/`}>[ CONTACT ]</a>
@@ -930,6 +940,17 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
      atenuada es jerarquía, encendida serían dos líneas peleándose. */
   .os-menu-item:hover .pj-desc,
   .os-menu-item:focus-visible .pj-desc { color: var(--sand-muted); }
+
+  /* La salida a la lista completa. Se separa de las diez filas con un borde
+     más marcado y queda atenuada: es de otra clase de cosa —un destino, no
+     un proyecto— y no compite con la lista. */
+  .pj-all {
+    border-top: 1px solid var(--ink-mid);
+    color: var(--sand-dim);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    min-height: 40px;
+  }
 
   .os-menu-item:focus-visible {
     outline: none;
