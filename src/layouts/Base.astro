@@ -194,6 +194,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
                 role="menuitem"
                 class="os-menu-item os-audio-btn"
                 id="ps-audio-toggle"
+                data-menu-keep
                 aria-pressed="true"
                 aria-label={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
                 title={lang === 'en' ? 'Ambient music' : 'Música ambiente'}
@@ -411,6 +412,20 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
 
         menus.forEach((m) => {
           m.btn.addEventListener('click', () => setOpen(m, !isOpen(m)));
+
+          /* Elegir un ítem CIERRA el menú: es lo que espera cualquiera que
+             haya usado un menú, y el que llega ahora —la lista de proyectos—
+             lo necesita de verdad, porque su acción pasa DETRÁS del popup.
+             La excepción se declara en el ítem y no acá: `data-menu-keep` la
+             lleva el corte de música, porque cerrar taparía justo el feedback
+             de ver el parlante tacharse. */
+          m.pop.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!(t instanceof Element)) return;
+            const item = t.closest('[role="menuitem"]');
+            if (!item || item.hasAttribute('data-menu-keep')) return;
+            setOpen(m, false);
+          });
         });
 
         /* Escape cierra y DEVUELVE EL FOCO al botón. Sin lo segundo, quien
