@@ -138,7 +138,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               botones que LLEVAN A UN LADO; la flecha dice que acá se
               despliega algo, y gira cuando está abierto. */}
           {surface === 'game' ? (
-          <div class="os-menu">
+          <div class="os-menu" data-menu-hover>
             <button
               type="button"
               class="os-nav-btn os-menu-trigger"
@@ -486,6 +486,33 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             setOpen(m, false);
           });
         });
+
+        /* Abrir al pasar el mouse, SÓLO donde hay un puntero fino de verdad.
+           En táctil el `pointerenter` llega junto con el toque: el menú se
+           abriría por hover y el click del mismo gesto lo cerraría en el
+           acto, o sea que tocarlo no haría nada.
+           Es opt-in por menú (`data-menu-hover`): lo pide la lista de
+           proyectos, que es una lista para mirar. El kebab no — son ajustes,
+           y un menú de ajustes que se abre solo cada vez que el mouse pasa
+           camino a otro botón es ruido. */
+        const punteroFino = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (punteroFino) {
+          menus.filter(m => m.root.hasAttribute('data-menu-hover')).forEach((m) => {
+            let cerrar: number | undefined;
+            m.root.addEventListener('pointerenter', () => {
+              clearTimeout(cerrar);
+              setOpen(m, true);
+            });
+            m.root.addEventListener('pointerleave', () => {
+              /* Demora corta y no cierre inmediato: entre el pie del botón y
+                 el techo del popup hay 5.6px de aire que NO son parte del
+                 `.os-menu`, así que bajar el mouse hacia la lista dispara un
+                 `pointerleave` y sin la demora el menú se cierra justo cuando
+                 lo estás por usar. */
+              cerrar = window.setTimeout(() => setOpen(m, false), 220);
+            });
+          });
+        }
 
         /* Escape cierra y DEVUELVE EL FOCO al botón. Sin lo segundo, quien
            navega con teclado cierra el menú y queda con el foco en la nada:
