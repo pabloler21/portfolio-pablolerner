@@ -121,7 +121,17 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
             hreflang={altLang}
             aria-label={lang === 'en' ? 'Ver en español' : 'View in English'}
             title={lang === 'en' ? 'Ver en español' : 'View in English'}
-          >{altLang.toUpperCase()}</a>
+          >
+            {/* Icono de traducción (A/文), SVG inline heredando currentColor.
+                Misma postura que el parlante: nada de emoji (🌐 sale en color, rompe
+                la barra mono y cada sistema lo dibuja distinto). El código de
+                idioma se queda al lado del icono: solo, el glifo dice "acá se
+                cambia el idioma" pero no A CUÁL. */}
+            <svg class="tr-ico" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" />
+            </svg>
+            <span class="lang-code">{altLang.toUpperCase()}</span>
+          </a>
         </div>
         {/* STREET + PROJECTS + CONTACT, top-right of the identity bar —
             asked explicitly ("arriba a la derecha, en el nav bar superior"),
@@ -571,6 +581,13 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
     vertical-align: middle;
     transition: color 0.15s, border-color 0.15s;
   }
+
+  /* El icono mide 14 y la caja de texto del código 11.2: sin el margen
+     negativo el chip sale 3px más alto que el texto que tiene al lado. Mismo
+     ajuste que .ab-ico en el parlante, y por la misma razón. */
+  .tr-ico { display: block; margin-block: -1px; flex-shrink: 0; }
+
+  .os-lang-btn { gap: 0.32rem; }
 
   .os-lang-btn:hover,
   .os-lang-btn:focus-visible {
