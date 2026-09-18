@@ -136,8 +136,11 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               kebab son el mismo `.os-menu`).
               Sin corchetes y con la flechita: los corchetes son de los
               botones que LLEVAN A UN LADO; la flecha dice que acá se
-              despliega algo, y gira cuando está abierto. */}
-          {surface === 'game' ? (
+              despliega algo, y gira cuando está abierto.
+              Existe en TODAS las páginas, no sólo en la escena. Fuera de
+              ella las filas hacen lo que dice su `href`: llevan a la ficha
+              de ese record. Antes, en una página documento, este botón era
+              un link a la home — decía PROJECTS y te llevaba a la calle. */}
           <div class="os-menu" data-menu-hover>
             <button
               type="button"
@@ -174,9 +177,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
               ))}
             </div>
           </div>
-          ) : (
-            <a class="os-nav-btn" href={`/${lang}/`}>[ PROJECTS ]</a>
-          )}
           <a class="os-nav-btn" href={`/${lang}/contact/`}>[ CONTACT ]</a>
           {/* Menú de ajustes. El parlante estaba suelto en la fila, al lado de
               [ STREET ] / [ PROJECTS ] / [ CONTACT ], y no es hermano de esos
