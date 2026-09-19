@@ -214,7 +214,7 @@ src/
     ambient.ts          # motor de musica generativa (3 variantes; se despacha 'terminal')
   layouts/
     Base.astro          # YoRHa OS chrome — identity strip + AmbientCanvas + margin rain panels
-    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px, la terminal se retira debajo de 1200). Owns the records-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (UNA lista de 16 sin numerar, con etiquetas de especialidad por fila, barra de filtro arriba, paneles de detalle pre-renderizados, teclado ↑↓ sobre las filas VISIBLES, scramble transition). Pages are thin wrappers.
+    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px, la terminal se retira debajo de 1200). Owns the records-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (UNA lista de 16 sin numerar, con etiquetas de especialidad por fila, barra de filtro arriba, paneles de detalle pre-renderizados, teclado ↑↓ sobre las filas VISIBLES, scramble transition). Cada fila lleva `data-id` y la página abre el record que nombra el `#hash` —al cargar y en `hashchange`, porque el menú `PROJECTS ▾` cambia el hash sin recargar—, con la URL siguiendo a la selección por `replaceState`. Pages are thin wrappers.
   components/
     ui/
       AmbientCanvas.astro     # Three.js perspective-grid background (lazy, z-index:0)
@@ -299,7 +299,7 @@ propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho 
 │  UNIT::PL-7729  ·  [page title]  ·  SYS:OK · EN           │  ← os-title-row
 ├─────────────────────────────────────────────────────────────┤
 │  Pablo Lerner · AI Engineer & Data Analyst              │  ← os-identity
-│                    [ STREET ][ PROJECTS ][ CONTACT ][ ⋮ ]   │     (.id-ctas)
+│                    [ STREET ] PROJECTS ▾ [ CONTACT ][ ⋮ ]   │     (.id-ctas)
 ├─────────────────────────────────────────────────────────────┤
 │  ⬡ STREET  ⬡ PROJECTS                                      │  ← TabBar
 ├─────────────────────────────────────────────────────────────┤
@@ -318,6 +318,39 @@ glow `rgba(94,231,170,0.18)` not `var(--border)`.
 la cabecera mide distinto en escritorio (una línea) que en un teléfono angosto (dos), y
 cualquier constante que la suplante nace vieja — ver lección 54. `100svh` y no `100vh`
 porque en un teléfono `vh` es el viewport GRANDE y la página quedaría con scroll.
+
+**Menu de proyectos (`PROJECTS ▾`)** — el mismo `.os-menu` que el kebab, en la fila de
+botones, **en todas las paginas**. Las 10 filas son `streetProjects` en orden de
+caminata, con nombre corto y el problema que resuelve en una linea, y al pie una fila
+`TODOS LOS REGISTROS · 16 →` a `/{lang}/projects/`.
+
+Antes era un **cajon lateral** de 300px pegado al borde derecho de la escena
+(`.ps-projects-drawer`, retirado). En un telefono tapaba 300 de 390 y de arriba abajo:
+no quedaba nada donde tocar afuera, y por eso necesitaba una ✕ roja propia. Como
+dropdown hay afuera, la ✕ sobra, y la barra tiene un solo lenguaje de menu.
+
+- **La fila es un `<a>` de verdad** a `/{lang}/projects/#<id>`, y en la escena
+  PortfolioScene le intercepta el clic para teletransportar. El `preventDefault` se hace
+  SOLO si existe el cartel: mientras la escena carga, el link navega, que es mejor que un
+  clic que no hace nada.
+- **10 y no 16**, porque cada fila tiene que tener un cartel a donde llevar. Por eso la
+  ultima fila dice el total: sin ella parece que el sitio tiene diez proyectos.
+- **Abre al pasar el mouse** (`data-menu-hover`, opt-in por menu — el kebab no lo lleva).
+  Detras de `(hover: hover) and (pointer: fine)`: en tactil los eventos llegan todos en
+  el mismo gesto y el click cerraria lo que el `pointerenter` acaba de abrir, o sea que
+  tocar el boton no haria nada (`verify:mobile` **M25**).
+- **Cierra con 220ms de demora** al salir: entre el pie del boton y el techo del popup
+  hay 5.6px de aire que no son del `.os-menu`, asi que bajar el mouse hacia la lista
+  dispara un `pointerleave`.
+- **Un click no cierra lo que el hover sostiene** (leccion 59).
+- **Debajo de 640px el ancla pasa del BOTON a la FILA** (`.os-menu { position: static }`
+  + `.id-ctas { position: relative }`): apilada la franja, el borde derecho del boton cae
+  en x≈198 y un popup de 320px anclado ahi empieza en −122 (leccion 60).
+- El flagship se marca con **ambar en el borde izquierdo**, nunca en el texto: la fila es
+  clickeable.
+- Cubierto por `verify:ui` **C21** (las filas existen y sus href casan con records reales,
+  el hover abre, el click no cierra, el `#hash` abre el record y el filtro cede) y
+  `verify:mobile` **M9/M13/M14/M25**.
 
 **Menu de ajustes (`.os-menu`, el kebab)** — cierra la fila de botones de la franja de
 identidad, a la derecha de `[ CONTACT ]`, **en todas las paginas**. Adentro van los dos
@@ -342,10 +375,10 @@ dato de la fila, se guardan los dos abajo.
   `.os-menu-pop[hidden] { display: none }` **explicito** — el `display: flex` de autor le
   gana al `[hidden]` de la hoja del navegador y sin esa linea el menu **nace abierto**
   (leccion 56, segunda vez).
-- **`z-index: 60`**: por encima del cajon de proyectos (46) y del joystick (40), que son
-  capas que pueden estar abiertas debajo. Es la leccion 47 al reves, y esta medido
-  tocando: con el cajon abierto, `elementFromPoint` sobre la fila tiene que devolver el
-  menu (`verify:mobile` **M24**; con `z-index: 1` devuelve `div#pd-list`).
+- **`z-index: 60`**: por encima del dossier (45) y del joystick (40), que son capas que
+  pueden estar abiertas debajo. Es la leccion 47 al reves, y esta medido tocando: con el
+  dossier abierto, `elementFromPoint` sobre la fila tiene que devolver el menu
+  (`verify:mobile` **M24**; con `z-index: 1` devuelve el panel de abajo).
 - **Cierra con Escape —devolviendo el foco al kebab— y con un `pointerdown` afuera.** Sin
   lo primero el teclado queda en la nada; sin lo segundo el unico modo de cerrar es
   volver a acertarle a un blanco de 29px. Tocar la musica **no** cierra, a proposito: si
@@ -480,13 +513,14 @@ del sitio.
   no toca el estilo del canvas: si el buffer y la caja no coinciden, el navegador estira.
   Con el piso de 400px que había, en un teléfono de 390 (caja 388) la escena salía
   achatada un 3% en horizontal. `verify:mobile` **M23** lo mide.
-- **Los paneles tienen salida y van por encima del joystick.** `.ps-panel` (z 45) y
-  `.ps-projects-drawer` (z 46) están arriba de `.tc-root` (z 40): con 11 y 10 el
-  joystick se dibujaba SOBRE el cajón y en la mitad de abajo el dedo le pegaba al
-  joystick, no a la lista. Y los dos llevan una `.ps-close` — ✕ roja
-  (`--accent-alert`), 44px de blanco de toque. Sin ella se entraba a un proyecto y
-  no se salía: en un teléfono el cajón mide 300 de 390 y va de arriba abajo, no hay
-  Escape ni lugar donde tocar afuera. Cubierto por `verify:mobile` M13/M14/M15.
+- **Lo que se abre va por encima del joystick.** `.ps-panel` (z 45) y los menús de la
+  barra (z 60) están arriba de `.tc-root` (z 40): con 11 y 10 el joystick se dibujaba
+  SOBRE el panel y en la mitad de abajo el dedo le pegaba al joystick, no a la lista.
+  El dossier lleva una `.ps-close` — ✕ roja (`--accent-alert`), 44px de blanco de
+  toque — porque tapa la pantalla y no hay Escape ni lugar donde tocar afuera. **La
+  lista de proyectos ya no la necesita**: como dropdown deja pantalla libre debajo, y
+  eso es exactamente lo que mide `verify:mobile` **M14** ahora (que quede libre y que
+  tocarla cierre). Cubierto por M13/M14/M15/M24/M25.
 - **La ✕ del dossier necesita DOS pestillos, no uno.** `opened` es el one-shot que
   evita que el panel se reabra en cada frame; `hidePanel()` lo limpia para que el
   anillo pueda volver a dispararse. Pero al seleccionar un proyecto el teleport te
@@ -593,12 +627,12 @@ justificaba.
 
 **Key systems:**
 - WASD + arrow keys (no `prefers-reduced-motion` guard on input, only on visual effects)
-- **Click billboard → `teleportToBoard(hit.projIdx)`, NUNCA `showPanel`.** El panel lo abre el anillo al llenarse (`SPINNER_FILL_TIME` 1.1s), y ese es el único camino que lo abre. `showPanel()` además teletransporta, así que llamarla desde el click dejaba al jugador parado adentro del círculo con `ref.opened` en false: el tick la volvía a llamar al llenarse el anillo y el dossier se dibujaba **dos veces**, con el título haciendo scramble encima del anterior. Las filas del cajón `[ PROJECTS ]` ya hacían lo correcto. Cubierto por `verify:ui` **C16**
+- **Click billboard → `teleportToBoard(hit.projIdx)`, NUNCA `showPanel`.** El panel lo abre el anillo al llenarse (`SPINNER_FILL_TIME` 1.1s), y ese es el único camino que lo abre. `showPanel()` además teletransporta, así que llamarla desde el click dejaba al jugador parado adentro del círculo con `ref.opened` en false: el tick la volvía a llamar al llenarse el anillo y el dossier se dibujaba **dos veces**, con el título haciendo scramble encima del anterior. Las filas de `PROJECTS ▾` ya hacían lo correcto. Cubierto por `verify:ui` **C16**
 - `scrambleIn(el, text)` — cancel-safe scramble-settle text reveal (replaces old typeOut; stores interval in `el._scrambleTimer`)
 - **Minimap 2.0** (G4): `#ps-minimap-canvas` (140×190), redrawn every 3rd frame, geometry in the `MM` object (`mx/mz` project, `invX/invZ` unproject; z range **[6,−120]** — tiene que pasar SIEMPRE a `BOUND_Z_MIN`, o los carteles de más allá computan un `py` negativo y se dibujan fuera del borde de arriba del canvas; ya pasó dos veces al crecer la avenida). Corner-cut frame drawn in-canvas (the CSS border was removed). Character = **heading arrow** (`rotate(π − charGroup.rotation.y)`), markers per board (lit solid / unlit hollow, amber for flagship), expanding-square pulse on the next unlit board. **Display only** — `pointer-events: none`, no fast-travel
 - `drawBillboardCanvas` sizes tuned to FILL the canvas: title 30/24px, desc 17/14px (4/3 lines), outcome (word-boundary truncate via `bbTruncate`) + CTA anchored to bottom, PAD 18
 - **Dossier panel** (simplificado — sólo qué ES el proyecto): `showPanel(projIdx)` arma `#panel-title` (scrambleIn), `.d-status` con el `status` real del proyecto, sección MISSION (`.d-section` + `.d-label` + `.d-desc`), caja de métrica `.d-metric` (variante ámbar `.d-metric-flag` en el flagship) y `.d-ctas` con `.d-cta-primary` / `.d-cta-ghost`. Al pie, `#panel-all` → `/{lang}/projects/`, y `#panel-close` es la ✕ roja.
-  **Se retiraron** (y no hay que volver a documentarlos como si estuvieran): el contador REC nn/NN, los bloques DISCOVERED, los chips de stack, la navegación PREV/NEXT y la lista de otros registros — el cajón `[ PROJECTS ]` ya cubre saltar a otro proyecto y el panel no necesita duplicarlo.
+  **Se retiraron** (y no hay que volver a documentarlos como si estuvieran): el contador REC nn/NN, los bloques DISCOVERED, los chips de stack, la navegación PREV/NEXT y la lista de otros registros — el menú `PROJECTS ▾` ya cubre saltar a otro proyecto y el panel no necesita duplicarlo.
   **La ✕ necesita DOS pestillos.** `opened` es el one-shot que evita que el panel se reabra en cada frame; `dismissed` es el segundo, porque al seleccionar un proyecto el teleport te deja parado en el centro del anillo y cerrar a mano dejaba `fillT >= 1` con `opened` en false. Se marca por condición geométrica (`SPINNER_R`), o sea sobre el cartel en cuyo círculo está el jugador, y se rearma al salir del círculo
 - **Cinematic intro** (primera visita): **son DOS hechos, no uno.** `introActive` es que la placa "Pablo Lerner / ACCESS TERMINAL" está en pantalla, y va **siempre**; `introCam` es que además baja la cámara de (0,17,34) al nivel de calle (easeOutCubic en el tick), y **sólo corre sin reduced-motion**. Estaban pegados detrás de un `!reduced`, y como Windows trae el ajuste encendido de fábrica (lección 8), la mayoría de los visitantes de escritorio no veía ninguna presentación. El punto final del barrido es idéntico al arranque de la cámara normal (`camX, 4.0, camTgtZ+9`), así que el empalme no salta. `INTRO_DUR` es `reduced ? 2.2 : 3.7` **segundos** — `introT` avanza con `delta`, no por frame (antes duraba 223 frames: 1.55s en un monitor de 144Hz); `#ps-hero` overlay fades at introT>0.72. **Se queda a propósito**: es la única puerta de entrada que le queda al sitio ahora que no hay selector, y sin ella el visitante cae de golpe en una calle sin contexto. La marca la escribe la escena (`sessionStorage['nier-visited']`) al terminar la intro — antes la escribía PersonaSelector al elegir rol
 - **3D palette = blue-void** (matches site tokens): clearColor/fog 0x0d0f14, buildings 0x12151c + edges 0x2a3040, windows 0x4d8f75, asphalt 0x10131a, sidewalks 0x161a22, dashes/poles 0x232a38, char body 0x181b22. NEVER reintroduce the old olive-green (0x1b1e1a etc.)
@@ -713,7 +747,7 @@ apenas se entra, y `/{lang}/projects/` es la unica pagina de registros.
 | Ruta | Que es |
 |---|---|
 | `/{lang}/` | La calle. 10 carteles, flagship al final |
-| `/{lang}/projects/` | Records: 16 en una sola lista, con etiquetas por fila y filtro (`ALL 16` · `AI ENGINEER 10` · `DATA ANALYST 07`) |
+| `/{lang}/projects/` | Records: 16 en una sola lista, con etiquetas por fila y filtro (`ALL 16` · `AI ENGINEER 10` · `DATA ANALYST 07`). `#<id>` abre ese record |
 | `/{lang}/ai/` · `/{lang}/risk/` | Redirect a `/projects/`. **No se borran**: hay links repartidos afuera |
 | `/{lang}/contact/` | Formulario |
 
@@ -751,6 +785,7 @@ COMING SOON.
 | 3.20 — Perfil único | **DONE** | Se retira PersonaSelector: la calle arranca sola, sin selección de rol. 10 carteles fijos construidos en `init()` (`streetProjects`), con support-json, LlamaRAG y Tarnish sumados y CV Evaluator como flagship. `/ai/` + `/risk/` → `/projects/` (RoleLayout→RecordsLayout, RoleNav→DocNav) con redirects. Avenida de −70 a −100 moviendo el fondo del mundo. Audio armado en `init()` en vez del click de rol. Arneses: C14, M21, M22 nuevos; M3 retirado, M17 reescrito. Spec: `docs/superpowers/specs/2026-09-09-perfil-unico-design.md` |
 | 3.21 — Intro y click del cartel | **DONE** | La placa "Pablo Lerner / ACCESS TERMINAL" se separa del barrido de cámara: la placa va siempre, el barrido sólo sin reduced-motion (Windows lo trae encendido de fábrica, así que la mayoría de escritorio no veía ninguna presentación). `introT` pasa a segundos reales. Y clickear un cartel ya no abre el dossier: sólo teletransporta, y el anillo queda como único camino que lo abre — antes se dibujaba dos veces. Arneses: C15 y C16 |
 | 3.22 — Menu de ajustes | **DONE** | Los dos ajustes del sitio dejan de estar sueltos en la barra y pasan a un menu kebab: el parlante (que estaba entre tres botones de navegacion) y el cambio de idioma (que estaba exiliado a la linea del nombre por falta de lugar). El chip `ES` pasa a icono de traduccion A/文 + `ESPAÑOL`/`ENGLISH`. El menu cierra con Escape (devolviendo el foco), con un toque afuera, y abre por encima del cajon y del joystick. Arneses: C20 y M24 nuevos; C11 despegado del orden de atributos, M18/M19 por el camino real |
+| 3.23 — PROJECTS ▾ | **DONE** | La lista de proyectos deja de ser un cajón lateral de 300px y pasa a un dropdown que cuelga del botón, abierto al pasar el mouse, en TODAS las páginas (antes en documento el botón era un link a la home). Las filas son links a `/{lang}/projects/#id` que en la escena teletransportan; la página de records abre el record del hash y cada uno pasa a tener URL propia. Se retiran `.ps-projects-drawer`, su ✕ y `populateProjectsDrawer`. Arneses: C21 y M25 nuevos; M9/M13/M14/M15/M24 apuntados al dropdown |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
@@ -961,3 +996,26 @@ COMING SOON.
     un arnés van con `.catch(() => {})` y el hecho se mide sobre el ESTADO (`data-audio`
     cambió, `elementFromPoint` devuelve el menú), nunca sobre el éxito del toque. Un
     arnés tiene que saber reportar su propia falla, no sólo detectarla.
+
+59. **Un control que abre con hover no puede cerrarse con el mismo click que lo abre.**
+    `PROJECTS ▾` abre al pasar el mouse y su botón era un toggle: apuntarlo lo abría y
+    el click —el gesto que hace medio mundo igual, aunque ya esté abierto— caía en la
+    otra mitad del toggle y lo cerraba. Y como el puntero sigue adentro, no vuelve a
+    abrirse hasta salir y entrar de nuevo: el botón parece roto justo después de
+    funcionar. La regla es que un click **nunca cierra lo que el hover está
+    sosteniendo**; cerrar a mano sólo hace falta donde no hay hover que lo sostenga (un
+    teléfono, o el teclado con Enter), así que el toggle se conserva ahí. Lo encontró
+    Playwright solo, sin que yo lo buscara: su `.click()` mueve el mouse encima primero,
+    o sea que reproduce el gesto humano completo y no un click sintético. Un test que
+    dispara `el.click()` por JS nunca habría visto nada.
+60. **El ancla de un popup es el botón sólo mientras el botón tenga lugar.** El menú de
+    proyectos cuelga del botón con `position: absolute; right: 0`, que en escritorio es
+    exactamente lo que se quiere. Debajo de 640px la franja de identidad se apila y la
+    fila de botones arranca pegada a la izquierda: el borde derecho de `PROJECTS` cae en
+    x≈198, así que un popup de 320px anclado ahí empieza en **−122**, con la mitad
+    afuera de la pantalla. El arreglo no es achicarlo —el ancho no era el problema, la
+    posición sí— sino mover el ancla: debajo de 640 el `.os-menu` pasa a `position:
+    static` y el ancla es `.id-ctas`, la fila entera, que por definición ya está dentro
+    de la pantalla. Es la familia de las lecciones 39 y 49 (un elemento posicionado
+    contra algo que en otro viewport no está donde creías) y lo agarró `verify:mobile`
+    **M11**, que mide lo que cuelga fuera del borde y no el CSS de nadie.
