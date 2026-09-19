@@ -29,7 +29,7 @@ interface Props {
   heading?: string;        // "AI ENGINEER & DATA ANALYST"
   badge?: string;          // "UNIT PROFILE"
   subline?: string;        // sys-text line under the heading
-  stats?: StatBox[];       // compact HUD stat grid
+  stats?: StatBox[];       // datos de cabecera (etiqueta/valor, sin caja)
   /* UNA sola lista. Antes eran dos bloques (`ai` y `data`) con un divisor en el
      medio; con etiquetas por fila ese agrupamiento decía lo mismo dos veces, y
      además no tenía dónde poner a un proyecto que es de las dos mitades. El
@@ -46,10 +46,10 @@ const {
 
 const hasDossier = projects.length > 0;
 
-/* Etiquetas y filtro. El rótulo largo es el que se muestra en el filtro y en el
-   panel de detalle; el corto es el que entra en la fila de la lista, donde el
-   presupuesto es de ~60px (medido: la columna del nombre pasa de 115.8 a 236.8
-   al sacar el número y el estado, y ahí entran los 16 nombres completos).
+/* Etiquetas y filtro. El rótulo LARGO (AI ENGINEER / DATA ANALYST) se lee en
+   el panel de detalle y en el `title` del chip; el CORTO (AI / DATA) es el que
+   entra donde el ancho manda, que ahora son los dos: la etiqueta de la fila y
+   el chip del filtro viven los dos dentro de la columna de 352px.
    Los dos rótulos van en inglés en los dos idiomas, como ya estaban los
    encabezados de bloque que reemplazan: son los nombres del puesto. */
 const TRACKS = [
@@ -61,12 +61,11 @@ const trackCount = (id: 'ai' | 'data') => projects.filter(p => p.tracks.includes
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-// Flagship HUD stat box: explicit flag prop, or label match (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
+// Dato de cabecera flagship: prop explícita, o el rótulo (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
 const isFlagStat = (s: StatBox) => s.flag ?? /flagship|estrella/i.test(s.label);
 
 const L = lang === 'en'
   ? {
-      file:     'FILE',
       mission:  'MISSION',
       result:   'KEY RESULT',
       stack:    'STACK',
@@ -76,10 +75,8 @@ const L = lang === 'en'
       hint:     '↑↓ SELECT · ENTER → CODE',
       all:      'ALL',
       filter:   'Filter by track',
-      profile:  'PROFILE',
     }
   : {
-      file:     'ARCHIVO',
       mission:  'MISIÓN',
       result:   'RESULTADO CLAVE',
       stack:    'STACK',
@@ -89,7 +86,6 @@ const L = lang === 'en'
       hint:     '↑↓ SELECCIONAR · ENTER → CODE',
       all:      'TODOS',
       filter:   'Filtrar por especialidad',
-      profile:  'PERFIL',
     };
 
 /* El "todos" primero y activo por defecto: sin filtro elegido se ven los 16.
