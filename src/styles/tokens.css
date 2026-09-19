@@ -17,7 +17,7 @@
   --ink-mid:      #2a3040;   /* card rims, stronger dividers */
 
   /* ── Accents ── */
-  --accent:       #3d7a64;   /* teal muted — decorative: ◆ cursor, DotRow, badge borders */
+  --accent:       #3d7a64;   /* teal muted — decorative: ◆ cursor, badge borders */
   --accent-bright: #5ee7aa;  /* mint — CTAs, active states, hover highlights */
 
   /* Flagship accent (Deus Ex black&gold) — ONLY for flagship marking

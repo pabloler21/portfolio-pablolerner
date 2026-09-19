@@ -1,6 +1,4 @@
 ---
-import TabBar from '../components/ui/TabBar.astro';
-import DotRow from '../components/ui/DotRow.astro';
 import StatusBar from '../components/ui/StatusBar.astro';
 import AmbientCanvas from '../components/ui/AmbientCanvas.astro';
 import { projects, streetProjects } from '../data/projects.ts';
@@ -10,25 +8,16 @@ interface Props {
   title: string;
   description?: string;
   lang?: 'en' | 'es';
-  activeTab?: string;
   /* La ÚNICA condición que decide si existe la atmósfera. Default 'doc':
      una página nueva nace limpia y tiene que pedir atmósfera. */
   surface?: 'game' | 'doc';
-  /* Pedido explícito: la página de contacto (a la que el obelisco
-     teletransporta) no debe mostrar los tabs TERMINAL/DATA ANALYST/AI
-     ENGINEER — se llega ahí desde el juego, no es un destino más del nav
-     normal del sitio. Default true preserva el comportamiento de siempre
-     para el resto de las páginas 'doc'. */
-  showTabs?: boolean;
 }
 
 const {
   title,
   description = 'Pablo Lerner — AI Engineer & Data Analyst',
   lang = 'en',
-  activeTab = 'projects',
   surface = 'doc',
-  showTabs = true,
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
@@ -296,14 +285,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
           </div>
         </div>
       </div>
-
-      <!-- Navigation -->
-      {surface !== 'game' && showTabs && (
-      <header class="os-header">
-        <TabBar active={activeTab} lang={lang} />
-        {surface === 'game' && <DotRow />}
-      </header>
-      )}
 
       <!-- Main content -->
       <main class="os-main">
@@ -1005,12 +986,6 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
   }
 
   .os-audio-btn.is-off:focus-visible { color: var(--accent-bright); }
-
-  /* ── Navigation header ── */
-  .os-header {
-    border-bottom: 1px solid rgba(94,231,170,0.1);
-    flex-shrink: 0;
-  }
 
   /* ── Main content ── */
   .os-main {
