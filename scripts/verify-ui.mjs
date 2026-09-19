@@ -564,6 +564,124 @@ try {
         : 'nace cerrado · idioma en las 4, musica solo en la escena · abre dentro de pantalla con filas de 44px · Escape cierra y devuelve el foco');
   }
 
+  /* C21 — el dropdown de PROJECTS. Cuatro hechos, y los cuatro se rompen sin
+     dejar rastro en el HTML:
+       a) Que un href apunte a un record que no existe. Las filas llevan a
+          /{lang}/projects/#id: si alguien renombra un id en projects.ts, el
+          link sigue siendo valido, abre la pagina y no selecciona NADA — el
+          menu parece andar y no anda. Se casa contra los data-id reales.
+       b) Que no abra al pasar el mouse, que es el pedido.
+       c) Que el click cierre lo que el hover abrio. Con mouse, apuntar al
+          boton ya lo abre, asi que el click caia en la otra mitad del toggle
+          y lo cerraba; y con el puntero adentro no volvia a abrirse. Lo
+          encontro Playwright solo, porque su .click() mueve el mouse encima.
+       d) Que el #hash no abra el record, o peor: que lo abra OCULTO. Con un
+          filtro puesto, la fila del menu puede estar fuera del filtro — y
+          dejar seleccionada una fila oculta es el modo de falla clasico de
+          filtrar un listbox (mismo cuidado que C19).
+     Se recorre el camino real —hover, click en una fila— y no se fuerza
+     estado (leccion 48). */
+  {
+    const fallas = [];
+
+    /* (a) estatico, sobre el arbol construido */
+    for (const l of ['en', 'es']) {
+      const records = await readFile(path.join(DIST, l, 'projects', 'index.html'), 'utf8');
+      const reales = new Set([...records.matchAll(/data-id="([^"]+)"/g)].map(m => m[1]));
+      if (reales.size === 0) { fallas.push(`/${l}/projects/ no tiene filas con data-id`); continue; }
+      for (const pagina of [`${l}/index.html`, `${l}/contact/index.html`]) {
+        const html = await readFile(path.join(DIST, pagina), 'utf8');
+        const filas = [...html.matchAll(/data-proj="([^"]+)"/g)].map(m => m[1]);
+        if (filas.length !== 10) fallas.push(`/${pagina}: ${filas.length} filas en el menu (esperaba 10)`);
+        const huerfanas = filas.filter(id => !reales.has(id));
+        if (huerfanas.length) fallas.push(`/${pagina}: ${huerfanas.join(', ')} no existen como record`);
+        if (!html.includes('class="os-menu-item pj-all"')) fallas.push(`/${pagina}: falta la salida a todos los records`);
+      }
+    }
+
+    /* (b) y (c) — vivo, con puntero fino */
+    for (const [nombre, url, viewport] of [
+      ['/en/ escritorio', GAME_PAGE, { width: 1440, height: 900 }],
+      ['/es/contact/ angosto', '/es/contact/', { width: 390, height: 844 }],
+    ]) {
+      const ctx = await browser.newContext({ viewport });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      await pg.waitForSelector('#ps-projects-tab');
+
+      const abierto = () => pg.evaluate(() =>
+        !document.getElementById('ps-projects-pop').hasAttribute('hidden'));
+      if (await abierto()) fallas.push(`${nombre}: el menu nace abierto`);
+
+      await pg.locator('#ps-projects-tab').hover();
+      await pg.waitForTimeout(150);
+      if (!await abierto()) fallas.push(`${nombre}: el hover no abre`);
+
+      await pg.locator('#ps-projects-tab').click();
+      await pg.waitForTimeout(150);
+      if (!await abierto()) fallas.push(`${nombre}: el click cerro lo que el hover abrio`);
+
+      /* Entra en la pantalla y las filas son tocables. */
+      const caja = await pg.evaluate(() => {
+        const pop = document.getElementById('ps-projects-pop');
+        const r = pop.getBoundingClientRect();
+        const bajitas = [...pop.children].filter(e => e.getBoundingClientRect().height < 38).length;
+        return { dentro: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5,
+                 caja: `${Math.round(r.left)}..${Math.round(r.right)} de ${innerWidth}`, bajitas };
+      });
+      if (!caja.dentro) fallas.push(`${nombre}: el menu abre fuera de la pantalla (${caja.caja})`);
+      if (caja.bajitas) fallas.push(`${nombre}: ${caja.bajitas} filas de menos de 38px`);
+
+      /* Se va solo al sacar el mouse. */
+      await pg.mouse.move(5, Math.round(viewport.height - 5));
+      await pg.waitForTimeout(500);
+      if (await abierto()) fallas.push(`${nombre}: no se cierra al sacar el mouse`);
+
+      await pg.close();
+      await ctx.close();
+    }
+
+    /* (d) — el hash abre el record, y con un filtro puesto que lo dejaria
+       oculto el filtro cede. Se hace por el camino real: chip, menu, fila. */
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + '/en/projects/#llamarag', { waitUntil: 'load' });
+      await pg.waitForTimeout(400);
+      const porUrl = await pg.evaluate(() => {
+        const r = document.querySelector('.dossier-row.is-active');
+        return { id: r && r.dataset.id, oculta: !!(r && r.hidden) };
+      });
+      if (porUrl.id !== 'llamarag') fallas.push(`la URL #llamarag abrio "${porUrl.id}"`);
+
+      await pg.locator('[data-filter="data"]').click();
+      await pg.waitForTimeout(200);
+      await pg.locator('#ps-projects-tab').hover();
+      await pg.waitForTimeout(150);
+      /* Con timeout corto y .catch: si el menu no abriera, un .click() sobre
+         una fila invisible espera 30s y despues tira una excepcion que se
+         lleva puesto el arnes entero — el informe diria "crash" donde tiene
+         que decir "C21 en rojo". El hecho se mide sobre el estado. */
+      await pg.locator('#ps-projects-pop [data-proj="tutorbot"]').click({ timeout: 4000 }).catch(() => {});
+      await pg.waitForTimeout(400);
+      const trasFiltro = await pg.evaluate(() => {
+        const r = document.querySelector('.dossier-row.is-active');
+        return { id: r && r.dataset.id, oculta: !!(r && r.hidden), hash: location.hash,
+                 chip: (document.querySelector('[data-filter].is-on') || {}).dataset?.filter };
+      });
+      if (trasFiltro.id !== 'tutorbot') fallas.push(`con filtro DATA, la fila del menu abrio "${trasFiltro.id}"`);
+      if (trasFiltro.oculta) fallas.push('el record que abrio el menu quedo SELECCIONADO Y OCULTO');
+      if (trasFiltro.hash !== '#tutorbot') fallas.push(`la URL quedo en "${trasFiltro.hash}"`);
+
+      await pg.close();
+      await ctx.close();
+    }
+
+    record('C21', 'El dropdown de PROJECTS abre y lleva a algun lado', fallas.length === 0,
+      fallas.length ? fallas.slice(0, 4).join(' · ')
+        : '10 filas + salida en las 4 paginas · todo href casa con un record · hover abre, el click no lo cierra, sale solo · el #hash abre el record y el filtro cede');
+  }
+
 } finally {
   await browser.close();
   srv.close();
