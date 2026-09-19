@@ -115,15 +115,17 @@ const filters = [
           </div>
           {subline && <p class="role-sub sys-text">{subline}</p>}
           {stats.length > 0 && (
-            <div class="stat-grid">
+            <dl class="head-facts">
               {stats.map(s => (
-                <div class:list={['stat-box', { 'is-flag': isFlagStat(s) }]}>
-                  <span class="stat-label sys-text">{s.label}</span>
-                  <span class:list={['stat-value', { bright: s.bright, flag: isFlagStat(s) }]}>{s.value}</span>
-                  {s.sub && <span class="stat-sub">{s.sub}</span>}
+                <div class="fact">
+                  <dt class="fact-label sys-text">{s.label}</dt>
+                  <dd class:list={['fact-value', { bright: s.bright, flag: isFlagStat(s) }]}>
+                    {s.value}
+                    {s.sub && <span class="fact-sub"> · {s.sub}</span>}
+                  </dd>
                 </div>
               ))}
-            </div>
+            </dl>
           )}
         </header>
       )}
@@ -520,27 +522,24 @@ const filters = [
 
   .role-sub { font-size: 0.7rem; }
 
-  /* ── HUD stat grid ────────────────────────────────── */
-  .stat-grid {
+  /* ── Datos de cabecera ────────────────────────────────
+     Dos líneas de texto y no dos cajas con borde. El dato es el mismo; lo que
+     se va es el recuadro, que es de lo que se quejaba la pantalla: bordes que
+     encierran aire. Sin caja tampoco hace falta la variante ámbar de fondo
+     —el color del valor alcanza— y la cabecera baja de ~90px a ~34px, que es
+     ancho que gana el proyecto abierto. */
+  .head-facts {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin-top: 0.35rem;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.15rem 0.9rem;
+    margin-top: 0.15rem;
   }
 
-  .stat-box {
-    border: var(--border-mid);
-    background: var(--bg-panel);
-    padding: 0.55rem 0.7rem 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.32rem;
-    min-width: 0;
-  }
+  .fact { display: contents; }
 
-  .stat-label { font-size: 0.7rem; }
+  .fact-label { font-size: 0.7rem; }
 
-  .stat-value {
+  .fact-value {
     font-family: var(--font-mono);
     font-size: 0.72rem;
     letter-spacing: 0.05em;
@@ -548,19 +547,10 @@ const filters = [
     color: var(--sand);
     overflow-wrap: break-word;
   }
-  .stat-value.bright { color: var(--accent-bright); }
+  .fact-value.bright { color: var(--accent-bright); }
+  .fact-value.flag   { color: var(--accent-flag-bright); }
 
-  /* Flagship stat box — gold marking (never interactive) */
-  .stat-box.is-flag { border-color: var(--accent-flag); }
-  .stat-value.flag  { color: var(--accent-flag-bright); }
-
-  .stat-sub {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-    color: var(--sand-dim);
-    line-height: 1.5;
-  }
+  .fact-sub { color: var(--sand-dim); }
 
   /* ── Dossier: master-detail ───────────────────────── */
   .dossier {
@@ -841,7 +831,13 @@ const filters = [
   }
 
   @media (max-width: 480px) {
-    .stat-grid { grid-template-columns: 1fr; }
+    /* Apiladas: `max-content` de la etiqueta más 0.9rem de gap dejan el valor
+       en 180px sobre un teléfono de 320 y SPECIALIZATION sale en cuatro
+       renglones. */
+    .head-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    /* El aire va en el `dt`, no en el `.fact`: con `display: contents` ese
+       div no tiene caja y cualquier margen suyo se pierde. */
+    .fact:not(:first-child) .fact-label { margin-top: 0.4rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
