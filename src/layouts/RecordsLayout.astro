@@ -295,8 +295,19 @@ const filters = [
     const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
 
     function revealPane(pane: HTMLElement, fromPointer: boolean) {
+      /* Apilado (debajo de 900) el detalle está DEBAJO de una lista de 16, así
+         que hay que traerlo; en dos columnas ya está a la vista y moverlo sería
+         robarle el lugar a la lista. Mismo número que el corte del CSS. */
       if (fromPointer && isNarrow()) {
         pane.scrollIntoView({ block: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+        return;
+      }
+      /* En dos columnas el que scrollea es el documento de la derecha, y un
+         proyecto nuevo se lee desde arriba: sin esto, abrir uno después de
+         haber bajado en el anterior lo deja empezado por la mitad. */
+      if (!isNarrow()) {
+        const doc = pane.closest<HTMLElement>('.panel-main');
+        if (doc && doc.scrollTop > 0) doc.scrollTop = 0;
       }
     }
 
