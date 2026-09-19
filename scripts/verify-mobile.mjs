@@ -315,6 +315,31 @@ try {
     fuera.abierto && fuera.hayAfuera && menuCerrado,
     `abrio=${fuera.abierto} · deja ${fuera.libre}px de pantalla libre debajo · cerro=${menuCerrado}`);
 
+  /* M25 — en tactil el boton de PROJECTS tiene que ser un TOGGLE: toco y
+     abre, vuelvo a tocar y cierra. Parece obvio y es justo lo que se pierde
+     si el hover se habilita sin mirar el tipo de puntero.
+     En un telefono los eventos de puntero llegan TODOS en el mismo gesto:
+     `pointerenter` con el toque (el menu abre por hover), `pointerleave` al
+     levantar el dedo, y recien despues el `click`. O sea que para cuando
+     llega el click el pestillo de hover ya se solto y el click cierra lo que
+     el hover acababa de abrir: tocar el boton no hace NADA.
+     Medido mutando el fuente: con el hover habilitado en tactil, "primer
+     toque abre=false", y con el se caen tambien M14 y M15 — todo lo que
+     necesita abrir esta lista.
+     Por eso el hover va detras de `(hover: hover) and (pointer: fine)`, y
+     esto es lo que avisa si alguien saca esa condicion. */
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  const abrioConToque = await page.evaluate(() =>
+    !document.getElementById('ps-projects-pop').hasAttribute('hidden'));
+  await page.locator('#ps-projects-tab').tap().catch(() => {});
+  await page.waitForTimeout(250);
+  const cerroConToque = await page.evaluate(() =>
+    document.getElementById('ps-projects-pop').hasAttribute('hidden'));
+  record('M25', 'En tactil el boton de proyectos abre Y cierra',
+    abrioConToque && cerroConToque,
+    `primer toque abre=${abrioConToque} · segundo toque cierra=${cerroConToque}`);
+
   /* M15 — la misma salida en el dossier, por el camino REAL: PROJECTS → una
      fila → el teleport te deja parado en el centro del anillo → el spinner
      llena → el panel se abre solo. Recien ahi se toca la ✕.
