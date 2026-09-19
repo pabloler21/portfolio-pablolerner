@@ -1,6 +1,5 @@
 ---
 import Base from './Base.astro';
-import TerminalWindow from '../components/ui/TerminalWindow.astro';
 
 export interface StatBox {
   label: string;
@@ -103,26 +102,6 @@ const filters = [
   ...TRACKS.map(t => ({ id: t.id, label: t.label, count: trackCount(t.id) })),
 ];
 
-/* Una sola terminal ambiente: el perfil lidera con AI Engineer. La variante
-   PROC::DATA_PIPELINE se fue con la página de rol que la mostraba. */
-const term = {
-  title: 'PROC::AGENT_RUNTIME',
-  lines: [
-    '$ python agent.py',
-    'from langchain_anthropic import ChatAnthropic',
-    'llm = ChatAnthropic(model="claude-haiku-4-5")',
-    'tools = [search_memory, call_api, web_fetch]',
-    'agent = create_react_agent(llm, tools)',
-    'result = agent.invoke({',
-    '  "input": "summarize recent docs"',
-    '})',
-    '[think] querying vector store...',
-    '[tool]  memory_search → 8 chunks found',
-    '[think] synthesizing response...',
-    '[done]  347 tokens · latency: 1.84s',
-    '$ _',
-  ],
-} as const;
 ---
 
 <Base title={title} lang={lang} activeTab="projects" description={description} surface="doc">
@@ -260,10 +239,6 @@ const term = {
         </>
       )}
     </section>
-
-    <aside class="panel-terminal" aria-hidden="true">
-      <TerminalWindow title={term.title} lines={term.lines} />
-    </aside>
   </div>
 </Base>
 
@@ -497,7 +472,7 @@ const term = {
      pie — el 86% de la columna, medido a 1920×1080. */
   .role-grid {
     display: grid;
-    grid-template-columns: 1fr 220px;
+    grid-template-columns: 1fr;
     flex: 1;
     min-height: 0;
   }
@@ -508,15 +483,7 @@ const term = {
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-    border-left: var(--border);
     min-width: 0;
-  }
-
-  .panel-terminal {
-    border-left: var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
 
   /* ── Role header ──────────────────────────────────── */
@@ -861,11 +828,6 @@ const term = {
      310px, a 1100 el panel de detalle quedaba en 232px —ilegible para prosa—
      mientras 220px de la pantalla los ocupaba una animación decorativa. Lo que
      se sacrifica cuando falta ancho es el adorno, no el contenido. */
-  @media (max-width: 1200px) {
-    .role-grid { grid-template-columns: 1fr; }
-    .panel-terminal { display: none; }
-  }
-
   /* Y debajo de 1024 se apilan: dos columnas de contenido no entran, y apilado
      el nombre completo entra siempre. */
   @media (max-width: 1024px) {
@@ -876,10 +838,6 @@ const term = {
   @media (max-width: 900px) {
     .list-hint { display: none; }
     .detail-title { font-size: 1.3rem; }
-  }
-
-  @media (max-width: 640px) {
-    .panel-center { border-left: none; }
   }
 
   @media (max-width: 480px) {
