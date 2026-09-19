@@ -66,7 +66,6 @@ const isFlagStat = (s: StatBox) => s.flag ?? /flagship|estrella/i.test(s.label);
 
 const L = lang === 'en'
   ? {
-      files:    'PROJECT FILES',
       file:     'FILE',
       mission:  'MISSION',
       result:   'KEY RESULT',
@@ -80,7 +79,6 @@ const L = lang === 'en'
       profile:  'PROFILE',
     }
   : {
-      files:    'ARCHIVOS DE PROYECTO',
       file:     'ARCHIVO',
       mission:  'MISIÓN',
       result:   'RESULTADO CLAVE',
@@ -94,17 +92,85 @@ const L = lang === 'en'
       profile:  'PERFIL',
     };
 
-/* El "todos" primero y activo por defecto: sin filtro elegido se ven los 16. */
+/* El "todos" primero y activo por defecto: sin filtro elegido se ven los 16.
+   `label` es lo que entra en el chip y `long` lo que dice al apuntarlo: en la
+   columna de la lista los tres rótulos completos («AI ENGINEER 10 · DATA
+   ANALYST 07») piden 500px y saldrían en tres renglones. */
 const filters = [
-  { id: 'all', label: L.all, count: projects.length },
-  ...TRACKS.map(t => ({ id: t.id, label: t.label, count: trackCount(t.id) })),
+  { id: 'all', label: L.all, long: L.all, count: projects.length },
+  ...TRACKS.map(t => ({ id: t.id, label: t.short, long: t.label, count: trackCount(t.id) })),
 ];
 
 ---
 
 <Base title={title} lang={lang} description={description} surface="doc">
-  <div class="role-grid">
-    <section class="panel-center">
+  {/* Dos columnas y nada más: el riel con la lista, pegado al borde izquierdo
+      del shell y de arriba abajo, y el documento con el proyecto abierto. Es
+      la forma de una bandeja de entrada (o del listado de empleos de
+      LinkedIn): la lista no es un accesorio del contenido, es la mitad
+      izquierda de la pantalla y no se mueve mientras se la recorre. */}
+  <div class="records-grid">
+    {hasDossier && (
+      <div class="records-rail">
+        {/* El filtro va ACÁ, en la cabecera de la columna que filtra. Antes
+            vivía arriba del panel central, que era donde había ancho para los
+            tres rótulos completos; con la lista en su propia columna vuelve a
+            donde corresponde, y por eso los chips pasan a la etiqueta corta
+            (el rótulo largo queda en el `title` y en el panel de detalle). */}
+        <div class="filter-bar" role="group" aria-label={L.filter}>
+          {filters.map((f, i) => (
+            <button
+              type="button"
+              class:list={['filter-chip', { 'is-on': i === 0 }]}
+              data-filter={f.id}
+              title={f.long}
+              aria-pressed={i === 0 ? 'true' : 'false'}
+            >
+              <span>{f.label}</span>
+              <span class="chip-count">{pad2(f.count)}</span>
+            </button>
+          ))}
+        </div>
+
+        <div
+          class="dossier-list"
+          role="listbox"
+          tabindex="0"
+          aria-label={L.listAria}
+          aria-activedescendant="pf-0"
+        >
+          {projects.map((p, i) => (
+            <div
+              class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
+              role="option"
+              id={`pf-${i}`}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              data-idx={i}
+              data-id={p.id}
+              data-tracks={p.tracks.join(' ')}
+            >
+              <span class="row-name">{p.name}</span>
+              {/* La línea que convierte la lista en una lista de verdad: qué
+                  resuelve el proyecto, dos renglones y corte. Sin esto hay que
+                  abrir los 16 para saber cuál mirar.
+                  El estado (DEPLOYED/BUILT/…) sigue sin venir acá: ya se
+                  muestra grande arriba del panel de detalle. */}
+              <span class="row-desc">{p.problem}</span>
+              <span class="row-meta">
+                <span class="row-cursor" aria-hidden="true">◆</span>
+                {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
+                  <span class="track-tag" title={t.label}>{t.short}</span>
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <p class="list-hint sys-text">{L.hint}</p>
+      </div>
+    )}
+
+    <section class="panel-main">
       {heading && (
         <header class="role-head">
           <div class="role-head-top">
@@ -131,115 +197,52 @@ const filters = [
       <slot />
 
       {hasDossier && (
-        <>
-        {/* Va acá, pegado a lo que filtra, y NO en la columna izquierda: en un
-            teléfono esa columna se renderiza al principio de todo y el filtro
-            quedaría a una pantalla de distancia de la lista. Ocupa el ancho del
-            panel y no el de la columna maestra (265px) porque los tres rótulos
-            completos no entran ahí. */}
-        <div class="filter-bar" role="group" aria-label={L.filter}>
-          <span class="filter-label sys-text">{L.files}</span>
-          {filters.map((f, i) => (
-            <button
-              type="button"
-              class:list={['filter-chip', { 'is-on': i === 0 }]}
-              data-filter={f.id}
-              aria-pressed={i === 0 ? 'true' : 'false'}
-            >
-              <span>{f.label}</span>
-              <span class="chip-count">{pad2(f.count)}</span>
-            </button>
+        <div class="dossier-detail">
+          {projects.map((p, i) => (
+            <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${i}`}>
+              <div class="detail-top">
+                <span class:list={['detail-badge', { flag: p.featured }]}>{p.status}</span>
+                {/* Acá sí van los rótulos completos: hay ancho, y es donde se
+                    lee qué es el proyecto. */}
+                <span class="detail-tracks">
+                  {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
+                    <span class="track-tag">{t.label}</span>
+                  ))}
+                </span>
+                <span class="detail-file sys-text">ID: {p.id.toUpperCase()}</span>
+              </div>
+
+              <h3 class="detail-title" data-text={p.name}>{p.name}</h3>
+
+              <div class="detail-section">
+                <p class="detail-label sys-text">{L.mission}</p>
+                <p class="detail-problem">{p.problem}</p>
+              </div>
+
+              {p.outcome && (
+                <div class="detail-outcome">
+                  <span class="outcome-pip" aria-hidden="true">◆</span>
+                  <div class="outcome-body">
+                    <span class="outcome-label sys-text">{L.result}</span>
+                    <span class="outcome-value">{p.outcome}</span>
+                  </div>
+                </div>
+              )}
+
+              <div class="detail-section">
+                <p class="detail-label sys-text">{L.stack}</p>
+                <div class="detail-stack">
+                  {p.stack.map(t => <span class="chip">{t}</span>)}
+                </div>
+              </div>
+
+              <div class="detail-ctas">
+                <a class="cta-btn cta-primary detail-code" href={p.github} target="_blank" rel="noopener noreferrer">{L.code}</a>
+                {p.demo && <a class="cta-btn" href={p.demo} target="_blank" rel="noopener noreferrer">{L.live}</a>}
+              </div>
+            </article>
           ))}
         </div>
-
-        <div class="dossier">
-          <!-- ── Master: OS file list ── -->
-          <div class="dossier-master">
-            <div
-              class="dossier-list"
-              role="listbox"
-              tabindex="0"
-              aria-label={L.listAria}
-              aria-activedescendant="pf-0"
-            >
-              {projects.map((p, i) => (
-                <div
-                  class:list={['dossier-row', { 'is-active': i === 0, 'is-flagship': p.featured }]}
-                  role="option"
-                  id={`pf-${i}`}
-                  aria-selected={i === 0 ? 'true' : 'false'}
-                  data-idx={i}
-                  data-id={p.id}
-                  data-tracks={p.tracks.join(' ')}
-                >
-                  <span class="row-name">{p.name}</span>
-                  {/* La línea que convierte la lista en una lista de verdad: qué
-                      resuelve el proyecto, dos renglones y corte. Sin esto hay
-                      que abrir los 16 para saber cuál mirar.
-                      El estado (DEPLOYED/BUILT/…) sigue sin venir acá: ya se
-                      muestra grande arriba del panel de detalle. */}
-                  <span class="row-desc">{p.problem}</span>
-                  <span class="row-meta">
-                    <span class="row-cursor" aria-hidden="true">◆</span>
-                    {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
-                      <span class="track-tag" title={t.label}>{t.short}</span>
-                    ))}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p class="list-hint sys-text">{L.hint}</p>
-          </div>
-
-          <!-- ── Detail: pre-rendered pane per project (SSG) ── -->
-          <div class="dossier-detail">
-            {projects.map((p, i) => (
-              <article class:list={['detail-pane', { 'is-flagship': p.featured }]} data-idx={i} hidden={i !== 0} aria-labelledby={`pf-${i}`}>
-                <div class="detail-top">
-                  <span class:list={['detail-badge', { flag: p.featured }]}>{p.status}</span>
-                  {/* Acá sí van los rótulos completos: hay ancho, y es donde se
-                      lee qué es el proyecto. */}
-                  <span class="detail-tracks">
-                    {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
-                      <span class="track-tag">{t.label}</span>
-                    ))}
-                  </span>
-                  <span class="detail-file sys-text">ID: {p.id.toUpperCase()}</span>
-                </div>
-
-                <h3 class="detail-title" data-text={p.name}>{p.name}</h3>
-
-                <div class="detail-section">
-                  <p class="detail-label sys-text">{L.mission}</p>
-                  <p class="detail-problem">{p.problem}</p>
-                </div>
-
-                {p.outcome && (
-                  <div class="detail-outcome">
-                    <span class="outcome-pip" aria-hidden="true">◆</span>
-                    <div class="outcome-body">
-                      <span class="outcome-label sys-text">{L.result}</span>
-                      <span class="outcome-value">{p.outcome}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div class="detail-section">
-                  <p class="detail-label sys-text">{L.stack}</p>
-                  <div class="detail-stack">
-                    {p.stack.map(t => <span class="chip">{t}</span>)}
-                  </div>
-                </div>
-
-                <div class="detail-ctas">
-                  <a class="cta-btn cta-primary detail-code" href={p.github} target="_blank" rel="noopener noreferrer">{L.code}</a>
-                  {p.demo && <a class="cta-btn" href={p.demo} target="_blank" rel="noopener noreferrer">{L.live}</a>}
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-        </>
       )}
     </section>
   </div>
@@ -279,7 +282,10 @@ const filters = [
     }, SCRAMBLE_STEP);
   }
 
-  document.querySelectorAll<HTMLElement>('.dossier').forEach(root => {
+  /* La raíz es la GRILLA y no `.dossier`: la lista y los paneles de detalle
+     dejaron de ser hermanos —una vive en el riel y los otros en el documento—
+     así que el ancestro común es la grilla que los contiene a los dos. */
+  document.querySelectorAll<HTMLElement>('.records-grid').forEach(root => {
     const list  = root.querySelector<HTMLElement>('.dossier-list');
     const rows  = Array.from(root.querySelectorAll<HTMLElement>('.dossier-row'));
     const panes = Array.from(root.querySelectorAll<HTMLElement>('.detail-pane'));
@@ -424,11 +430,9 @@ const filters = [
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
-  }
-
-  .filter-label {
-    font-size: 0.7rem;
-    margin-right: 0.2rem;
+    padding: 0.55rem 0.7rem;
+    border-bottom: var(--border-mid);
+    flex-shrink: 0;
   }
 
   .filter-chip {
@@ -473,14 +477,32 @@ const filters = [
      WORK (que ya lo dice la caja STATUS): ni un dato propio. A cambio se
      llevaba 280px de ancho con 837.9px verticales vacíos entre el link y el
      pie — el 86% de la columna, medido a 1920×1080. */
-  .role-grid {
+  /* 22rem = 352px, que es lo que pedía la columna maestra vieja para entrar
+     el nombre más largo de los dos idiomas ("Optimización de Inventario
+     E-commerce", 248px con la fuente real: 335.4 con los bordes y el padding).
+     Ahora el nombre puede envolver, así que el número deja de ser un mínimo
+     duro y pasa a ser lo que hace que la descripción entre en dos renglones. */
+  .records-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 22rem minmax(0, 1fr);
     flex: 1;
     min-height: 0;
   }
 
-  .panel-center {
+  /* ── El riel ───────────────────────────────────────────
+     Tres piezas apiladas: el filtro arriba, la lista en el medio (es la única
+     que crece y la única que scrollea) y la ayuda de teclado al pie. El borde
+     de la derecha es el que separa las dos mitades de la pantalla; la lista
+     ya no lleva borde propio, que sería un segundo marco a 1px del primero. */
+  .records-rail {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-right: var(--border-mid);
+  }
+
+  .panel-main {
     padding: 1.2rem;
     overflow-y: auto;
     display: flex;
@@ -553,39 +575,11 @@ const filters = [
 
   .fact-sub { color: var(--sand-dim); }
 
-  /* ── Dossier: master-detail ───────────────────────── */
-  .dossier {
-    display: grid;
-    /* 320 y no 265: sacar el número y el estado de la fila libera ~96px, pero
-       no alcanzan para el nombre más largo ("Adventure Works Financial
-       Dashboard", 235px con la fuente real). La cuenta de la columna maestra es
-       ancho − 2 del borde − 17.6 de padding − 12.8 del cursor − 12.8 de gaps
-       − 42 de la etiqueta DATA (la más ancha) = nombre. El nombre más largo NO
-       es el inglés: "Optimización de Inventario E-commerce" pide 248px contra
-       los 235 de "Adventure Works Financial Dashboard", así que el corte se
-       mide en los DOS idiomas. Para 248 hacen falta 335.4; 344 deja 8px.
-       El proyecto de DOS etiquetas es FraudSense y su nombre corto mide poco,
-       así que no es el que manda. Los 75px salen del panel de detalle, que a
-       1440 pasa de ~600 a ~525 y sigue sobrado para prosa. */
-    grid-template-columns: 344px minmax(0, 1fr);
-    gap: 1rem;
-    align-items: start;
-    flex: 1;
-  }
-
-  .dossier-master {
-    position: sticky;
-    top: 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .master-label { font-size: 0.7rem; }
-
+  /* ── La lista ─────────────────────────────────────── */
   .dossier-list {
-    border: var(--border-mid);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     background: var(--bg-void);
   }
   .dossier-list:focus-visible {
@@ -699,7 +693,12 @@ const filters = [
     gap: 0.3rem;
   }
 
-  .list-hint { font-size: 0.7rem; }
+  .list-hint {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.7rem;
+    border-top: var(--border);
+    flex-shrink: 0;
+  }
 
   /* ── Detail pane ──────────────────────────────────── */
   .dossier-detail {
@@ -843,14 +842,19 @@ const filters = [
      310px, a 1100 el panel de detalle quedaba en 232px —ilegible para prosa—
      mientras 220px de la pantalla los ocupaba una animación decorativa. Lo que
      se sacrifica cuando falta ancho es el adorno, no el contenido. */
-  /* Y debajo de 1024 se apilan: dos columnas de contenido no entran, y apilado
-     el nombre completo entra siempre. */
-  @media (max-width: 1024px) {
-    .dossier { grid-template-columns: 1fr; gap: 0.8rem; }
-    .dossier-master { position: static; }
-  }
-
+  /* Debajo de 900 se apilan, y el corte es el MISMO número que usa el script
+     para decidir si al tocar una fila hay que traer el detalle a la vista
+     (`isNarrow()`): si los dos no coinciden, hay un rango de anchos donde la
+     lista está arriba del detalle y tocar una fila no lleva a ningún lado.
+     El riel deja de scrollear por su cuenta: apilado, el scroll es el de la
+     página. */
   @media (max-width: 900px) {
+    .records-grid { grid-template-columns: minmax(0, 1fr); }
+    .records-rail {
+      border-right: none;
+      border-bottom: var(--border-mid);
+    }
+    .dossier-list { overflow-y: visible; }
     .list-hint { display: none; }
     .detail-title { font-size: 1.3rem; }
   }
