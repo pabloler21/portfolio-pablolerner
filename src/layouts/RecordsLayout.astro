@@ -1,6 +1,5 @@
 ---
 import Base from './Base.astro';
-import DocNav from '../components/ui/DocNav.astro';
 import TerminalWindow from '../components/ui/TerminalWindow.astro';
 
 export interface StatBox {
@@ -128,8 +127,6 @@ const term = {
 
 <Base title={title} lang={lang} activeTab="projects" description={description} surface="doc">
   <div class="role-grid">
-    <DocNav lang={lang} />
-
     <section class="panel-center">
       {heading && (
         <header class="role-head">
@@ -493,9 +490,14 @@ const term = {
   }
   .filter-chip.is-on .chip-count { color: var(--accent-bright); }
 
+  /* Sin la columna izquierda. DocNav decía RECORDS (que ya es el título de la
+     página), STREET (que ya es un botón de la franja de identidad) y OPEN TO
+     WORK (que ya lo dice la caja STATUS): ni un dato propio. A cambio se
+     llevaba 280px de ancho con 837.9px verticales vacíos entre el link y el
+     pie — el 86% de la columna, medido a 1920×1080. */
   .role-grid {
     display: grid;
-    grid-template-columns: 280px 1fr 220px;
+    grid-template-columns: 1fr 220px;
     flex: 1;
     min-height: 0;
   }
@@ -860,7 +862,7 @@ const term = {
      mientras 220px de la pantalla los ocupaba una animación decorativa. Lo que
      se sacrifica cuando falta ancho es el adorno, no el contenido. */
   @media (max-width: 1200px) {
-    .role-grid { grid-template-columns: 280px 1fr; }
+    .role-grid { grid-template-columns: 1fr; }
     .panel-terminal { display: none; }
   }
 
@@ -877,7 +879,6 @@ const term = {
   }
 
   @media (max-width: 640px) {
-    .role-grid { grid-template-columns: 1fr; }
     .panel-center { border-left: none; }
   }
 
