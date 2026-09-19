@@ -691,6 +691,162 @@ try {
         : '10 filas + salida en las 4 paginas · todo href casa con un record · hover abre, el click no lo cierra, sale solo · el #hash abre el record y el filtro cede');
   }
 
+  /* C22 — la pagina de records es dos columnas y ninguna esta vacia.
+     Seis hechos, todos invisibles en el HTML y todos son EL cambio:
+
+       a) Que una palabra de navegacion vuelva a decirse dos veces. STREET
+          llego a estar TRES veces en esta pagina (el boton de la franja, la
+          pestaña y el back-link de la columna izquierda). Se cuenta sobre los
+          links y botones, no sobre el texto suelto: "walk the street" en una
+          descripcion no es navegacion.
+       b) Que vuelva a aparecer un marco encerrando aire. Se mide el hueco
+          vertical mas grande DENTRO de cualquier caja con borde: la columna
+          vieja tenia 837.9px entre el link y el pie. Es la unidad de medida
+          del pedido ("un lugar vacio que ocupa lugar sin sentido"), no el
+          nombre de ningun elemento, asi que sigue valiendo si mañana la caja
+          se llama distinto.
+       c) Que la pagina vuelva a scrollear. Las dos mitades sirven solo si son
+          mitades: la lista recorre sus 16 sin mover el detalle. Si el shell
+          pierde el alto definido esto se rompe y no se ve en el HTML.
+       d) Que elegir un proyecto del fondo de la lista mande el detalle fuera
+          de la pantalla, o rebobine la lista al primero. Es el modo de falla
+          de una lista larga con detalle al costado, y el que tenia la pagina
+          vieja (1750px de alto: el detalle quedaba arriba de todo).
+       e) Que la fila se quede sin la linea que la hace legible. Sin `row-desc`
+          la lista vuelve a ser nombres sueltos y hay que abrir los 16.
+       f) Que en un telefono no se apile, o se apile al reves. Apilado, la
+          lista va PRIMERO y tocar una fila tiene que traer el detalle a la
+          vista: sin eso el detalle queda a 1600px de scroll de distancia. */
+  {
+    const fallas = [];
+
+    /* El hueco vertical mas grande dentro de una caja con borde. Se miran los
+       hijos EN FLUJO: el rail de contacto es `fixed` y su rectangulo cae en
+       otro lado, asi que contarlo inventaria huecos que nadie ve. */
+    const HUECO_PROBE = () => {
+      let peor = { px: 0, caja: '' };
+      for (const el of document.querySelectorAll('.os-shell, .os-shell *')) {
+        const cs = getComputedStyle(el);
+        const bordes = ['Top', 'Right', 'Bottom', 'Left']
+          .filter(l => parseFloat(cs['border' + l + 'Width']) > 0).length;
+        const caja = el.getBoundingClientRect();
+        if (bordes === 0 || caja.height < 300) continue;
+        const hijos = [...el.children]
+          .filter(c => getComputedStyle(c).position !== 'fixed')
+          .map(c => c.getBoundingClientRect())
+          .filter(r => r.height > 0 || r.width > 0)
+          .sort((a, b) => a.top - b.top);
+        if (hijos.length === 0) continue;
+        let y = caja.top;
+        for (const r of hijos) { if (r.top - y > peor.px) peor = { px: +(r.top - y).toFixed(1), caja: el.className || el.tagName }; y = Math.max(y, r.bottom); }
+        const cola = caja.bottom - y;
+        if (cola > peor.px) peor = { px: +cola.toFixed(1), caja: (el.className || el.tagName) + ' (al pie)' };
+      }
+      return peor;
+    };
+
+    const HUECO_MAX = 200;
+
+    for (const url of DOC_PAGES) {
+      /* ── escritorio ── */
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      const pg = await ctx.newPage();
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      await pg.waitForSelector('.dossier-row');
+
+      const esc = await pg.evaluate((probe) => {
+        const nav = [...document.querySelectorAll('a, button')]
+          .map(e => e.textContent.replace(/\s+/g, ' ').trim())
+          .filter(t => /^[^A-Za-zÁÉÍÓÚÑ]*(STREET|CALLE)[^A-Za-zÁÉÍÓÚÑ]*$/i.test(t));
+        const lista = document.querySelector('.dossier-list');
+        const filas = [...document.querySelectorAll('.dossier-row')];
+        return {
+          nav,
+          hueco: eval('(' + probe + ')')(),
+          paginaScroll: +(document.documentElement.scrollHeight - innerHeight).toFixed(1),
+          listaScroll: lista ? +(lista.scrollHeight - lista.clientHeight).toFixed(1) : -1,
+          sinDesc: filas.filter(f => {
+            const d = f.querySelector('.row-desc');
+            return !d || !d.textContent.trim() || d.getBoundingClientRect().height === 0;
+          }).length,
+          filas: filas.length,
+        };
+      }, HUECO_PROBE.toString());
+
+      if (esc.nav.length !== 1) fallas.push(`${url}: la calle se ofrece ${esc.nav.length} veces (${esc.nav.join(' / ')})`);
+      if (esc.hueco.px > HUECO_MAX) fallas.push(`${url}: ${esc.hueco.px}px de aire dentro de "${esc.hueco.caja}"`);
+      if (esc.paginaScroll > 2) fallas.push(`${url}: la pagina scrollea ${esc.paginaScroll}px`);
+      if (esc.listaScroll <= 10) fallas.push(`${url}: la lista no scrollea por su cuenta (${esc.listaScroll}px)`);
+      if (esc.sinDesc > 0) fallas.push(`${url}: ${esc.sinDesc}/${esc.filas} filas sin la linea que dice que resuelve`);
+
+      /* (d) el ultimo de la lista: el detalle tiene que quedar a la vista y la
+         lista donde estaba. Se recorre el camino real: scroll + click. */
+      await pg.evaluate(() => {
+        const l = document.querySelector('.dossier-list');
+        if (l) l.scrollTop = l.scrollHeight;
+      });
+      const ultima = await pg.evaluate(() => {
+        const vis = [...document.querySelectorAll('.dossier-row')].filter(r => !r.hidden);
+        return vis[vis.length - 1].id;
+      });
+      const antes = await pg.evaluate(() => document.querySelector('.dossier-list').scrollTop);
+      await pg.click(`#${ultima}`).catch(() => {});
+      await pg.waitForTimeout(400);
+      const tras = await pg.evaluate(() => {
+        const pane = [...document.querySelectorAll('.detail-pane')].find(p => !p.hidden);
+        const r = pane ? pane.getBoundingClientRect() : null;
+        return {
+          hay: !!pane,
+          dentro: !!r && r.top >= 0 && r.top < innerHeight - 80,
+          scroll: document.querySelector('.dossier-list').scrollTop,
+          abierta: (document.querySelector('.dossier-row.is-active') || {}).id,
+        };
+      });
+      if (!tras.hay) fallas.push(`${url}: elegir la ultima fila no dejo ningun panel abierto`);
+      if (tras.abierta !== ultima) fallas.push(`${url}: se eligio ${ultima} y quedo abierta ${tras.abierta}`);
+      if (!tras.dentro) fallas.push(`${url}: tras elegir la ultima, el detalle quedo fuera de la pantalla`);
+      if (Math.abs(tras.scroll - antes) > 40) fallas.push(`${url}: elegir una fila rebobino la lista (${antes} -> ${tras.scroll})`);
+
+      await pg.close();
+      await ctx.close();
+
+      /* ── telefono ── */
+      const ctxM = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const pgM = await ctxM.newPage();
+      await pgM.goto(BASE + url, { waitUntil: 'load' });
+      await pgM.waitForSelector('.dossier-row');
+      const tel = await pgM.evaluate(() => {
+        const rail = document.querySelector('.records-rail').getBoundingClientRect();
+        const main = document.querySelector('.panel-main').getBoundingClientRect();
+        return {
+          apilado: rail.bottom <= main.top + 1,
+          listaPrimero: rail.top < main.top,
+          desborde: +(document.documentElement.scrollWidth - innerWidth).toFixed(1),
+        };
+      });
+      if (!tel.apilado) fallas.push(`${url} a 390: no se apila`);
+      if (!tel.listaPrimero) fallas.push(`${url} a 390: el detalle va antes que la lista`);
+      if (tel.desborde > 1) fallas.push(`${url} a 390: ${tel.desborde}px colgando fuera del borde`);
+
+      await pgM.click('.dossier-row:nth-of-type(5)').catch(() => {});
+      await pgM.waitForTimeout(900);
+      const traeDetalle = await pgM.evaluate(() => {
+        const pane = [...document.querySelectorAll('.detail-pane')].find(p => !p.hidden);
+        if (!pane) return false;
+        const r = pane.getBoundingClientRect();
+        return r.top < innerHeight && r.bottom > 0;
+      });
+      if (!traeDetalle) fallas.push(`${url} a 390: tocar una fila no trae el detalle a la vista`);
+
+      await pgM.close();
+      await ctxM.close();
+    }
+
+    record('C22', 'Records: dos columnas, ninguna vacia', fallas.length === 0,
+      fallas.length ? fallas.slice(0, 4).join(' · ')
+        : `la calle se ofrece una vez · nada de aire enmarcado (>${HUECO_MAX}px) · scrollea la lista y no la pagina · el ultimo de la lista abre a la vista y sin rebobinar · toda fila dice que resuelve · a 390 se apila con la lista primero`);
+  }
+
 } finally {
   await browser.close();
   srv.close();
