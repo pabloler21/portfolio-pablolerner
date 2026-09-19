@@ -155,7 +155,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 --ink-mid:      #2a3040;   /* card rims, stronger dividers */
 
 /* Accents — three-tier system */
---accent:       #3d7a64;   /* teal muted — decorative only: ◆ cursor, DotRow, badge borders */
+--accent:       #3d7a64;   /* teal muted — decorative only: ◆ cursor, badge borders */
 --accent-bright: #5ee7aa;  /* mint — INTERACTIVE ONLY: CTAs, active states, hover highlights */
 
 /* Flagship tier (Deus Ex black&gold) — flagship MARKING only, NEVER interactive */
@@ -186,7 +186,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - Zero `border-radius` anywhere — ever
 - Scanlines + animated grain: CSS-only overlays on `body::before` / `body::after`
 - `prefers-reduced-motion`: boot screen → `display: none`; stagger reveal → `animation-duration: 0.01s` (never `animation: none` — kills `fill-mode`)
-- `--accent` (teal `#3d7a64`): decorative only — ◆ cursor, DotRow, badge/tab borders
+- `--accent` (teal `#3d7a64`): decorative only — ◆ cursor, badge borders
 - `--accent-bright` (mint `#5ee7aa`): interactive only — CTAs, active states, hover
 - `--accent-flag*` (amber): flagship marking only — badge, board frame, list row, HUD stat box. NEVER on anything clickable. A flagship row that is ALSO selected shows both: mint border-left (interactive state) + amber badge (identity)
 - `--accent-alert` (rojo `#e05a4f`): **sólo para salir** — la ✕ que cierra un panel (`.ps-close`), nada más. Mint dice "seguir", ámbar dice "destacado"; ninguno podía decir "salí de acá", que es lo que hacía falta cuando en táctil el panel tapa la pantalla entera. No se usa para errores de formulario, badges ni estados: si aparece un segundo uso, discutirlo antes
@@ -197,7 +197,7 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
 - **Plain mode is GONE.** It existed because the default state failed AA; the default now passes. Never reintroduce `[data-plain]`, `iron-dust-plain` or a legibility toggle — legibility is the default, not a mode.
 - **Surface rule** (`surface: 'game' | 'doc'` prop on `Base.astro`, reflected as `<html data-surface>`): atmosphere exists ONLY where the visitor can walk. `doc` gets no AmbientCanvas, no margin rain, no scanlines/grain, no game footer. Default is `'doc'` — a new page is born clean and must ASK for atmosphere.
 - **Never use `opacity` to dim text.** It composited to 2.17:1 and is what broke the AA floor. Dim with colour (`--sand-dim`). Minimum rendered text size: **11px** (`0.7rem`).
-- **`--accent` teal (3.80:1) and `--accent-flag` (4.30:1 on `--bg-surface`) must NEVER carry text** — borders, rims, ◆ and DotRow only. Flagship text uses `--accent-flag-bright`.
+- **`--accent` teal (3.80:1) and `--accent-flag` (4.30:1 on `--bg-surface`) must NEVER carry text** — borders, rims and ◆ only. Flagship text uses `--accent-flag-bright`.
 
 ---
 
@@ -214,16 +214,12 @@ src/
     ambient.ts          # motor de musica generativa (3 variantes; se despacha 'terminal')
   layouts/
     Base.astro          # YoRHa OS chrome — identity strip + AmbientCanvas + margin rain panels
-    RecordsLayout.astro # 3-col grid (DocNav 280px · center · TerminalWindow 220px, la terminal se retira debajo de 1200). Owns the records-page UI: props {heading, badge, subline, stats[], projects[]} → stats HUD grid + master-detail dossier (UNA lista de 16 sin numerar, con etiquetas de especialidad por fila, barra de filtro arriba, paneles de detalle pre-renderizados, teclado ↑↓ sobre las filas VISIBLES, scramble transition). Cada fila lleva `data-id` y la página abre el record que nombra el `#hash` —al cargar y en `hashchange`, porque el menú `PROJECTS ▾` cambia el hash sin recargar—, con la URL siguiendo a la selección por `replaceState`. Pages are thin wrappers.
+    RecordsLayout.astro # DOS columnas (riel de 22rem con la lista · documento con el proyecto abierto) y `fill` en Base para que scrolleen las columnas y no la página. Props {heading, badge, subline, stats[], projects[]} → cabecera sin cajas + master-detail (UNA lista de 16 sin numerar, fila de tres renglones con etiquetas, filtro encabezando el riel, paneles pre-renderizados, teclado ↑↓ sobre las filas VISIBLES, scramble transition). Cada fila lleva `data-id` y la página abre el record que nombra el `#hash` —al cargar y en `hashchange`, porque el menú `PROJECTS ▾` cambia el hash sin recargar—, con la URL siguiendo a la selección por `replaceState`. Ver `## Página de records`. Pages are thin wrappers.
   components/
     ui/
       AmbientCanvas.astro     # Three.js perspective-grid background (lazy, z-index:0)
       BootScreen.astro        # one-time OS-boot overlay (sessionStorage flag)
-      TabBar.astro            # top nav tabs; props: active, lang
-      DotRow.astro            # 40-dot animated row
       StatusBar.astro         # bottom bar: hints de juego (sólo surface="game") · toggle EN|ES · fecha. NO lleva CV (vive en la franja de identidad) ni CLEAR MODE (plain mode se eliminó)
-      DocNav.astro            # left-panel nav for the records page: STREET back-link + OPEN TO WORK. Las dos entradas [data-jump] a los bloques se fueron con los bloques: con etiquetas y filtro eran un segundo control para lo mismo
-      TerminalWindow.astro    # animated live-coding terminal panel (sólo la página de records)
       PortfolioScene.astro    # 3D interactive home scene (Three.js city street)
       TouchControls.tsx       # ÚNICA isla React del sitio: joystick + botón de salto, client:media
   pages/
@@ -300,20 +296,25 @@ propósito (el flagship conserva `DEPLOYED` porque "andá y tocalo" es su hecho 
 ├─────────────────────────────────────────────────────────────┤
 │  Pablo Lerner · AI Engineer & Data Analyst              │  ← os-identity
 │                    [ STREET ] PROJECTS ▾ [ CONTACT ][ ⋮ ]   │     (.id-ctas)
-├─────────────────────────────────────────────────────────────┤
-│  ⬡ STREET  ⬡ PROJECTS                                      │  ← TabBar
-├─────────────────────────────────────────────────────────────┤
-│  ● ● ● ● ● ● ● ● ● ● ●  (40 animated dots)                │  ← DotRow
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**No hay barra de pestañas, y no hay que reponerla.** Existió hasta la fase 3.24 y
+ofrecía `⬡ STREET` y `⬡ PROJECTS` 38.6px debajo de los mismos dos destinos: en
+`/projects/` la palabra STREET llegó a estar TRES veces en un viewport (el botón, la
+pestaña y el back-link de la columna izquierda). La franja de identidad ya lleva los
+tres destinos del sitio y el kebab con los ajustes, y se renderiza en las 10 páginas.
+Con ella se fue el `DotRow`, que no se dibujaba desde la fase 3.19 (su llamada vivía
+dentro de un bloque que exigía `surface !== 'game'` y volvía a preguntar
+`surface === 'game'` adentro — lección 62).
 
 Max-width **1400px, pero sólo en `surface="doc"`**: una columna de texto de 2560px no se
 lee. **En `surface="game"` el shell suelta el tope** y toma `margin-inline: var(--chrome-col)`,
 o sea que el juego ocupa el monitor menos las dos columnas de margen. os-shell border: mint
 glow `rgba(94,231,170,0.18)` not `var(--border)`.
 
-**En `surface="game"` se renderiza SÓLO la franja de identidad**: la de título, el
-`TabBar` y el `DotRow` están apagados ahí. Por eso el shell del juego lleva
+**En `surface="game"` se renderiza SÓLO la franja de identidad**: la de título está
+apagada ahí. Por eso el shell del juego lleva
 `height: 100svh` (no `min-height`) y la escena se queda con lo que sobra vía `flex: 1`:
 la cabecera mide distinto en escritorio (una línea) que en un teléfono angosto (dos), y
 cualquier constante que la suplante nace vieja — ver lección 54. `100svh` y no `100vh`
@@ -727,15 +728,50 @@ Ninguno de los dos cubre lo del otro.
 
 ---
 
-## TerminalWindow component
+## Página de records (`/{lang}/projects/`)
 
-Props: `title: string`, `lines: readonly string[]`
+`RecordsLayout.astro`. **Dos columnas y nada más**: el riel con la lista pegado al borde
+izquierdo del shell, y el documento con el proyecto abierto. Es la forma de una bandeja
+de entrada —o del listado de empleos de LinkedIn, que es de donde salió el pedido—: la
+lista no es un accesorio del contenido, es la mitad izquierda de la pantalla y no se
+mueve mientras se la recorre.
 
-Contenido (en `RecordsLayout.astro`): una sola terminal, `PROC::AGENT_RUNTIME` (codigo de
-un agente LangChain) — el perfil lidera con AI Engineer. La variante `PROC::DATA_PIPELINE`
-se fue con la pagina de rol que la mostraba.
+Hasta la fase 3.24 eran TRES columnas y dos estaban de adorno. `DocNav` (280px) decía
+RECORDS, STREET y OPEN TO WORK —las tres cosas dichas en otro lado de la MISMA pantalla:
+el título, un botón de la franja y la caja STATUS— con 837.9px verticales vacíos entre el
+link y el pie (el 86% de la columna, medido a 1920×1080). `TerminalWindow` (220px) era una
+animación `aria-hidden`. Entre las dos se llevaban 500px de 1920 y el panel de detalle
+medía 498. Ahora mide **1007.6**.
 
-Animation: commands → 45–80ms/char + 520ms pause; output → 8–18ms/char; 2.2s restart; stagger 500–2300ms.
+- **El riel** (`.records-rail`) son tres piezas apiladas: el filtro —la cabecera de la
+  columna que filtra—, la lista (lo único que crece y lo único que scrollea) y la ayuda de
+  teclado al pie. Los chips usan la etiqueta CORTA (`ALL 16 · AI 10 · DATA 07`): los
+  rótulos completos piden ~500px y en 352 saldrían en tres renglones. El largo queda en el
+  `title` del chip y en el panel de detalle.
+- **La fila son tres renglones**: nombre completo, qué resuelve (dos renglones y corte) y
+  las etiquetas. El nombre corto («Iris» en vez de «Iris — Personal AI Assistant») existía
+  por el presupuesto de 344px de la columna vieja (lección 56); con columna propia ese
+  techo se levanta y la lista se puede leer sin abrir los 16.
+- **El mint del nombre abierto va DESPUÉS del `:hover`**: las dos reglas pesan lo mismo y
+  gana la última (lección 40).
+- **La cabecera no tiene cajas**: SPECIALIZATION y STATUS son una grilla de etiqueta/valor
+  sin borde. El dato es el mismo y la cabecera baja de ~90px a ~34px.
+- **`fill` es una prop de `Base`**, no del `surface`: pone `height: 100svh` en el shell y
+  `min-height: 0` en `.os-main`, y **sólo arriba de 900px**. Sin lo segundo el `flex: 1` no
+  puede encoger por debajo de su contenido y la lista de 16 vuelve a empujar la página
+  (lección 63). `/contact/` no la pide y scrollea como un documento.
+- **El corte para apilar es 900px, el MISMO número que `isNarrow()`** en el script: es lo
+  que decide traer el detalle a la vista al tocar una fila. Si los dos no coinciden hay un
+  rango de anchos donde la lista está arriba del detalle y tocar no lleva a ningún lado.
+- El `#hash` sigue abriendo el record que nombra (al cargar y en `hashchange`, porque
+  `PROJECTS ▾` cambia el hash sin recargar) y la URL sigue a la selección con
+  `replaceState`.
+- El controlador cuelga de `.records-grid` y no de `.dossier`: la lista y los paneles
+  dejaron de ser hermanos, así que la raíz es la grilla que los contiene a los dos.
+- Cubierto por `verify:ui` **C19** (el filtro) y **C22** (la calle se ofrece una vez, nada
+  de aire enmarcado, scrollea la lista y no la página, el último de la lista abre a la
+  vista y sin rebobinar, toda fila dice qué resuelve, y a 390 se apila con la lista
+  primero).
 
 ---
 
@@ -786,6 +822,7 @@ COMING SOON.
 | 3.21 — Intro y click del cartel | **DONE** | La placa "Pablo Lerner / ACCESS TERMINAL" se separa del barrido de cámara: la placa va siempre, el barrido sólo sin reduced-motion (Windows lo trae encendido de fábrica, así que la mayoría de escritorio no veía ninguna presentación). `introT` pasa a segundos reales. Y clickear un cartel ya no abre el dossier: sólo teletransporta, y el anillo queda como único camino que lo abre — antes se dibujaba dos veces. Arneses: C15 y C16 |
 | 3.22 — Menu de ajustes | **DONE** | Los dos ajustes del sitio dejan de estar sueltos en la barra y pasan a un menu kebab: el parlante (que estaba entre tres botones de navegacion) y el cambio de idioma (que estaba exiliado a la linea del nombre por falta de lugar). El chip `ES` pasa a icono de traduccion A/文 + `ESPAÑOL`/`ENGLISH`. El menu cierra con Escape (devolviendo el foco), con un toque afuera, y abre por encima del cajon y del joystick. Arneses: C20 y M24 nuevos; C11 despegado del orden de atributos, M18/M19 por el camino real |
 | 3.23 — PROJECTS ▾ | **DONE** | La lista de proyectos deja de ser un cajón lateral de 300px y pasa a un dropdown que cuelga del botón, abierto al pasar el mouse, en TODAS las páginas (antes en documento el botón era un link a la home). Las filas son links a `/{lang}/projects/#id` que en la escena teletransportan; la página de records abre el record del hash y cada uno pasa a tener URL propia. Se retiran `.ps-projects-drawer`, su ✕ y `populateProjectsDrawer`. Arneses: C21 y M25 nuevos; M9/M13/M14/M15/M24 apuntados al dropdown |
+| 3.24 — Records tipo LinkedIn | **DONE** | La página de records pasa de tres columnas (dos de adorno) a dos: el riel con la lista pegado al borde y el documento con el proyecto abierto. Se retiran `DocNav` (280px con 837.9px de aire), `TerminalWindow` (220px decorativos), la barra de pestañas (STREET estaba TRES veces) y el `DotRow` (inalcanzable desde 3.19). Filas de tres renglones con lo que resuelve cada proyecto, filtro encabezando el riel con etiquetas cortas, cabecera sin cajas, y `fill` en Base para que scrolleen las columnas y no la página. El detalle pasa de 498px a 1007.6. Arnés: C22 nuevo |
 | 4 — About / Contact | **pending** | Career narrative EN+ES, LinkedIn/GitHub/email |
 | 5 — Polish | **pending** | Lighthouse, a11y audit, mobile, SEO |
 | 6 — Launch | **parcial** | Dominio propio y sitio en vivo en `pablolerner.dev` (VPS Vultr + Caddy, `npm run deploy`). Falta: SEO final, analytics, CV PDF |
@@ -1019,3 +1056,38 @@ COMING SOON.
     de la pantalla. Es la familia de las lecciones 39 y 49 (un elemento posicionado
     contra algo que en otro viewport no está donde creías) y lo agarró `verify:mobile`
     **M11**, que mide lo que cuelga fuera del borde y no el CSS de nadie.
+61. **Una columna de navegación que no tiene un dato propio no es navegación: es la
+    misma pantalla dicha dos veces.** `DocNav` ofrecía RECORDS, STREET y OPEN TO WORK, y
+    los tres ya estaban a la vista en esa misma pantalla — RECORDS es el título de la
+    página, STREET es un botón de la franja de identidad y OPEN TO WORK es la caja
+    STATUS. Sumando la pestaña `⬡ STREET`, la palabra STREET aparecía **tres veces en un
+    viewport**. Y aun así se reportó como "hay bordes y lugares vacíos que ocupan lugar
+    sin sentido": lo que se ve es el hueco, no la repetición que lo causa. Antes de
+    acomodar una columna, listar qué dice y tachar lo que ya se dice en otro lado; si no
+    queda nada, la columna sobra. El hueco era la consecuencia: 837.9px de aire entre el
+    único link y el pie, el 86% de la columna.
+62. **Una condición anidada que contradice a su guarda es código muerto que compila.**
+    `{surface !== 'game' && showTabs && (<header>…{surface === 'game' && <DotRow />}…)}`:
+    el `DotRow` no se dibujaba desde la fase 3.19 y seguía documentado en CLAUDE.md como
+    una fila más de la cabecera. Las dos mitades de la contradicción estaban a tres
+    líneas una de otra, pero se leen en momentos distintos: la guarda cuando se pregunta
+    "¿esto sale en el juego?" y la interna cuando se pregunta "¿y los puntitos?".
+    Apareció recién al borrar el bloque entero. Es la lección 52 desde el otro lado: la
+    documentación describía lo que el código *decía*, no lo que hacía.
+63. **El mínimo automático de un ítem flex es su contenido, así que `flex: 1` no alcanza
+    para que algo encoja.** Con el shell en `height: 100svh` y la lista de 16 adentro, la
+    página seguía midiendo 1750px: `.os-main` tenía `flex: 1` pero no `min-height: 0`, y
+    sin eso su alto mínimo es el de su contenido, así que empujaba el shell hacia abajo y
+    el scroll volvía a ser el de la página. Es la lección 54 un piso más abajo: allá
+    faltaba una altura DEFINIDA arriba, acá falta el permiso para encoger abajo. Para que
+    un panel tenga scroll propio hacen falta las dos.
+64. **Una mutación que el layout se come da un falso verde igual que un test mal
+    escrito.** Para probar que el check nuevo mide el "aire enmarcado" le inyecté una
+    columna muerta de 700px… y el check devolvió exactamente el mismo número que sin
+    mutar. La conclusión fácil era "el check no mide nada", y era falsa: el div entró
+    como hijo de un contenedor flex con alto definido, `flex-shrink` lo dejó en menos de
+    los 300px que el probe exige para mirar una caja, y la mutación nunca existió.
+    Reproduciendo la estructura real —una columna del grid, como la que se había
+    sacado— el probe pasó de 21.8px a **753.3px**. Cuando una mutación no pone el check
+    en rojo, la primera hipótesis es que la mutación no pasó (lección 48 al revés: ahí
+    mentía el test, acá mentía la prueba del test).
