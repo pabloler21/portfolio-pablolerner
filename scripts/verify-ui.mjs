@@ -280,8 +280,16 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
     const pg = await ctx.newPage();
     await pg.goto(BASE + GAME_PAGE, { waitUntil: 'load' });
-    await pg.waitForFunction(`document.documentElement.dataset.scene === 'ready'`, null, { timeout: 120000 });
-    const visible = await pg.waitForFunction(
+    /* Con .catch, no pelado. Headless con SwiftShader la escena puede tardar
+       mas de los dos minutos con la maquina cargada, y una espera sin red
+       tira una excepcion que se lleva puesto el arnes ENTERO: se pierden los
+       checks que vienen despues y el informe dice "crash" donde tiene que
+       decir "C15 en rojo". Paso tres veces en una tarde. Es la leccion 58,
+       que salio de un .tap() y vale igual para cualquier espera. */
+    const escenaLista = await pg.waitForFunction(
+      `document.documentElement.dataset.scene === 'ready'`, null, { timeout: 120000 },
+    ).then(() => true).catch(() => false);
+    const visible = escenaLista && await pg.waitForFunction(
       `document.getElementById('ps-hero')?.classList.contains('show')`, null, { timeout: 15000 },
     ).then(() => true).catch(() => false);
     /* Headless con SwiftShader corre el RAF lentisimo (leccion 3), asi que la
@@ -290,7 +298,8 @@ try {
       `!document.getElementById('ps-hero')?.classList.contains('show')`, null, { timeout: 90000 },
     ).then(() => true).catch(() => false);
     record('C15', 'La presentacion se ve con reduced-motion', visible && seVa,
-      `placa visible=${visible} · se oculta sola=${seVa}`);
+      escenaLista ? `placa visible=${visible} · se oculta sola=${seVa}`
+                  : 'la escena no llego a estar lista en 120s (no se pudo medir)');
     await pg.close();
     await ctx.close();
   }
