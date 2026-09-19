@@ -59,8 +59,6 @@ const TRACKS = [
 
 const trackCount = (id: 'ai' | 'data') => projects.filter(p => p.tracks.includes(id)).length;
 
-// Short name for the master list rows ("Iris — Personal AI Assistant" → "Iris")
-const shortName = (n: string) => n.split(' — ')[0];
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 // Flagship HUD stat box: explicit flag prop, or label match (EN "FLAGSHIP" / ES "PROYECTO ESTRELLA")
@@ -174,12 +172,15 @@ const filters = [
                   data-id={p.id}
                   data-tracks={p.tracks.join(' ')}
                 >
-                  <span class="row-cursor" aria-hidden="true">◆</span>
-                  <span class="row-name">{shortName(p.name)}</span>
-                  {/* El estado (DEPLOYED/BUILT/…) NO va acá: ya se muestra grande
-                      arriba del panel de detalle, y es lo que forzaba a cortar
-                      los nombres. */}
-                  <span class="row-tags">
+                  <span class="row-name">{p.name}</span>
+                  {/* La línea que convierte la lista en una lista de verdad: qué
+                      resuelve el proyecto, dos renglones y corte. Sin esto hay
+                      que abrir los 16 para saber cuál mirar.
+                      El estado (DEPLOYED/BUILT/…) sigue sin venir acá: ya se
+                      muestra grande arriba del panel de detalle. */}
+                  <span class="row-desc">{p.problem}</span>
+                  <span class="row-meta">
+                    <span class="row-cursor" aria-hidden="true">◆</span>
                     {TRACKS.filter(t => p.tracks.includes(t.id)).map(t => (
                       <span class="track-tag" title={t.label}>{t.short}</span>
                     ))}
@@ -592,28 +593,30 @@ const filters = [
     outline-offset: 1px;
   }
 
+  /* ── La fila ──────────────────────────────────────────
+     Tres renglones: nombre completo, qué resuelve y las etiquetas. Antes era
+     una línea con el nombre CORTO ("Iris" en vez de "Iris — Personal AI
+     Assistant") porque la columna medía 344px y había que elegir entre el
+     nombre entero y cualquier otra cosa. Con la lista al ancho de su propia
+     columna el presupuesto deja de ser de suma cero y entra lo que hace falta
+     para elegir sin abrir los 16. */
   .dossier-row {
-    display: grid;
-    /* cursor · nombre · etiquetas. Tres columnas para tres items: si sobra o
-       falta una, el último cae a un segundo renglón y la fila sale de dos
-       líneas (ya pasó al agregar el número). */
-    grid-template-columns: 0.8rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.52rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    padding: 0.6rem 0.7rem;
     border-left: 2px solid transparent;
     font-family: var(--font-mono);
     cursor: pointer;
     user-select: none;
     transition: background 0.12s, border-color 0.12s;
   }
-  /* `display: grid` le gana al `[hidden]` de la hoja del navegador, así que la
-     fila filtrada seguiría a la vista sin esta regla. */
+  /* `display: flex` de autor le gana al `[hidden]` de la hoja del navegador,
+     así que la fila filtrada seguiría a la vista sin esta regla (lección 56). */
   .dossier-row[hidden] { display: none; }
 
   .dossier-row + .dossier-row { border-top: var(--border); }
   .dossier-row:hover { background: var(--bg-panel); }
-  .dossier-row:hover .row-name { color: var(--sand); }
 
   /* Flagship row — gold border-left + cursor mark "is flagship".
      MUST come before .is-active: mint (interactive, "is selected")
@@ -628,6 +631,8 @@ const filters = [
   .row-cursor {
     color: var(--accent);
     font-size: 0.7rem;
+    /* Oculto, no atenuado: 0 es esconder y no bajarle el contraste a un texto
+       (lección 25). El ◆ además no es texto, es marca de estado. */
     opacity: 0;
     transition: opacity 0.12s;
   }
@@ -639,24 +644,44 @@ const filters = [
 
   .row-name {
     color: var(--sand-muted);
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     letter-spacing: 0.06em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.35;
   }
-  .dossier-row.is-active .row-name { color: var(--sand); }
+  .dossier-row:hover .row-name { color: var(--sand); }
+  /* Mint en el nombre del abierto: es un estado interactivo, que es lo único
+     para lo que existe el mint. El ámbar del flagship no compite porque vive
+     en el borde izquierdo y ahí ya gana el mint al seleccionarse.
+     DESPUÉS del :hover a propósito: las dos reglas pesan lo mismo (tres
+     selectores de clase, `:hover` cuenta como clase) y gana la última, así
+     que al revés el nombre del proyecto abierto se apagaba justo mientras el
+     puntero estaba encima (lección 40, quinta vez en este repo). */
+  .dossier-row.is-active .row-name { color: var(--accent-bright); }
+
+  .row-desc {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--sand-dim);
+    /* Dos renglones y corte: con uno solo la mitad de las descripciones se
+       van en puntos suspensivos, con tres la lista deja de entrar en pantalla. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .row-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
+  }
 
   /* ── Etiquetas de especialidad ────────────────────────
      Van en --sand-dim y no en un color propio por track: el teal (3.80:1) no
      puede llevar texto, el ámbar es sólo del flagship y el mint sólo de lo
      interactivo. Una etiqueta no es ninguna de las tres cosas. */
-  .row-tags {
-    display: inline-flex;
-    gap: 0.25rem;
-    flex-shrink: 0;
-  }
-
   .track-tag {
     font-family: var(--font-mono);
     font-size: 0.7rem;
