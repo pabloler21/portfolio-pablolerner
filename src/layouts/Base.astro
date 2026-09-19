@@ -11,6 +11,13 @@ interface Props {
   /* La ÚNICA condición que decide si existe la atmósfera. Default 'doc':
      una página nueva nace limpia y tiene que pedir atmósfera. */
   surface?: 'game' | 'doc';
+  /* La página se queda con el alto del viewport y son sus columnas las que
+     scrollean, en vez de crecer hacia abajo y scrollear la página entera.
+     Lo pide la página de records, que es dos paneles que se leen en paralelo:
+     si la lista de 16 empuja la página, el detalle se va hacia arriba y hay
+     que volver a subir después de cada elección. Default false: una página
+     documento normal scrollea como un documento. */
+  fill?: boolean;
 }
 
 const {
@@ -18,6 +25,7 @@ const {
   description = 'Pablo Lerner — AI Engineer & Data Analyst',
   lang = 'en',
   surface = 'doc',
+  fill = false,
 } = Astro.props;
 
 const altLang = lang === 'en' ? 'es' : 'en';
@@ -65,7 +73,7 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
 ---
 
 <!doctype html>
-<html lang={lang} data-surface={surface}>
+<html lang={lang} data-surface={surface} data-fill={fill ? '' : undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -640,6 +648,26 @@ const altHref = (hayHermana ? hermana : `/${altLang}`) + '/';
        medida que crecia el monitor. */
     max-width: none;
     margin-inline: var(--chrome-col);
+  }
+
+  /* Alto definido en vez de mínimo, igual que en la escena y por la misma
+     razón: con `min-height` el shell crece con el contenido y el reparto
+     vertical lo decide lo más largo que haya adentro. Con `height` lo hace el
+     propio flex y cada columna se queda con lo suyo.
+
+     Sólo arriba de 900, que es donde hay dos columnas: apilado, encerrar la
+     página en un viewport con scrolls adentro es peor que dejarla scrollear.
+     Y `100svh` y no `100vh` porque en un teléfono `vh` es el viewport GRANDE
+     (aunque acá no muerda, el criterio es el mismo que en la escena). */
+  @media (min-width: 901px) {
+    html[data-fill] .os-shell {
+      height: 100svh;
+      min-height: 0;
+    }
+    /* Sin esto el `flex: 1` no puede encoger por debajo de su contenido: el
+       mínimo automático de un ítem flex es su tamaño de contenido, así que la
+       lista de 16 volvería a empujar el shell hacia abajo. */
+    html[data-fill] .os-main { min-height: 0; }
   }
 
   /* diagonal corner cut top-right */
