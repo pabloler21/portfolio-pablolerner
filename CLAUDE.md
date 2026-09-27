@@ -1111,3 +1111,10 @@ COMING SOON.
     movimiento, no contenido—. Antes de reescribir algo que "se perdió", `grep` del
     símbolo: si está, la pregunta es qué lo apaga. `verify:ui` **C24** corre con
     `reducedMotion: 'reduce'` a propósito; sin eso pasaría con el bug adentro.
+66. **En Playwright headless toda scrollbar mide 0.** Sus flags de fábrica (`--headless`
+    y `--hide-scrollbars`) esconden las barras, así que `offsetWidth - clientWidth` da 0
+    con o sin tema y cualquier check de scrollbar da un falso rojo (o, peor, un falso
+    verde si se compara contra 0). Sacar sólo `--hide-scrollbars` no alcanza: hay que
+    reemplazar los dos por `--headless=new` (`ignoreDefaultArgs` + `args`), y ahí la del
+    sistema mide 15 y la tematizada 6. Y el `file://` tampoco sirve para medir layout:
+    las rutas `/_astro/` son absolutas, sin CSS no hay overflow y todo vuelve a dar 0.
