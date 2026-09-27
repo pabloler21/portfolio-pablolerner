@@ -20,6 +20,16 @@ npm run deploy        # build + rsync al VPS + verificacion en vivo
 npm run deploy:contact # instala/actualiza el endpoint de contacto en el VPS
 ```
 
+## Commits — separados al máximo (regla de Pablo)
+
+**Todo lo que se pida se commitea en la mayor cantidad de commits posible.** Un commit
+por cambio atómico: tokens, estilos, lógica, tests, docs y el plan van cada uno en el
+suyo, y un cambio de CSS con tres reglas independientes son tres commits. Cada commit
+tiene que compilar (`npm run build`) y no romper ningún arnés que ya estuviera verde,
+así que el orden importa: primero lo que otro commit necesita. Mensajes en español con
+prefijo convencional (`feat(records):`, `style(global):`, `test(verify:ui):`, `docs:`).
+Pedido directo: "se va stageando, commiteando, pusheando y deployando de una".
+
 **WSL2 networking — read carefully, mistakes have been made here:**
 
 - **Always use `npm run dev` with zero extra flags.** Binds to `127.0.0.1` only → Windows browser reaches it at `http://localhost:4321/`.
