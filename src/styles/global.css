@@ -206,6 +206,15 @@ a {
   background: var(--scroll-thumb-on);
   box-shadow: 0 0 8px rgba(94, 231, 170, 0.55);
 }
+/* Firefox no tiene los pseudo-elementos: ahí sí va el estándar, que da el
+   color y el grosor y nada más. El `@supports` es lo que impide que Chromium
+   lo lea y apague todo lo de arriba. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+  }
+}
 
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
