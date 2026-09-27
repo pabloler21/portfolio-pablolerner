@@ -190,6 +190,10 @@ Inspired by NieR: Automata (YoRHa OS). Tokens in `src/styles/tokens.css`.
    antes eran todo lo que sobraba del shell y en un ultrawide se comían
    el 59% de la pantalla — ver lección 55 */
 --chrome-col: min(60px, max(0px, (100vw - 1400px) / 2));
+
+/* Scrollbar — riel apagado en reposo, mint al apuntar/arrastrar (global.css) */
+--scroll-w: 6px;  --scroll-track: var(--bg-void);
+--scroll-thumb: var(--ink-mid);  --scroll-thumb-on: var(--accent-bright);
 ```
 
 **Hard constraints:**
