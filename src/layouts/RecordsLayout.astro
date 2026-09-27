@@ -251,9 +251,18 @@ const filters = [
   type ScrambleEl = HTMLElement & { _scrambleTimer?: ReturnType<typeof setInterval> | null };
 
   const SCRAMBLE_CHARS = '◆◇▸▪░▒▓XZQV0123456789';
-  const SCRAMBLE_MS = 480;
   const SCRAMBLE_STEP = 30;
+  /* Cuántos símbolos van delante del cursor. Es lo que hace que se lea como
+     algo que se ESCRIBE y no como un bloque de ruido: detrás de la cabeza el
+     texto ya es el real, delante todavía no hay nada. */
+  const SCRAMBLE_HEAD = 8;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  const glyph = () => SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
+
+  /* El largo decide la duración, con techo: un título de 12 letras en 1.1s se
+     arrastra, y un párrafo de 200 en 0.48s es un parpadeo. */
+  const scrambleMs = (len: number) => Math.min(1100, Math.max(480, len * 6));
 
   function scrambleIn(el: ScrambleEl, text: string) {
     // Cancel-safe: clear any in-flight timer stored on the element
@@ -263,8 +272,33 @@ const filters = [
        vio el efecto: se reportó como "volvé a poner la animación", cuando el
        código seguía acá. El scramble no desplaza nada —cambia glifos en su
        lugar— y el ajuste suprime movimiento, no contenido (lección 53). */
-    const frames = Math.ceil(SCRAMBLE_MS / SCRAMBLE_STEP);
+
+    /* Tres nodos y no un textContent: lo asentado, la cabeza de símbolos y el
+       resto del texto REAL pero transparente. El fantasma reserva el alto
+       final desde el primer frame, así el párrafo no crece renglón a renglón
+       y empuja todo lo de abajo. Nodos de texto, nunca innerHTML: el texto
+       viene de los datos del proyecto. */
+    const done  = document.createTextNode('');
+    const head  = document.createElement('span');
+    const ghost = document.createElement('span');
+    head.className = 'scr-head';
+    head.setAttribute('aria-hidden', 'true');
+    ghost.className = 'scr-ghost';
+    ghost.setAttribute('aria-hidden', 'true');
+    el.replaceChildren(done, head, ghost);
+
+    const frames = Math.ceil(scrambleMs(text.length) / SCRAMBLE_STEP);
     let frame = 0;
+    const paint = () => {
+      const settled = Math.floor((frame / frames) * text.length);
+      const end = Math.min(text.length, settled + SCRAMBLE_HEAD);
+      done.data = text.slice(0, settled);
+      let h = '';
+      for (let i = settled; i < end; i++) h += /\s/.test(text[i]) ? text[i] : glyph();
+      head.textContent = h;
+      ghost.textContent = text.slice(end);
+    };
+    paint();
     el._scrambleTimer = setInterval(() => {
       frame++;
       if (frame >= frames) {
@@ -273,12 +307,7 @@ const filters = [
         el.textContent = text;
         return;
       }
-      const settled = Math.floor((frame / frames) * text.length);
-      let out = text.slice(0, settled);
-      for (let i = settled; i < text.length; i++) {
-        out += text[i] === ' ' ? ' ' : SCRAMBLE_CHARS[(Math.random() * SCRAMBLE_CHARS.length) | 0];
-      }
-      el.textContent = out;
+      paint();
     }, SCRAMBLE_STEP);
   }
 
@@ -766,6 +795,14 @@ const filters = [
     color: var(--sand);
     min-height: 1.25em;
   }
+
+  /* Los nodos del scramble los crea el script, así que no llevan el atributo
+     de scope de Astro: sin `:global()` estas reglas no los alcanzan nunca
+     (lección 22). La cabeza va en `--sand-dim` —dice "todavía no", no es
+     interactiva, así que el mint no le corresponde— y el fantasma es el texto
+     real en transparente: ocupa su lugar y no se ve. */
+  .detail-pane :global(.scr-head)  { color: var(--sand-dim); }
+  .detail-pane :global(.scr-ghost) { color: transparent; }
 
   .detail-section {
     display: flex;
