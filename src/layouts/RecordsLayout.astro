@@ -258,7 +258,11 @@ const filters = [
   function scrambleIn(el: ScrambleEl, text: string) {
     // Cancel-safe: clear any in-flight timer stored on the element
     if (el._scrambleTimer) { clearInterval(el._scrambleTimer); el._scrambleTimer = null; }
-    if (reducedMotion.matches) { el.textContent = text; return; }
+    /* SIN guarda de reduced-motion, a propósito. La había, y como Windows trae
+       el ajuste encendido de fábrica (lección 8) la mayoría de escritorio nunca
+       vio el efecto: se reportó como "volvé a poner la animación", cuando el
+       código seguía acá. El scramble no desplaza nada —cambia glifos en su
+       lugar— y el ajuste suprime movimiento, no contenido (lección 53). */
     const frames = Math.ceil(SCRAMBLE_MS / SCRAMBLE_STEP);
     let frame = 0;
     el._scrambleTimer = setInterval(() => {
