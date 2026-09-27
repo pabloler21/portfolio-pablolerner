@@ -178,6 +178,25 @@ a {
   width: 100%;
 }
 
+/* ── Scrollbar ──────────────────────────────────────────
+   La del sistema es gris claro, redondeada y con flechas: la única pieza de la
+   pantalla que no era de esta paleta. Se tematiza con los pseudo-elementos
+   `::-webkit-scrollbar` (Chromium y Safari) porque son los únicos que permiten
+   esquina viva y sacar las flechas. NO se pone `scrollbar-color` al lado: en
+   Chromium ≥121 las propiedades estándar desactivan los pseudo-elementos y se
+   perdería todo lo demás. Firefox va aparte, más abajo. */
+::-webkit-scrollbar {
+  width: var(--scroll-w);
+  height: var(--scroll-w);
+}
+::-webkit-scrollbar-track  { background: var(--scroll-track); }
+::-webkit-scrollbar-corner { background: var(--scroll-track); }
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 0;
+}
+
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html[data-surface="game"] body::before,
