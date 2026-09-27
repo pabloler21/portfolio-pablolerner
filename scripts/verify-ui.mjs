@@ -895,6 +895,39 @@ try {
       fallas.length ? fallas.join(' · ') : 'lista y detalle con la barra tematizada en los dos idiomas');
   }
 
+  /* C24 — al elegir un proyecto su texto se ESCRIBE con simbolos, y eso pasa
+     tambien con reduced-motion. El efecto estuvo en el codigo todo el tiempo,
+     pero salia temprano con `prefers-reduced-motion`, que Windows trae
+     encendido de fabrica (leccion 8): la mayoria de escritorio no lo veia y se
+     reporto como "volve a poner la animacion". Por eso el contexto emula
+     `reduce`: sin eso este check pasaria con el bug adentro.
+     Se miran dos momentos: a mitad de camino la mision todavia no es el texto
+     final y lleva algun simbolo; al terminar es EXACTAMENTE el texto final
+     (sin restos de la cabeza ni del fantasma). */
+  {
+    const fallas = [];
+    const c24 = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+    const pg = await c24.newPage();
+    await pg.goto(BASE + '/en/projects/', { waitUntil: 'load' });
+    await pg.waitForSelector('.dossier-row');
+    await pg.locator('.dossier-row').nth(1).click();
+    await pg.waitForTimeout(150);
+    const medio = await pg.evaluate(() => {
+      const el = document.querySelector('.detail-pane:not([hidden]) .detail-problem');
+      return el ? { txt: el.textContent, fin: el.dataset.text, head: el.querySelector('.scr-head')?.textContent ?? '' } : null;
+    });
+    if (!medio) fallas.push('no hay .detail-problem visible');
+    else if (!/[◆◇▸▪░▒▓XZQV0-9]/.test(medio.head)) fallas.push(`a los 150ms no hay simbolos escribiendose ("${medio.txt.slice(0, 40)}…")`);
+    await pg.waitForTimeout(1500);
+    const fin = await pg.evaluate(() => [...document.querySelectorAll('.detail-pane:not([hidden]) [data-text]')]
+      .map(el => ({ ok: el.textContent === el.dataset.text && el.children.length === 0, cls: el.className })));
+    if (fin.length < 2) fallas.push(`solo ${fin.length} campos con scramble (esperaba titulo, mision y resultado)`);
+    fin.filter(f => !f.ok).forEach(f => fallas.push(`${f.cls} no se asento en el texto final`));
+    await c24.close();
+    record('C24', 'El texto del proyecto se escribe', fallas.length === 0,
+      fallas.length ? fallas.join(' · ') : `${fin.length} campos se escriben con simbolos y se asientan · aun con reduced-motion`);
+  }
+
 } finally {
   await browser.close();
   srv.close();
