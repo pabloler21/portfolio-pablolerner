@@ -847,6 +847,54 @@ try {
         : `la calle se ofrece una vez · nada de aire enmarcado (>${HUECO_MAX}px) · scrollea la lista y no la pagina · el ultimo de la lista abre a la vista y sin rebobinar · toda fila dice que resuelve · a 390 se apila con la lista primero`);
   }
 
+  /* C23 — la scrollbar lleva la paleta, no la del sistema.
+     El color de un pseudo-elemento no se puede leer desde getComputedStyle,
+     pero su ANCHO sí se nota en el layout: `offsetWidth - clientWidth` de una
+     caja que scrollea es lo que ocupa la barra. La clasica de Chromium mide
+     15px; la tematizada mide --scroll-w. Si alguien agrega `scrollbar-color`
+     sin el @supports —que en Chromium ≥121 apaga los pseudo-elementos— la
+     barra vuelve a 15 (o a la fina del sistema) y esto se pone en rojo.
+     Ojo: con los flags de fabrica de Playwright (`--headless` y
+     `--hide-scrollbars`) toda barra mide 0 —la primera corrida dio 0px en las
+     cuatro—, y sacar solo `--hide-scrollbars` no alcanza. Este check usa un
+     navegador propio con los dos reemplazados por `--headless=new`, que si
+     dibuja barras: 15px la del sistema, 6 la tematizada. */
+  {
+    const fallas = [];
+    const conBarras = await chromium.launch({
+      executablePath: resolveChrome(),
+      env: browserEnv(),
+      ignoreDefaultArgs: ['--hide-scrollbars', '--headless'],
+      args: ['--headless=new'],
+    });
+    const c23 = await conBarras.newContext({ viewport: { width: 1920, height: 1000 } });
+    const pg = await c23.newPage();
+    for (const url of DOC_PAGES) {
+      await pg.goto(BASE + url, { waitUntil: 'load' });
+      await pg.waitForSelector('.dossier-row');
+      const m = await pg.evaluate(() => {
+        const want = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scroll-w'));
+        const out = [];
+        for (const sel of ['.dossier-list', '.panel-main']) {
+          const el = document.querySelector(sel);
+          if (!el) { out.push({ sel, falta: true }); continue; }
+          /* El detalle puede no desbordar: se lo fuerza a scrollear para medir
+             la barra, no el contenido del proyecto de turno. */
+          if (el.scrollHeight <= el.clientHeight) el.style.minHeight = '0', el.style.maxHeight = '120px';
+          out.push({ sel, w: el.offsetWidth - el.clientWidth - parseFloat(getComputedStyle(el).borderLeftWidth) - parseFloat(getComputedStyle(el).borderRightWidth) });
+        }
+        return { want, out };
+      });
+      for (const o of m.out) {
+        if (o.falta) fallas.push(`${url} sin ${o.sel}`);
+        else if (Math.abs(o.w - m.want) > 0.5) fallas.push(`${url} ${o.sel} barra de ${o.w}px (esperaba ${m.want})`);
+      }
+    }
+    await conBarras.close();
+    record('C23', 'La scrollbar lleva la paleta', fallas.length === 0,
+      fallas.length ? fallas.join(' · ') : 'lista y detalle con la barra tematizada en los dos idiomas');
+  }
+
 } finally {
   await browser.close();
   srv.close();
