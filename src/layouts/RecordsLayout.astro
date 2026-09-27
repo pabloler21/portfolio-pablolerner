@@ -212,7 +212,7 @@ const filters = [
 
               <div class="detail-section">
                 <p class="detail-label sys-text">{L.mission}</p>
-                <p class="detail-problem">{p.problem}</p>
+                <p class="detail-problem" data-text={p.problem}>{p.problem}</p>
               </div>
 
               {p.outcome && (
@@ -220,7 +220,7 @@ const filters = [
                   <span class="outcome-pip" aria-hidden="true">◆</span>
                   <div class="outcome-body">
                     <span class="outcome-label sys-text">{L.result}</span>
-                    <span class="outcome-value">{p.outcome}</span>
+                    <span class="outcome-value" data-text={p.outcome}>{p.outcome}</span>
                   </div>
                 </div>
               )}
@@ -356,8 +356,12 @@ const filters = [
       void pane.offsetWidth; // reflow → restart CSS fade
       pane.classList.add('pane-enter');
 
-      const titleEl = pane.querySelector<ScrambleEl>('.detail-title');
-      if (titleEl) scrambleIn(titleEl, titleEl.dataset.text || titleEl.textContent || '');
+      /* Título, misión y resultado: lo que se LEE del proyecto se escribe; los
+         rótulos, chips y botones aparecen quietos, que es lo que ancla la
+         vista mientras el texto se asienta. */
+      pane.querySelectorAll<ScrambleEl>('[data-text]').forEach(el => {
+        scrambleIn(el, el.dataset.text || el.textContent || '');
+      });
 
       rows[idx].scrollIntoView({ block: 'nearest' });
       revealPane(pane, fromPointer);
