@@ -196,6 +196,16 @@ a {
   background: var(--scroll-thumb);
   border-radius: 0;
 }
+/* Tres escalones, igual que un botón: el riel se despierta cuando el mouse
+   entra al panel que scrollea, y se pone mint —el color de lo que responde—
+   al apuntarlo y al arrastrarlo, con el mismo halo que el borde del shell.
+   Van después de la regla base: misma especificidad, gana el último (lección 40). */
+:hover::-webkit-scrollbar-thumb { background: var(--sand-dim); }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-on); }
+::-webkit-scrollbar-thumb:active {
+  background: var(--scroll-thumb-on);
+  box-shadow: 0 0 8px rgba(94, 231, 170, 0.55);
+}
 
 /* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
