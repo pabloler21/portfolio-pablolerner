@@ -67,4 +67,12 @@
   /* ── Effects ── */
   --scanline-opacity: 0.04;
   --grain-opacity:    0.045;
+
+  /* ── Scrollbar ──
+     En reposo es un riel apagado del color de los bordes; el mint recién
+     aparece al pasar o arrastrar, porque es el color de lo interactivo. */
+  --scroll-w:        6px;
+  --scroll-track:    var(--bg-void);
+  --scroll-thumb:    var(--ink-mid);
+  --scroll-thumb-on: var(--accent-bright);
 }
