@@ -1102,3 +1102,12 @@ COMING SOON.
     sacado— el probe pasó de 21.8px a **753.3px**. Cuando una mutación no pone el check
     en rojo, la primera hipótesis es que la mutación no pasó (lección 48 al revés: ahí
     mentía el test, acá mentía la prueba del test).
+65. **"Volvé a poner la animación" puede querer decir "nunca la viste".** El scramble del
+    detalle de records seguía en el código, entero, con su llamada en `select()`. Lo que
+    pasaba es que su primera línea era `if (reducedMotion.matches) { … return; }`, y en
+    Windows el ajuste viene encendido de fábrica (lección 8): para casi todo visitante de
+    escritorio el efecto no existía. Es la lección 53 por tercera vez y en otro archivo —
+    un scramble cambia glifos en su lugar, no desplaza nada, y el ajuste suprime
+    movimiento, no contenido—. Antes de reescribir algo que "se perdió", `grep` del
+    símbolo: si está, la pregunta es qué lo apaga. `verify:ui` **C24** corre con
+    `reducedMotion: 'reduce'` a propósito; sin eso pasaría con el bug adentro.
