@@ -1118,3 +1118,11 @@ COMING SOON.
     reemplazar los dos por `--headless=new` (`ignoreDefaultArgs` + `args`), y ahí la del
     sistema mide 15 y la tematizada 6. Y el `file://` tampoco sirve para medir layout:
     las rutas `/_astro/` son absolutas, sin CSS no hay overflow y todo vuelve a dar 0.
+67. **`ps aux | grep '[p]atron'` no esquiva el auto-match cuando el patrón está escrito
+    en la misma línea de comando.** El truco del corchete evita que `grep` se encuentre
+    a sí mismo, pero el Bash tool corre todo como `bash -c "…"`, y si ese string también
+    contiene `http.server 4398` (en una función, un `echo`, lo que sea), el `kill` mata a
+    la shell que lo está ejecutando — exit 144 y los pasos siguientes (restaurar un
+    archivo mutado, por ejemplo) no corren nunca. Matar por puerto: `lsof -ti :PUERTO |
+    xargs -r kill`. Es la misma trampa que ya documenta la sección de WSL2 para
+    `pkill -f "astro.mjs"`, con otra cara.
